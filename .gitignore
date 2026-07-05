@@ -12,7 +12,8 @@ dist
 dist-ssr
 *.local
 
-.env*
+.env
+.env.local
 
 # Parallel-runner worktrees + local operational config
 .worktrees/
