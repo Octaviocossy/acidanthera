@@ -1,0 +1,23 @@
+# .agents/parallel.config — operational config for /execute-epic's parallel runner.
+# Copy to .agents/parallel.config (gitignored) and edit. The runner sources this file.
+# NOT secrets. The GitHub token stays in .env and is never read by the runner.
+
+# Headless agent CLI used to implement each child issue. COMMAND PREFIX: the runner
+# appends the issue prompt as the final quoted positional argument.
+#   Claude Code : claude -p --dangerously-skip-permissions
+#   Codex       : codex exec --full-auto       (note: 'codex' not installed on this box)
+#   OpenCode    : opencode run --agent <name>  (agent must be allowed to edit/run)
+AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
+
+PARALLEL_MAX_CONCURRENCY=3     # issues running at once (each is a full agent process)
+MAX_CHILDREN=12                # hard cap per wave; runner refuses beyond this
+WORKTREES_DIR=.worktrees       # gitignored
+BASE_BRANCH=main               # children cut from main (manual-merge-checkpoint model)
+
+# Optional acceptance gate run inside each worktree before commit+push (empty = skip here).
+#   Swift : xcodebuild -scheme KeyCount -destination 'platform=macOS' build
+#   Node  : pnpm lint && pnpm build
+ACCEPTANCE_CMD=""
+
+KEEP_WORKTREES=0               # 1 = keep worktrees on success (debug)
+AGENT_TIMEOUT=1800             # per-issue wall-clock cap (seconds); 0 disables
