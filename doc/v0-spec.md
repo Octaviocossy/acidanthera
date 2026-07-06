@@ -62,6 +62,7 @@ Data is plain `.md` files in a filesystem folder (Obsidian philosophy). The app 
 ### 3.2 Stack
 - **Tauri (Rust)** over Electron: lighter, decent binary, and it forces real native backend work (learning / CV goal).
 - **Frontend:** React + Vite.
+- **Styling / design system:** Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first — no `tailwind.config.js`) + shadcn/ui primitives, skinned entirely by the **Orbit-111 design tokens** vendored from the Claude Design project (see §5.6). We adopt shadcn's accessible *primitives*, not its default look. Lint/format stays on Biome; `cn()` uses `clsx` + `tailwind-merge`.
 - **Native Rust backend:** filesystem, spawning the agent process, file-watching (`notify` crate). API-key management in the keychain is left for the native-provider backends (post-v0 — see §4).
 
 ### 3.3 Authentication and data — zero auth, zero sync (v0)
@@ -128,6 +129,8 @@ The piece designed from v0 (even though native-providers arrive later). Each bac
 
 > The type contract lives in `agent-event.ts`.
 
+> **UI binding.** Each event renders through a design-system component — `agent_message`→`ChatMessage` (`streaming` caret reserved for the future delta evolution), `tool_call_start`→`ToolChip status="running"`, `tool_call_result`→`ToolChip status="done"`, `turn_done` clears the caret / re-enables `ChatInput`, `error` renders an inline error row. Full table in §5.6. **Gap to close:** the reference `ToolChip` models only `running|done`; add an `error` status so a `tool_call_result` with `status: error` is shown *without* tearing down the turn (per the table above, an errored tool result must not end the turn — only an `error` event does).
+
 ### 4.4 external-CLI integration (headless mode)
 The two v0 agents are integrated via their structured headless mode, **not** by embedding a raw terminal. The `cwd` points to the vault. Both expose an event stream over stdout that the adapter translates to `AgentEvent`.
 
@@ -163,7 +166,7 @@ Three-region structure, left to right:
 - **Sidebar (left):** collapsible folder-and-file explorer of the vault.
 - **Central viewer:** the open file (markdown editor). The widest region.
 - **AI chat (right):** an **invocable** panel in split view — when opened, the viewer shrinks and both stay visible side by side (not an overlay). Separated by a thin divider.
-- **Floating AI button (FAB):** bottom-right corner, opens/closes the chat. The only place the accent color (lime) appears, as a focal point.
+- **Floating AI button (FAB):** bottom-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; the **only** place the accent color (lime `--accent #a3e635`) appears — a hint on its outline/spark glyph when active (§5.6).
 
 The chat is a region with open/closed state within the focus state machine (§3.4). The graph is no longer a permanent panel (§5.4).
 
@@ -172,16 +175,16 @@ It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/r
 
 - `@uiw/react-codemirror` accepts an `extensions` array of CM6 as a prop → that's where `vim()`, the `Ctrl-w` keybinding and `lang-markdown` go.
 - `@replit/codemirror-vim` API (v6.x): `vim()` goes first; `getCM(view)` gives access to the legacy API; `Vim.defineEx` registers ex-commands; the `vim-mode-change` event feeds the mode indicator.
-- Monochrome / Linear aesthetic via CSS variables and CM6 theming.
+- Monochrome aesthetic driven by the **Orbit-111 design tokens** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the three text tiers, `--font-mono` = JetBrains Mono), so editor and chrome stay visually identical. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
 
 ### 5.2 AI chat (invocable panel)
 - Opens/closes with the FAB or a keyboard shortcut; split view next to the viewer.
 - Spawns the selected `AgentBackend`. v0: selector between Claude Code and Codex CLI.
-- Renders the `AgentEvent` stream as native UI (chat + tool-call chips), not a terminal.
+- Renders the `AgentEvent` stream as native UI (chat + tool-call chips), not a terminal — via the design system's `ai/*` components: `ChatMessage`, `ToolChip`, and `ChatInput`, with the `AiFab` toggle (§5.6). The event → component mapping is in §5.6.
 - Input for user turns; backend selector.
 
 ### 5.3 File sidebar
-Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files.
+Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files. Rows use the design system's `FileTreeItem` (§5.6), which encodes the two vim selection states from §3.4: `active` (the open file — raised `--surface-2`) and `cursor` (the vim keyboard cursor — a thin inset `--border-active` bar, no fill).
 
 ### 5.4 Neural tree / Graph view (invocable view, post-v0)
 A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges = links between notes.
@@ -192,6 +195,53 @@ A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges 
 ### 5.5 Keyboard-first / vim keys
 - The whole app usable with the keyboard only (§3.4), including opening/closing the chat.
 - Toggle: vim starts **enabled by default** in v0. The toggle (and other preferences) will live in a future settings modal; v0 doesn't build that UI yet.
+
+### 5.6 Design system & styling
+
+Orbit-111's visual layer is a purpose-built **design system** — the *Orbit-111 Design System* (Claude Design project `ff2532ab-4501-47c9-8acd-a36fe9719a84`) — delivered with **Tailwind CSS v4** and **shadcn/ui**. The design system is the source of truth for tokens and component behaviour; Tailwind + shadcn are the delivery mechanism, skinned entirely by the tokens (we take shadcn's *primitives*, not its default look).
+
+**Design language (formalizes §5.0/§5.1).** Monochrome, keyboard-first, calm: near-black layered surfaces, 1px hairline borders, one monospace typeface, generous negative space, near-square corners, and a **single reserved lime accent** used in exactly one place — the active AI button.
+
+#### Tokens (vendored from the design project)
+
+`styles.css` + `tokens/*.css` are vendored into the repo as the base `:root` layer and exposed to Tailwind via `@theme`:
+
+- **Surfaces:** `--bg #0a0a0b` (app) · `--surface #0e0e10` (sidebar/panels) · `--surface-2 #141416` (viewer / raised rows).
+- **Borders:** `--border #1e1e22` (hairline) · `--border-active #3a3a42` (focus/active).
+- **Text:** `--text #e4e4e7` · `--text-dim #71717a` · `--text-faint #3f3f46`.
+- **Accent (reserved):** `--accent #a3e635` (lime) · `--accent-dim #566a1d` — the only color; AI button only.
+- **Type:** one face — **JetBrains Mono**, self-hosted (substitutes the paid *Berkeley Mono*, which can be swapped in). `--font-sans` == `--font-mono`. Scale 11/12/13/14/16/20px; weights 300–700; tracking `-0.01em` display, `0.18em` tracked-caps.
+- **Spacing:** 4px grid (`--space-1…12`). **Radii:** `--radius-sm 3px` (chips/buttons/inputs), `--radius-md 5px` (panels/cards), `--radius-full` (AI button only). **Motion:** `--ease cubic-bezier(0.2,0,0,1)`, `--dur 160ms` — fades only, no bounce.
+- **Rails:** sidebar 240px · chat 360px · status bar 24px · title bar 38px · FAB 40px.
+
+#### Stack integration
+
+- **Tailwind v4** via `@tailwindcss/vite` (CSS-first; no `tailwind.config.js`). The CSS entry does `@import "tailwindcss";`, declares the Orbit tokens on `:root`, and an `@theme` block maps them to utilities (`bg-surface`, `text-dim`, `border-hairline`, `font-mono`, the radii/spacing scale).
+- **shadcn/ui** (Vite + React 19) with the `@/` alias (→ `src/`) and the `cn()` util (`src/lib/utils.ts`); config in `components.json`; primitives land in `src/components/ui/`.
+- **shadcn ⇄ Orbit mapping** (semantic var → token): `--background`→`--bg`, `--foreground`→`--text`, `--card`/`--popover`→`--surface`, `--muted`→`--surface-2`, `--muted-foreground`→`--text-dim`, `--border`/`--input`→`--border`, `--ring`→`--border-active`, `--radius`→`--radius-md`.
+- **Dark-only.** Orbit is always near-black. Tokens live on `:root`; no light theme and no `.dark` / `prefers-color-scheme` branch in v0 (the template's light/dark CSS is removed).
+
+**Accent discipline (hard rule).** Lime appears **only** on the active `AiFab`. Two consequences:
+1. shadcn's `--primary` (default button fill) maps to a **monochrome** surface (`--surface-2` + `--border-active`), never lime; `--ring` is `--border-active`, not lime.
+2. shadcn's semantic `--accent` (hover surface) collides by name with Orbit's reserved lime `--accent`. Resolution: the FAB reads lime via a decoupled literal (`--fab-accent: #a3e635`), freeing the bare `--accent` name for shadcn's hover semantic (mapped to `--surface-2`). Primitives that *can* render lime (`Badge tone="accent"`, `IconButton active`) are used with lime **nowhere** but the FAB.
+
+#### Component inventory (design system → app)
+
+The design project ships reference components (`.jsx` + `.d.ts` + `.prompt.md`) as the behavioural source of truth. shadcn primitives are re-skinned to match; Orbit-specific components (no shadcn equivalent) are hand-built on Tailwind + shadcn primitives, following the reference.
+
+| Component | Group | Role in app | shadcn basis |
+|---|---|---|---|
+| `Button` (`primary`/`ghost`/`quiet`, `sm`/`md`, `kbd`) | core | dialog/toolbar/chat actions | shadcn `Button`, re-skinned |
+| `IconButton` (`label`, `size`, `active`) | core | window controls, panel close | shadcn `Button` `size="icon"` |
+| `Badge` (`muted`/`accent`/`plain`) | core | status chips (mode badge kept muted) | shadcn `Badge` |
+| `FileTreeItem` (`kind`, `depth`, `active`, `cursor`, `collapsed`) | vault | sidebar row; `active`=open file, `cursor`=vim bar | hand-built |
+| `Wikilink` (`href`) | editor | inline `[[wikilink]]` (underline+hover, no color) | hand-built (CM6 render) |
+| `ChatMessage` (`role`, `streaming`) | ai | chat turn; `streaming` caret (future deltas) | hand-built |
+| `ToolChip` (`verb`, `path`, `status`) | ai | tool-call chip; spinner→check | hand-built (+ `error`, see §4.3) |
+| `ChatInput` | ai | `›`-prompt input row | shadcn `Input` + form |
+| `AiFab` (`active`) | ai | the FAB; **the one lime accent** | hand-built |
+
+The design system is refreshable via the `claude_design` MCP / the `orbit-111-design` skill when the project changes: re-vendor the tokens, re-check the component contracts.
 
 ---
 
@@ -216,6 +266,7 @@ The navigation state machine (active region + global mode + chat state) and the 
 
 ### Half A — Editor + Filesystem
 - Tauri + React + Vite scaffold.
+- **Styling foundation (§5.6):** add Tailwind v4 (`@tailwindcss/vite`) + shadcn/ui + the `@/` alias + `cn()`; vendor the Orbit-111 design tokens; self-host JetBrains Mono; wire the CM6 theme to the same CSS variables. Remove the default template's light/dark CSS (Orbit is dark-only).
 - CodeMirror 6 editor with vim. Open vault, sidebar, open/edit/save `.md`.
 - File-watcher (`notify`) that refreshes the sidebar.
 
@@ -248,6 +299,12 @@ The agent writes to the vault → it appears in the sidebar. Full loop, one wind
 | Event contract | Normalized `AgentEvent`; adapters as the extension point | ✅ |
 | Agent text | Complete message in v0; deltas as evolution | ✅ |
 | Graph render | cosmos (GPU) | ✅ |
+| Styling stack | Tailwind CSS v4 (CSS-first) + shadcn/ui primitives, token-skinned | ✅ |
+| Design system | Orbit-111 tokens from Claude Design project `ff2532…`; monochrome, one lime accent | ✅ |
+| Typeface | JetBrains Mono (self-hosted); Berkeley Mono documented swap-in | ✅ |
+| Accent discipline | Lime reserved for the active FAB only; shadcn `--primary`/`--ring` stay monochrome | ✅ |
+| Dark-only theme | Near-black always; no light theme / `prefers-color-scheme` branch in v0 | ✅ |
+| ToolChip error state | Extend reference `ToolChip` (`running\|done`) with `error` for tool-result errors | 🔧 Implementation |
 | Global keymap | Approach validated in scaffold; built first | ✅ |
 | Vim toggle | Enabled by default; settings deferred | ✅ |
 | Headless event schemas | One adapter per engine; map against real streams | 🔧 Implementation |
