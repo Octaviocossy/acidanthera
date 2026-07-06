@@ -69,6 +69,8 @@ _None documented yet._
 
 ## Parallel Orchestration
 
+> Guía de uso en español: `doc/guia-sistema-spec.md`.
+
 Decompose a large spec into an epic + N child issues and execute them in parallel via a POSIX
 shell runner. Full conventions in `.agents/rules/parallel-orchestration.md`.
 
