@@ -27,6 +27,10 @@
 | App store | `useAppStore` (`src/stores/app-store.ts`) | "global store", "app context" | Zustand store. Single source of truth for `activeRegion`, `mode`, `chatOpen`, `vaultRoot`. `vaultRoot` lives here (not a filesystem-specific store) so slices that need the vault path (e.g. the agent's `cwd`) don't depend on the sidebar/filesystem slice. |
 | Global keymap | `useGlobalKeymap` (`src/hooks/use-global-keymap.ts`) | "keybindings", "shortcuts" | The app-level `Ctrl-w` chord (`h`/`l` region jump, `c` chat toggle) + `:`/`Escape` mode transitions. Registered on `window` in the bubble phase so a future CodeMirror instance can `stopPropagation()` to keep its own top-precedence handling authoritative. |
 | AiFab | `AiFab` (`src/components/ai/AiFab.tsx`) | "chat button", "toggle button" | The floating action button that opens/closes the chat region. The **only** place the reserved lime accent (`--fab-accent`) is rendered. |
+| VaultEntry | `VaultEntry` (`src-tauri/src/vault.rs`), mirrored as a TS interface in `src/services/vault.service.ts` | "file node", "tree node" | A file or directory inside the open vault, filtered to `.md` notes. A directory is only included if it (transitively) contains at least one `.md` file; hidden entries (`.git`, `.obsidian`, …) are always skipped. |
+| VaultState | `VaultState` (`src-tauri/src/vault.rs`) | — | Rust-side `tauri::State`: the currently open vault root path plus the live `notify::RecommendedWatcher` watching it. Replacing the watcher (via `pick_vault`) drops and thus stops the previous one. |
+| vaultService | `vaultService` (`src/services/vault.service.ts`) | "fs service", "file service" | Typed wrapper over the Rust vault commands (`pick_vault`, `read_vault_tree`, `read_note`, `write_note`) and the `vault-changed` event. Deliberately does not import `useAppStore` — callers own writing the picked path into `vaultRoot` — so the filesystem data layer stays decoupled from app-level state. |
+| `vault-changed` (event) | emitted by `src-tauri/src/vault.rs`, consumed via `vaultService.onVaultChanged` | — | Fired by the Rust `notify` watcher on every filesystem event inside the open vault root. Payload is the list of touched absolute paths (as strings). |
 
 ---
 
@@ -35,6 +39,8 @@
 - `useAppStore.activeRegion` (a `FocusRegion`) is only ever set to `'chat'` while `chatOpen` is `true`; closing the chat reassigns `activeRegion` away from `'chat'` if it was active.
 - `useGlobalKeymap` reads and writes `useAppStore` state exclusively — it holds no state of its own beyond the transient `Ctrl-w` prefix-arm timer.
 - `AiFab` is the only UI entry point that calls `useAppStore.toggleChat`; the global keymap's `Ctrl-w c` chord calls the same action.
+- `read_note`/`write_note` accept a `path` string that must resolve (after canonicalization) inside the current `VaultState` root — in practice this should always be a `path` value previously returned by `read_vault_tree`, since arbitrary strings are rejected by the guard.
+- `vaultService.pickVault()` resolves to the chosen folder's path; it does not itself call `useAppStore.setVaultRoot` — that wiring belongs to whichever slice invokes it (the sidebar/vault-open loop).
 
 ---
 
@@ -50,3 +56,4 @@
 |------|--------|--------|
 | [YYYY-MM-DD] | Initial scaffold | Project created |
 | 2026-07-08 | Added `FocusRegion`, `GlobalMode`, `useAppStore`, `useGlobalKeymap`, `AiFab` | App shell slice (#10): focus/mode state machine + global vim keymap foundation |
+| 2026-07-08 | Added `VaultEntry`, `VaultState`, `vaultService`, `vault-changed` | Filesystem slice (#12): Rust vault read/write commands + `notify` watcher |
