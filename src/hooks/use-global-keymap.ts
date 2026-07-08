@@ -1,12 +1,8 @@
 import { useEffect } from 'react';
+import { isEditableTarget } from '@/lib/dom/is-editable-target';
 import { useAppStore } from '@/stores/app-store';
 
 const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-}
 
 /**
  * The app-level global vim keymap (doc/v0-spec.md §3.4). Two prefixes:
