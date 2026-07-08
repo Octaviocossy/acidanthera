@@ -32,6 +32,10 @@
 | Save intent | `saveIntent` (`src/stores/editor-store.ts`) | "save event", "save signal" | A monotonically increasing counter on `useEditorStore`, bumped by `requestSave()` on `:w` (vim ex-command, `src/lib/editor/save.ts`) or `Mod-s`. Represents "a save was requested" without performing any I/O — later slices subscribe to it to trigger the actual disk write. |
 | Region exit (editor) | `regionExit` (`src/lib/editor/region-exit.ts`) | "vim keymap", "ctrl-w handler" | CM6 extension implementing the same `Ctrl-w` + `h`/`l`/`c` chord as `useGlobalKeymap`, at `Prec.highest` so the editor is authoritative while focused (doc/v0-spec.md §3.4 "CodeMirror coexistence rule"). Explicitly stops DOM propagation so `useGlobalKeymap`'s window-level listener never double-handles the same keydown. |
 | Wikilink (editor) | `wikilink` (`src/lib/editor/wikilink.ts`) | "link decoration" | Inline `[[wikilink]]` rendering inside the CM6 markdown source (underline + hover, no color, per the design system's `Wikilink` component). A hand-built CM6 `ViewPlugin` decoration, not a mounted React component. |
+| VaultEntry | `VaultEntry` (`src-tauri/src/vault.rs`), mirrored as a TS interface in `src/services/vault.service.ts` | "file node", "tree node" | A file or directory inside the open vault, filtered to `.md` notes. A directory is only included if it (transitively) contains at least one `.md` file; hidden entries (`.git`, `.obsidian`, …) are always skipped. |
+| VaultState | `VaultState` (`src-tauri/src/vault.rs`) | — | Rust-side `tauri::State`: the currently open vault root path plus the live `notify::RecommendedWatcher` watching it. Replacing the watcher (via `pick_vault`) drops and thus stops the previous one. |
+| vaultService | `vaultService` (`src/services/vault.service.ts`) | "fs service", "file service" | Typed wrapper over the Rust vault commands (`pick_vault`, `read_vault_tree`, `read_note`, `write_note`) and the `vault-changed` event. Deliberately does not import `useAppStore` — callers own writing the picked path into `vaultRoot` — so the filesystem data layer stays decoupled from app-level state. |
+| `vault-changed` (event) | emitted by `src-tauri/src/vault.rs`, consumed via `vaultService.onVaultChanged` | — | Fired by the Rust `notify` watcher on every filesystem event inside the open vault root. Payload is the list of touched absolute paths (as strings). |
 
 ---
 
@@ -41,6 +45,8 @@
 - `useGlobalKeymap` reads and writes `useAppStore` state exclusively — it holds no state of its own beyond the transient `Ctrl-w` prefix-arm timer.
 - `AiFab` is the only UI entry point that calls `useAppStore.toggleChat`; the global keymap's `Ctrl-w c` chord calls the same action, and so does the editor's own `regionExit` chord.
 - `Viewer` (`src/components/layout/Viewer.tsx`) is the sole consumer of `useEditorStore`; `regionExit` reads/writes `useAppStore` the same way `useGlobalKeymap` does, but from inside the CM6 extension rather than a `window` listener.
+- `read_note`/`write_note` accept a `path` string that must resolve (after canonicalization) inside the current `VaultState` root — in practice this should always be a `path` value previously returned by `read_vault_tree`, since arbitrary strings are rejected by the guard.
+- `vaultService.pickVault()` resolves to the chosen folder's path; it does not itself call `useAppStore.setVaultRoot` — that wiring belongs to whichever slice invokes it (the sidebar/vault-open loop).
 
 ---
 
@@ -57,3 +63,4 @@
 | [YYYY-MM-DD] | Initial scaffold | Project created |
 | 2026-07-08 | Added `FocusRegion`, `GlobalMode`, `useAppStore`, `useGlobalKeymap`, `AiFab` | App shell slice (#10): focus/mode state machine + global vim keymap foundation |
 | 2026-07-08 | Added `useEditorStore`, `EditorVimMode`, `saveIntent`, `regionExit`, `wikilink` | Editor slice (#11): CodeMirror 6 markdown editor with vim + `Ctrl-w` coexistence |
+| 2026-07-08 | Added `VaultEntry`, `VaultState`, `vaultService`, `vault-changed` | Filesystem slice (#12): Rust vault read/write commands + `notify` watcher |
