@@ -27,6 +27,10 @@
 | App store | `useAppStore` (`src/stores/app-store.ts`) | "global store", "app context" | Zustand store. Single source of truth for `activeRegion`, `mode`, `chatOpen`, `vaultRoot`. `vaultRoot` lives here (not a filesystem-specific store) so slices that need the vault path (e.g. the agent's `cwd`) don't depend on the sidebar/filesystem slice. |
 | Global keymap | `useGlobalKeymap` (`src/hooks/use-global-keymap.ts`) | "keybindings", "shortcuts" | The app-level `Ctrl-w` chord (`h`/`l` region jump, `c` chat toggle) + `:`/`Escape` mode transitions. Registered on `window` in the bubble phase so a future CodeMirror instance can `stopPropagation()` to keep its own top-precedence handling authoritative. |
 | AiFab | `AiFab` (`src/components/ai/AiFab.tsx`) | "chat button", "toggle button" | The floating action button that opens/closes the chat region. The **only** place the reserved lime accent (`--fab-accent`) is rendered. |
+| Agent event | `AgentEvent` (`src/lib/agent/agent-event.ts`) | "message", "chunk" | Discriminated union (`type` field) of the six v0 event kinds: `agent_message`, `tool_call_start`, `tool_call_result`, `permission_request` (unused in v0), `turn_done`, `error`. The chat panel consumes **only** this union, never an engine's raw JSON. |
+| Agent source | `AgentSource` (`src/lib/agent/agent-event.ts`) | "engine", "provider" (as this type's name) | One of `'claude-code' \| 'codex'`. Carried on every `AgentEvent` for logs/debug — **never** used to branch UI. |
+| Agent backend | `AgentBackend` (`src/lib/agent/agent-backend.ts`) | "adapter" (that's the per-engine translator implementing this interface, not the interface itself — see Flagged ambiguities) | The interface every engine (v0: `external-CLI` Claude Code/Codex; later: `native-provider`) implements: `start`/`send`/`stop`, emitting `AgentEvent`s via an `onEvent` callback. |
+| Backend registry | `registerBackend` / `getBackend` / `listBackends` (`src/lib/agent/backend-registry.ts`) | "backend store" | Runtime `Map<AgentSource, AgentBackend>`. Each backend module registers itself; the chat's engine selector reads it via `listBackends()`. Empty until #15/#16 register concrete backends. |
 
 ---
 
@@ -35,12 +39,14 @@
 - `useAppStore.activeRegion` (a `FocusRegion`) is only ever set to `'chat'` while `chatOpen` is `true`; closing the chat reassigns `activeRegion` away from `'chat'` if it was active.
 - `useGlobalKeymap` reads and writes `useAppStore` state exclusively — it holds no state of its own beyond the transient `Ctrl-w` prefix-arm timer.
 - `AiFab` is the only UI entry point that calls `useAppStore.toggleChat`; the global keymap's `Ctrl-w c` chord calls the same action.
+- `AgentBackend` implementations are looked up by `AgentSource` through the backend registry (`src/lib/agent/backend-registry.ts`); the chat panel never imports a concrete backend directly — only `AgentEvent` and the registry functions.
 
 ---
 
 ## Flagged ambiguities
 
 - **"Vim mode" is two distinct systems** (doc/v0-spec.md §3.4): the app-level `GlobalMode` (`normal`/`command`, this slice) and the editor's own CodeMirror vim mode (`@replit/codemirror-vim`, added by the editor slice). Do not merge these into one enum or one store — they are deliberately separate state machines that only hand off focus at the region boundary.
+- **"Adapter" vs `AgentBackend`** (doc/v0-spec.md §4.3): the spec's "adapter" is the per-engine translator (Claude Code adapter, Codex adapter — built in #15/#16) that implements the `AgentBackend` interface and turns a native stream into `AgentEvent`s. `AgentBackend` is the interface itself, not an implementation. Don't use "adapter" to refer to the interface.
 
 ---
 
@@ -50,3 +56,4 @@
 |------|--------|--------|
 | [YYYY-MM-DD] | Initial scaffold | Project created |
 | 2026-07-08 | Added `FocusRegion`, `GlobalMode`, `useAppStore`, `useGlobalKeymap`, `AiFab` | App shell slice (#10): focus/mode state machine + global vim keymap foundation |
+| 2026-07-08 | Added `AgentEvent`, `AgentSource`, `AgentBackend`, backend registry | Agent event contract slice (#13): pure `AgentEvent` discriminated union + `AgentBackend` interface + backend registry so the chat can be built (#15) against a stable contract |
