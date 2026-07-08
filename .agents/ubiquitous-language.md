@@ -36,6 +36,10 @@
 | VaultState | `VaultState` (`src-tauri/src/vault.rs`) | — | Rust-side `tauri::State`: the currently open vault root path plus the live `notify::RecommendedWatcher` watching it. Replacing the watcher (via `pick_vault`) drops and thus stops the previous one. |
 | vaultService | `vaultService` (`src/services/vault.service.ts`) | "fs service", "file service" | Typed wrapper over the Rust vault commands (`pick_vault`, `read_vault_tree`, `read_note`, `write_note`) and the `vault-changed` event. Deliberately does not import `useAppStore` — callers own writing the picked path into `vaultRoot` — so the filesystem data layer stays decoupled from app-level state. |
 | `vault-changed` (event) | emitted by `src-tauri/src/vault.rs`, consumed via `vaultService.onVaultChanged` | — | Fired by the Rust `notify` watcher on every filesystem event inside the open vault root. Payload is the list of touched absolute paths (as strings). |
+| Agent event | `AgentEvent` (`src/lib/agent/agent-event.ts`) | "message", "chunk" | Discriminated union (`type` field) of the six v0 event kinds: `agent_message`, `tool_call_start`, `tool_call_result`, `permission_request` (unused in v0), `turn_done`, `error`. The chat panel consumes **only** this union, never an engine's raw JSON. |
+| Agent source | `AgentSource` (`src/lib/agent/agent-event.ts`) | "engine", "provider" (as this type's name) | One of `'claude-code' \| 'codex'`. Carried on every `AgentEvent` for logs/debug — **never** used to branch UI. |
+| Agent backend | `AgentBackend` (`src/lib/agent/agent-backend.ts`) | "adapter" (that's the per-engine translator implementing this interface, not the interface itself — see Flagged ambiguities) | The interface every engine (v0: `external-CLI` Claude Code/Codex; later: `native-provider`) implements: `start`/`send`/`stop`, emitting `AgentEvent`s via an `onEvent` callback. |
+| Backend registry | `registerBackend` / `getBackend` / `listBackends` (`src/lib/agent/backend-registry.ts`) | "backend store" | Runtime `Map<AgentSource, AgentBackend>`. Each backend module registers itself; the chat's engine selector reads it via `listBackends()`. Empty until #15/#16 register concrete backends. |
 
 ---
 
@@ -47,12 +51,14 @@
 - `Viewer` (`src/components/layout/Viewer.tsx`) is the sole consumer of `useEditorStore`; `regionExit` reads/writes `useAppStore` the same way `useGlobalKeymap` does, but from inside the CM6 extension rather than a `window` listener.
 - `read_note`/`write_note` accept a `path` string that must resolve (after canonicalization) inside the current `VaultState` root — in practice this should always be a `path` value previously returned by `read_vault_tree`, since arbitrary strings are rejected by the guard.
 - `vaultService.pickVault()` resolves to the chosen folder's path; it does not itself call `useAppStore.setVaultRoot` — that wiring belongs to whichever slice invokes it (the sidebar/vault-open loop).
+- `AgentBackend` implementations are looked up by `AgentSource` through the backend registry (`src/lib/agent/backend-registry.ts`); the chat panel never imports a concrete backend directly — only `AgentEvent` and the registry functions.
 
 ---
 
 ## Flagged ambiguities
 
 - **"Vim mode" is two distinct systems** (doc/v0-spec.md §3.4): the app-level `GlobalMode` (`normal`/`command`, app shell slice) and the editor's own CodeMirror vim mode (`EditorVimMode`, editor slice, backed by `@replit/codemirror-vim`). Do not merge these into one enum or one store — they are deliberately separate state machines that only hand off focus at the region boundary.
+- **"Adapter" vs `AgentBackend`** (doc/v0-spec.md §4.3): the spec's "adapter" is the per-engine translator (Claude Code adapter, Codex adapter — built in #15/#16) that implements the `AgentBackend` interface and turns a native stream into `AgentEvent`s. `AgentBackend` is the interface itself, not an implementation. Don't use "adapter" to refer to the interface.
 
 ---
 
@@ -64,3 +70,4 @@
 | 2026-07-08 | Added `FocusRegion`, `GlobalMode`, `useAppStore`, `useGlobalKeymap`, `AiFab` | App shell slice (#10): focus/mode state machine + global vim keymap foundation |
 | 2026-07-08 | Added `useEditorStore`, `EditorVimMode`, `saveIntent`, `regionExit`, `wikilink` | Editor slice (#11): CodeMirror 6 markdown editor with vim + `Ctrl-w` coexistence |
 | 2026-07-08 | Added `VaultEntry`, `VaultState`, `vaultService`, `vault-changed` | Filesystem slice (#12): Rust vault read/write commands + `notify` watcher |
+| 2026-07-08 | Added `AgentEvent`, `AgentSource`, `AgentBackend`, backend registry | Agent event contract slice (#13): pure `AgentEvent` discriminated union + `AgentBackend` interface + backend registry so the chat can be built (#15) against a stable contract |
