@@ -1,0 +1,8 @@
+/*
+ * Orbit-111 design tokens — motion.
+ * Fades only, no bounce.
+ */
+:root {
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 160ms;
+}

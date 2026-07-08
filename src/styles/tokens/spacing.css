@@ -1,0 +1,24 @@
+/*
+ * Orbit-111 design tokens — spacing & radii.
+ * 4px grid. Tailwind's default spacing scale is already 4px-based (p-1 = 4px), so these
+ * raw variables exist for non-Tailwind consumers (e.g. the CM6 theme in a later slice)
+ * rather than being re-wired into `@theme`.
+ */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-full: 9999px;
+}
