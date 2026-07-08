@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* Self-hosted JetBrains Mono (weights 300–700, normal style only). */
+@import "@fontsource/jetbrains-mono/300.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/motion.css";
+@import "./tokens/rails.css";
+
+/* shadcn semantic layer — mapped onto Orbit tokens (doc/v0-spec.md §5.6 "shadcn ⇄ Orbit mapping").
+   Dark-only: this is the only palette, there is no `.dark` branch. */
+:root {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--surface-2);
+  --primary-foreground: var(--text);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-dim);
+  /* shadcn's hover-surface semantic — monochrome. Orbit's reserved lime lives at --fab-accent. */
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--text);
+  --destructive-foreground: var(--bg);
+  --border: var(--border);
+  --input: var(--border);
+  --ring: var(--border-active);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* Orbit-native utilities (bg-surface, text-dim, border-hairline, font-mono, ...). */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border-hairline: var(--border);
+  --color-border-active: var(--border-active);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-faint: var(--text-faint);
+  --color-fab-accent: var(--fab-accent);
+  --color-fab-accent-dim: var(--fab-accent-dim);
+
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-sans);
+
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+  --text-md: var(--font-size-md);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+
+  --tracking-display: var(--tracking-display);
+  --tracking-caps: var(--tracking-caps);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+
+  --ease-orbit: var(--ease);
+}
+
+/* Dark-only: no light theme, no prefers-color-scheme branch. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+}

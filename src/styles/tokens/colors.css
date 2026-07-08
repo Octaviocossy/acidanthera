@@ -1,0 +1,25 @@
+/*
+ * Orbit-111 design tokens — colors.
+ * Vendored from the Orbit-111 Design System (Claude Design project ff2532ab-4501-47c9-8acd-a36fe9719a84).
+ * Dark-only: these are the only color values the app ever uses, on :root, unconditionally.
+ */
+:root {
+  /* Surfaces */
+  --bg: #0a0a0b;
+  --surface: #0e0e10;
+  --surface-2: #141416;
+
+  /* Borders */
+  --border: #1e1e22;
+  --border-active: #3a3a42;
+
+  /* Text */
+  --text: #e4e4e7;
+  --text-dim: #71717a;
+  --text-faint: #3f3f46;
+
+  /* Accent — reserved for the active AiFab only (see accent discipline, doc/v0-spec.md §5.6).
+     Decoupled from the bare `--accent` name, which shadcn's hover-surface semantic owns. */
+  --fab-accent: #a3e635;
+  --fab-accent-dim: #566a1d;
+}

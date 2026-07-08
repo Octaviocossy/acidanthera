@@ -1,0 +1,26 @@
+/*
+ * Orbit-111 design tokens — typography.
+ * One face — JetBrains Mono, self-hosted — for both --font-sans and --font-mono.
+ */
+:root {
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: var(--font-mono);
+
+  /* Scale: 11/12/13/14/16/20px */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+
+  /* Weights 300–700 */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --tracking-display: -0.01em;
+  --tracking-caps: 0.18em;
+}

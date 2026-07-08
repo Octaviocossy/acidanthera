@@ -50,5 +50,17 @@
   "files": {
     "ignoreUnknown": true,
     "includes": ["**", "!.agents", "!.claude", "!**/dist", "!**/coverage", "!src-tauri/target", "!src-tauri/gen"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off"
+          }
+        }
+      }
+    }
+  ]
 }
