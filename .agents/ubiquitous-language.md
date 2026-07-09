@@ -3,7 +3,7 @@
 > Single source of truth for domain terminology. Update when entities, relationships,
 > or naming conventions change. AI tools should read this before inspecting source files.
 >
-> **Last updated**: 2026-07-09 (Robust external-CLI spawn / command resolution)
+> **Last updated**: 2026-07-09 (Toast notifications for save feedback)
 > **Canonical types**: `src/` (TS), `src-tauri/src/` (Rust)
 
 ---
@@ -55,6 +55,8 @@
 | ToolChip | `ToolChip` (`src/components/ai/ToolChip.tsx`) | "tool badge" | Renders a `tool_call_start` (+ its eventual `tool_call_result`) as a chip. `status: 'running' \| 'done' \| 'error'` — the `error` status is the extension to the reference component flagged in doc/v0-spec.md §4.3/§8. |
 | ChatInput | `ChatInput` (`src/components/ai/ChatInput.tsx`) | "prompt input" | The chat's `›`-prompt row (doc/v0-spec.md §5.2); disabled while `useChatStore.turnActive`. |
 | Backend logger | `logging::plugin` / `LogResult` (`src-tauri/src/logging.rs`) | "log utility", "tracing" | The backend logging utility (used by every Tauri command). Configures `tauri-plugin-log` to append leveled, timestamped lines to `logs/orbit-111.log` (relative to the app CWD — `src-tauri/` under `tauri dev`) + stdout. `LogResult::log_err(command)` is the extension every command chains onto its result to record failures. Not to be confused with the child-process stderr that `agent.rs` forwards to the frontend — that is engine output, not backend logs. |
+| Toast | `Toast` / `useToastStore` (`src/stores/toast-store.ts`) | "notification", "snackbar", "alert" | A transient, auto-dismissing feedback line with `tone: 'info' \| 'error'` (#27). Monochrome per the accent discipline (doc/v0-spec.md §5.6) — tones differ by border weight + a tracked-caps tag, never color. Info toasts fade after 2s, error toasts after 6s; fades only (motion tokens). `showToast` is the single entry point; v0's only producer is `useSaveLoop`. |
+| ToastHost | `ToastHost` (`src/components/layout/ToastHost.tsx`) | "toaster", "toast container" | Bottom-center overlay rendering the toast stack, mounted once in `Layout` alongside `CommandBar`/`AiFab`. Sole consumer of `useToastStore`. Click a toast to dismiss it early; `aria-live="polite"` for screen readers. |
 
 ---
 
@@ -70,6 +72,7 @@
 - `Sidebar` (`src/components/layout/Sidebar.tsx`) is the sole consumer of `useSidebarStore`; it refetches `vaultService.readVaultTree()` whenever `useAppStore.vaultRoot` changes and whenever `vaultService.onVaultChanged` fires, so the tree stays in sync with the watcher without surgical diffing.
 - `openVaultFile` and `useSidebarKeymap` both write `useSidebarStore.cursorPath` and `useEditorStore` (via `openFile`) but never `useSidebarStore.tree` — the tree is owned exclusively by `Sidebar`'s watcher-driven refresh.
 - `useSaveLoop` reads `useEditorStore.filePath`/`content` and calls `vaultService.writeNote` directly; it does not go through `Sidebar` or `useSidebarStore`, so saving is independent of the sidebar's own render/mount state.
+- `useSaveLoop` is v0's only `useToastStore.showToast` producer: `Saved <file>` (info) on `writeNote` success, `Save failed: <reason>` (error) on rejection — `markSaved` only runs on success, so a failed save keeps the buffer `dirty`.
 - `useChatStore.sendMessage` is the only caller of `AgentBackend.start`/`send` outside the registry itself; it looks the backend up via `getBackend(backendId)` and folds every `AgentEvent` the backend emits into `items` via `applyAgentEvent`.
 - `createClaudeCodeBackend` is the only consumer of `agentProcessService` — the chat store and `ChatPanel` never call it directly, keeping "only `AgentEvent` leaves the adapter" true at the module boundary, not just by convention.
 - `ChatPanel` reads the registry directly via `listBackends()` for its backend-selector row; switching `useChatStore.backendId` stops the previously-running backend (if a session had started) before adopting the new one.
@@ -98,3 +101,4 @@
 | 2026-07-08 | Added `createCodexBackend` | Codex backend adapter slice (#16): second `AgentBackend`, registered via `registerBuiltinBackends()` with zero UI changes — proves adapters are the growth point. Mapping is best-effort (Codex not installed locally), pending re-pin against a captured stream |
 | 2026-07-08 | Added `logging::plugin` + `LogResult` | Backend file logger: `tauri-plugin-log` writing `logs/orbit-111.log`, entry+error logs wired into all seven Tauri commands |
 | 2026-07-09 | `agent_spawn` command resolution + `CommandNotFound`; chat surfaces spawn failures | Fix Codex `os error 2` (broken install) UX and make GUI-launched apps find installed engines |
+| 2026-07-09 | Added `Toast`/`useToastStore`, `ToastHost`; `useSaveLoop` surfaces save success/failure | Toast notifications for save feedback (#27): `:w`/`Mod-s` now confirm the write or report the error |

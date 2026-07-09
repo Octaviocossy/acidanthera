@@ -3,6 +3,7 @@ import { ChatPanel } from '@/components/layout/ChatPanel';
 import { CommandBar } from '@/components/layout/CommandBar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
+import { ToastHost } from '@/components/layout/ToastHost';
 import { Viewer } from '@/components/layout/Viewer';
 
 /**
@@ -18,6 +19,7 @@ export function Layout() {
         <ChatPanel />
         <CommandBar />
         <AiFab />
+        <ToastHost />
       </div>
       <StatusBar />
     </div>
