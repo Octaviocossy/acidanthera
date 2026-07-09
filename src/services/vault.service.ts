@@ -20,6 +20,9 @@ export const vaultService = {
   /** Opens a native folder picker and adopts the chosen folder as the vault root. */
   pickVault: (): Promise<string> => invoke('pick_vault'),
 
+  /** Adopts `path` as the vault root without a picker, creating the directory if missing. */
+  openVault: (path: string): Promise<string> => invoke('open_vault', { path }),
+
   /** Reads the open vault's file tree, filtered to `.md` notes and their parent directories. */
   readVaultTree: (): Promise<VaultEntry[]> => invoke('read_vault_tree'),
 

@@ -177,6 +177,25 @@ pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultRe
     .log_err("pick_vault")
 }
 
+/// Adopts `path` as the vault root without a picker — creating the directory if it doesn't
+/// exist yet (the default-vault bootstrap, doc/v0-spec.md §3.1) — and starts the watcher over
+/// it. Returns the canonical path so the frontend can seed `useAppStore.vaultRoot`.
+#[tauri::command]
+pub fn open_vault(path: String, app: AppHandle, state: State<'_, VaultState>) -> VaultResult<String> {
+    log::info!("open_vault: path={path}");
+    (|| {
+        fs::create_dir_all(&path)?;
+        let root = PathBuf::from(&path).canonicalize()?;
+        if !root.is_dir() {
+            return Err(VaultError::InvalidPath);
+        }
+        watch(&app, &state, root.clone())?;
+        log::info!("open_vault: adopted vault root {}", root.display());
+        Ok(root.to_string_lossy().into_owned())
+    })()
+    .log_err("open_vault")
+}
+
 /// Reads the open vault's file tree, filtered to `.md` notes and their parent directories.
 #[tauri::command]
 pub fn read_vault_tree(state: State<'_, VaultState>) -> VaultResult<Vec<VaultEntry>> {
