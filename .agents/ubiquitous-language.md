@@ -3,7 +3,7 @@
 > Single source of truth for domain terminology. Update when entities, relationships,
 > or naming conventions change. AI tools should read this before inspecting source files.
 >
-> **Last updated**: 2026-07-09 (Persisted settings store + default vault bootstrap)
+> **Last updated**: 2026-07-09 (Persisted settings store + default vault bootstrap; toast notifications for save feedback)
 > **Canonical types**: `src/` (TS), `src-tauri/src/` (Rust)
 
 ---
@@ -60,6 +60,8 @@
 | Settings bootstrap | `useSettingsBootstrap` (`src/hooks/use-settings-bootstrap.ts`) | "startup hook", "init hook" | Mounted once in `App.tsx`. On boot: loads settings, seeds `useChatStore`'s engine (only if the registry knows it and no session started), then opens the vault at `settings.vaultPath` via `open_vault` — creating the default vault on first run — and seeds `useAppStore.vaultRoot`. On failure the app degrades to the manual "Open vault…" flow. |
 | Default vault | `~/Documents/orbit-brain` (resolved in `src-tauri/src/settings.rs`) | — | The vault `open_vault` creates and adopts on first boot, so the app starts usable without a picker. `open_vault` (in `vault.rs`) is `pick_vault` minus the dialog: `create_dir_all` + watcher + canonical path back to the frontend. |
 | Backend logger | `logging::plugin` / `LogResult` (`src-tauri/src/logging.rs`) | "log utility", "tracing" | The backend logging utility (used by every Tauri command). Configures `tauri-plugin-log` to append leveled, timestamped lines to `logs/orbit-111.log` (relative to the app CWD — `src-tauri/` under `tauri dev`) + stdout. `LogResult::log_err(command)` is the extension every command chains onto its result to record failures. Not to be confused with the child-process stderr that `agent.rs` forwards to the frontend — that is engine output, not backend logs. |
+| Toast | `Toast` / `useToastStore` (`src/stores/toast-store.ts`) | "notification", "snackbar", "alert" | A transient, auto-dismissing feedback line with `tone: 'info' \| 'error'` (#27). Monochrome per the accent discipline (doc/v0-spec.md §5.6) — tones differ by border weight + a tracked-caps tag, never color. Info toasts fade after 2s, error toasts after 6s; fades only (motion tokens). `showToast` is the single entry point; v0's only producer is `useSaveLoop`. |
+| ToastHost | `ToastHost` (`src/components/layout/ToastHost.tsx`) | "toaster", "toast container" | Bottom-center overlay rendering the toast stack, mounted once in `Layout` alongside `CommandBar`/`AiFab`. Sole consumer of `useToastStore`. Click a toast to dismiss it early; `aria-live="polite"` for screen readers. |
 
 ---
 
@@ -75,6 +77,7 @@
 - `Sidebar` (`src/components/layout/Sidebar.tsx`) is the sole consumer of `useSidebarStore`; it refetches `vaultService.readVaultTree()` whenever `useAppStore.vaultRoot` changes and whenever `vaultService.onVaultChanged` fires, so the tree stays in sync with the watcher without surgical diffing.
 - `openVaultFile` and `useSidebarKeymap` both write `useSidebarStore.cursorPath` and `useEditorStore` (via `openFile`) but never `useSidebarStore.tree` — the tree is owned exclusively by `Sidebar`'s watcher-driven refresh.
 - `useSaveLoop` reads `useEditorStore.filePath`/`content` and calls `vaultService.writeNote` directly; it does not go through `Sidebar` or `useSidebarStore`, so saving is independent of the sidebar's own render/mount state.
+- `useSaveLoop` is v0's only `useToastStore.showToast` producer: `Saved <file>` (info) on `writeNote` success, `Save failed: <reason>` (error) on rejection — `markSaved` only runs on success, so a failed save keeps the buffer `dirty`.
 - `useChatStore.sendMessage` is the only caller of `AgentBackend.start`/`send` outside the registry itself; it looks the backend up via `getBackend(backendId)` and folds every `AgentEvent` the backend emits into `items` via `applyAgentEvent`.
 - `createClaudeCodeBackend` is the only consumer of `agentProcessService` — the chat store and `ChatPanel` never call it directly, keeping "only `AgentEvent` leaves the adapter" true at the module boundary, not just by convention.
 - `ChatPanel` reads the registry directly via `listBackends()` for its backend-selector row; switching `useChatStore.backendId` stops the previously-running backend (if a session had started) before adopting the new one.
@@ -107,3 +110,4 @@
 | 2026-07-08 | Added `logging::plugin` + `LogResult` | Backend file logger: `tauri-plugin-log` writing `logs/orbit-111.log`, entry+error logs wired into all seven Tauri commands |
 | 2026-07-09 | `agent_spawn` command resolution + `CommandNotFound`; chat surfaces spawn failures | Fix Codex `os error 2` (broken install) UX and make GUI-launched apps find installed engines |
 | 2026-07-09 | Added `Settings`, `settingsService`, `useSettingsStore`, `useSettingsBootstrap`, `open_vault`, default vault | Settings foundation slice (#25, epic #24): persisted `settings.json` + default vault bootstrap (`~/Documents/orbit-brain`) so #28/#29 build on a stable contract |
+| 2026-07-09 | Added `Toast`/`useToastStore`, `ToastHost`; `useSaveLoop` surfaces save success/failure | Toast notifications for save feedback (#27): `:w`/`Mod-s` now confirm the write or report the error |
