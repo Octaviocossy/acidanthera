@@ -6,6 +6,10 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --font-sans: var(--font-mono);
 
+  /* The editor's font slot — `useApplyTheme` (#28) overrides it from `settings.editorFont`;
+     the app chrome deliberately stays on --font-mono. */
+  --editor-font: var(--font-mono);
+
   /* Scale: 11/12/13/14/16/20px */
   --font-size-xs: 11px;
   --font-size-sm: 12px;

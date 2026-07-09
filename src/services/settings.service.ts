@@ -1,14 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { AgentSource } from '@/lib/agent/agent-event';
 
-/** The app's color theme. v0 ships dark-only; `'light'` is applied by the theme slice (#28). */
+/** The app's color theme, applied by `useApplyTheme` (#28) via the `data-theme` attribute. */
 export type ThemeName = 'dark' | 'light';
 
 /** Persisted user settings. Mirrors the Rust `Settings` (`src-tauri/src/settings.rs`). */
 export interface Settings {
   /** The agent engine seeded into the chat at boot. */
   engine: AgentSource;
-  /** Editor font family; applied by the theme/font slice (#28). */
+  /** Editor font family, applied by `useApplyTheme` (#28) via `--editor-font`. */
   editorFont: string;
   theme: ThemeName;
   /** Absolute path of the vault opened at boot. Defaults to `~/Documents/orbit-brain`. */

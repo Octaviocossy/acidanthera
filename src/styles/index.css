@@ -14,7 +14,8 @@
 @import "./tokens/rails.css";
 
 /* shadcn semantic layer — mapped onto Orbit tokens (doc/v0-spec.md §5.6 "shadcn ⇄ Orbit mapping").
-   Dark-only: this is the only palette, there is no `.dark` branch. */
+   One mapping, no `.dark` branch: theming happens a level below, where the Orbit tokens
+   themselves flip via `:root[data-theme='light']` (tokens/colors.css, #28). */
 :root {
   --background: var(--bg);
   --foreground: var(--text);
@@ -102,7 +103,7 @@
   }
 }
 
-/* Dark-only: no light theme, no prefers-color-scheme branch. */
+/* Theme follows the persisted setting (`data-theme`, #28) — never prefers-color-scheme. */
 html,
 body {
   height: 100%;
