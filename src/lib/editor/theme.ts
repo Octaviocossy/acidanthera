@@ -36,11 +36,15 @@ export const editorTheme = EditorView.theme(
       color: 'var(--text-faint)',
       border: 'none',
     },
+    '.cm-lineNumbers .cm-gutterElement': {
+      padding: '0 var(--space-2) 0 var(--space-4)',
+    },
     '.cm-activeLine': {
       backgroundColor: 'var(--surface)',
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent',
+      color: 'var(--text-dim)',
     },
     '.cm-matchingBracket, .cm-nonmatchingBracket': {
       backgroundColor: 'var(--surface-2)',

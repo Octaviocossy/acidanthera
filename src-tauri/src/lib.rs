@@ -1,5 +1,6 @@
 mod agent;
 mod logging;
+mod settings;
 mod vault;
 
 use agent::AgentProcessState;
@@ -19,9 +20,12 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             vault::pick_vault,
+            vault::open_vault,
             vault::read_vault_tree,
             vault::read_note,
             vault::write_note,
+            settings::read_settings,
+            settings::write_settings,
             agent::agent_spawn,
             agent::agent_send,
             agent::agent_stop,

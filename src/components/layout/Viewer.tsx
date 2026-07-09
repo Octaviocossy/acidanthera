@@ -27,7 +27,7 @@ export function Viewer() {
   return (
     <main aria-label="Editor" className={cn('relative flex h-full flex-1 flex-col overflow-hidden border-t-2 bg-bg', isActive ? 'border-border-active' : 'border-transparent')}>
       <div className="min-h-0 flex-1">
-        <CodeMirror value={content} onChange={setContent} extensions={EXTENSIONS} theme="none" height="100%" basicSetup={{ lineNumbers: false, foldGutter: false }} />
+        <CodeMirror value={content} onChange={setContent} extensions={EXTENSIONS} theme="none" height="100%" basicSetup={{ lineNumbers: true, foldGutter: false }} />
       </div>
       <div className="pointer-events-none absolute right-3 bottom-3">
         <Badge tone="muted">{vimMode}</Badge>
