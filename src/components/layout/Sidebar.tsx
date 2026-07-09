@@ -8,6 +8,7 @@ import { openVaultFile } from '@/lib/vault/open-file';
 import { vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). */
@@ -27,6 +28,7 @@ export function Sidebar() {
   const setCursor = useSidebarStore((state) => state.setCursor);
 
   const activeFilePath = useEditorStore((state) => state.filePath);
+  const updateSettings = useSettingsStore((state) => state.updateSettings);
 
   useEffect(() => {
     if (vaultRoot === null) return;
@@ -47,6 +49,8 @@ export function Sidebar() {
     try {
       const root = await vaultService.pickVault();
       setVaultRoot(root);
+      // Persist the choice so this vault reopens on the next boot (#25).
+      void updateSettings({ vaultPath: root });
     } catch {
       // Dialog was cancelled — nothing to do.
     }
