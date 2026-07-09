@@ -92,19 +92,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set((state) => ({ items: [...state.items, { kind: 'user_message', id: nextId('user'), text: trimmed }], turnActive: true }));
 
-    if (!get().sessionStarted) {
-      const vaultRoot = useAppStore.getState().vaultRoot;
-      if (!vaultRoot) {
-        set((state) => ({
-          items: [...state.items, { kind: 'error', id: nextId('error'), message: 'Open a vault before starting a chat.' }],
-          turnActive: false,
-        }));
-        return;
+    try {
+      if (!get().sessionStarted) {
+        const vaultRoot = useAppStore.getState().vaultRoot;
+        if (!vaultRoot) {
+          set((state) => ({
+            items: [...state.items, { kind: 'error', id: nextId('error'), message: 'Open a vault before starting a chat.' }],
+            turnActive: false,
+          }));
+          return;
+        }
+        await backend.start(vaultRoot, (event) => set((state) => applyAgentEvent(state, event)));
+        set({ sessionStarted: true });
       }
-      await backend.start(vaultRoot, (event) => set((state) => applyAgentEvent(state, event)));
-      set({ sessionStarted: true });
-    }
 
-    await backend.send(trimmed);
+      await backend.send(trimmed);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set((state) => ({
+        items: [...state.items, { kind: 'error', id: nextId('error'), message: `Could not start the agent: ${message}` }],
+        turnActive: false,
+      }));
+    }
   },
 }));

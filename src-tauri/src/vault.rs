@@ -13,6 +13,8 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 use thiserror::Error;
 
+use crate::logging::LogResult;
+
 /// A file or directory inside the open vault, filtered to Markdown notes.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,31 +162,47 @@ fn watch(app: &AppHandle, state: &VaultState, root: PathBuf) -> VaultResult<()> 
 /// path so the frontend can seed `useAppStore.vaultRoot`.
 #[tauri::command]
 pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultResult<String> {
-    let folder = app.dialog().file().blocking_pick_folder();
-    let root = folder
-        .ok_or(VaultError::NoFolderSelected)?
-        .into_path()
-        .map_err(|_| VaultError::InvalidPath)?;
-    watch(&app, &state, root.clone())?;
-    Ok(root.to_string_lossy().into_owned())
+    log::info!("pick_vault: opening folder picker");
+    async {
+        let folder = app.dialog().file().blocking_pick_folder();
+        let root = folder
+            .ok_or(VaultError::NoFolderSelected)?
+            .into_path()
+            .map_err(|_| VaultError::InvalidPath)?;
+        watch(&app, &state, root.clone())?;
+        log::info!("pick_vault: adopted vault root {}", root.display());
+        Ok(root.to_string_lossy().into_owned())
+    }
+    .await
+    .log_err("pick_vault")
 }
 
 /// Reads the open vault's file tree, filtered to `.md` notes and their parent directories.
 #[tauri::command]
 pub fn read_vault_tree(state: State<'_, VaultState>) -> VaultResult<Vec<VaultEntry>> {
-    build_tree(&current_root(&state)?)
+    log::info!("read_vault_tree");
+    (|| build_tree(&current_root(&state)?))().log_err("read_vault_tree")
 }
 
 /// Reads a note's contents. `path` must resolve inside the open vault root.
 #[tauri::command]
 pub fn read_note(path: String, state: State<'_, VaultState>) -> VaultResult<String> {
-    let root = current_root(&state)?;
-    Ok(fs::read_to_string(guarded_path(&root, &path)?)?)
+    log::info!("read_note: path={path}");
+    (|| {
+        let root = current_root(&state)?;
+        Ok(fs::read_to_string(guarded_path(&root, &path)?)?)
+    })()
+    .log_err("read_note")
 }
 
 /// Writes a note's contents. `path` must resolve inside the open vault root.
 #[tauri::command]
 pub fn write_note(path: String, contents: String, state: State<'_, VaultState>) -> VaultResult<()> {
-    let root = current_root(&state)?;
-    Ok(fs::write(guarded_path(&root, &path)?, contents)?)
+    log::info!("write_note: path={path} bytes={}", contents.len());
+    (|| {
+        let root = current_root(&state)?;
+        fs::write(guarded_path(&root, &path)?, contents)?;
+        Ok(())
+    })()
+    .log_err("write_note")
 }
