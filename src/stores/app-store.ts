@@ -16,6 +16,8 @@ interface AppState {
   activeRegion: FocusRegion;
   mode: GlobalMode;
   chatOpen: boolean;
+  /** Whether the settings dialog overlay is up (#29). An overlay, not a `FocusRegion`. */
+  settingsOpen: boolean;
   /** Root path of the open vault. Seeded here (not the filesystem slice) so the chat's
    *  agent `cwd` doesn't depend on the sidebar slice (see epic plan's architecture invariant). */
   vaultRoot: string | null;
@@ -27,6 +29,9 @@ interface AppState {
   openChat: () => void;
   closeChat: () => void;
   toggleChat: () => void;
+  openSettings: () => void;
+  closeSettings: () => void;
+  toggleSettings: () => void;
   setVaultRoot: (vaultRoot: string | null) => void;
 }
 
@@ -34,6 +39,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeRegion: 'viewer',
   mode: 'normal',
   chatOpen: false,
+  settingsOpen: false,
   vaultRoot: null,
 
   focusRegion: (region) => {
@@ -66,6 +72,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   toggleChat: () => (get().chatOpen ? get().closeChat() : get().openChat()),
+
+  openSettings: () => set({ settingsOpen: true }),
+
+  closeSettings: () => set({ settingsOpen: false }),
+
+  toggleSettings: () => set((state) => ({ settingsOpen: !state.settingsOpen })),
 
   setVaultRoot: (vaultRoot) => set({ vaultRoot }),
 }));
