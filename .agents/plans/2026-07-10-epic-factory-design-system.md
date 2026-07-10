@@ -31,7 +31,7 @@ Spec source: `new-system-design-files-to-use/` (`DESIGN.md`, `design-tokens.json
 
 | Wave | Issue | Branch | Title | Status |
 |------|-------|--------|-------|--------|
-| 1 | #56 | `56-factory-token-font-foundation` | feat: Factory token & font foundation | pending |
+| 1 | #56 | `56-factory-token-font-foundation` | feat: Factory token & font foundation | done (PR #61 merged) |
 | 2 | #57 | `57-restyle-app-chrome-factory` | feat: restyle app chrome (sidebar, status & command bars) to Factory | pending |
 | 2 | #58 | `58-restyle-chat-ai-factory` | feat: restyle chat & AI surface to Factory | pending |
 | 2 | #59 | `59-restyle-editor-factory` | feat: restyle editor surface to Factory | pending |
