@@ -20,7 +20,6 @@ export interface ChatToolCall {
 export type ChatItem =
   | { kind: 'user_message'; id: string; text: string }
   | { kind: 'agent_message'; id: string; text: string }
-  | { kind: 'agent_reasoning'; id: string; text: string }
   | { kind: 'tool_call'; id: string; call: ChatToolCall }
   | { kind: 'error'; id: string; message: string };
 
@@ -47,8 +46,12 @@ function applyAgentEvent(state: ChatState, event: AgentEvent): Partial<ChatState
     case 'agent_message':
       return { items: [...state.items, { kind: 'agent_message', id: event.messageId, text: event.text }] };
 
+    // Reasoning/thinking text is intentionally not surfaced in the transcript — the chat
+    // shows only the agent's final answer. Backends still emit `agent_reasoning`; discard it
+    // here so the reasoning text never enters app state (trivially re-enable by appending an
+    // item again). The in-flight `ThinkingIndicator` loader still conveys activity.
     case 'agent_reasoning':
-      return { items: [...state.items, { kind: 'agent_reasoning', id: event.messageId, text: event.text }] };
+      return {};
 
     case 'tool_call_start':
       return {

@@ -4,19 +4,26 @@ import type { AgentBackend } from '../agent-backend';
 import type { AgentEvent, AgentSource } from '../agent-event';
 
 const CODEX_COMMAND = 'codex';
-/** `--full-auto` is Codex's equivalent of Claude Code's `--allowedTools` scoping (doc/v0-spec.md §4.4): auto-approve, sandboxed to the vault. */
-const CODEX_FLAGS = ['--json', '--full-auto'];
+/**
+ * Flags shared by the first turn (`codex exec`) and every resume turn (`codex exec resume`).
+ * `--skip-git-repo-check` is required because a vault is not a git repo — Codex otherwise
+ * refuses to run ("Not inside a trusted directory"). The sandbox is set via a `-c` config
+ * override rather than `--sandbox`/`--full-auto` because `codex exec resume` rejects both of
+ * those flags; only `-c` is accepted by both subcommands. This is Codex's equivalent of Claude
+ * Code's `--allowedTools` scoping (doc/v0-spec.md §4.4): auto-run, sandboxed to the vault.
+ */
+const CODEX_COMMON_FLAGS = ['--json', '--skip-git-repo-check', '-c', 'sandbox_mode="workspace-write"'];
 
 /**
- * Codex is not installed on this machine (epic Open Questions, `.agents/plans/2026-07-05-epic-orbit-111-v0.md`),
- * so these shapes are best-effort from `codex exec --json`'s documented event vocabulary
- * (doc/v0-spec.md §4.4: `thread.started`/`item.*`/`turn.completed`) rather than a captured real
- * stream like the Claude Code adapter's. Re-pin against a captured stream once Codex is available
- * locally. Only the fields this adapter reads are declared; everything else is ignored.
+ * Shapes below are pinned against a real captured `codex exec --json` stream (codex-cli 0.143.0):
+ * `thread.started` (carries `thread_id`), `turn.started`/`turn.completed`, and `item.started`/
+ * `item.completed` lines whose `item` is keyed by `item.type` (`agent_message` | `reasoning` |
+ * `command_execution` | `file_change` | `mcp_tool_call` | `web_search`). Only the fields this
+ * adapter reads are declared; usage/token bookkeeping on `turn.completed` is intentionally ignored.
  */
 interface CodexItem {
   id?: string;
-  item_type?: string;
+  type?: string;
   text?: string;
   command?: string;
   aggregated_output?: string;
@@ -38,7 +45,7 @@ interface CodexStreamLine {
 const TOOL_ITEM_TYPES = new Set(['command_execution', 'file_change', 'mcp_tool_call', 'web_search']);
 
 function toolArgs(item: CodexItem): Record<string, unknown> {
-  switch (item.item_type) {
+  switch (item.type) {
     case 'command_execution':
       return { command: item.command };
     case 'file_change':
@@ -76,7 +83,7 @@ export function createCodexBackend(): AgentBackend {
   }
 
   function translateItem(item: CodexItem, lineType: 'item.started' | 'item.completed', source: AgentSource, timestamp: number, emit: (event: AgentEvent) => void): void {
-    if (item.item_type === 'reasoning') {
+    if (item.type === 'reasoning') {
       // Surfaced as its own event so the UI can render it distinctly from `agent_message` (#49).
       if (lineType === 'item.completed' && item.text) {
         emit({ type: 'agent_reasoning', messageId: nextMessageId(), text: item.text, timestamp, source });
@@ -84,28 +91,28 @@ export function createCodexBackend(): AgentBackend {
       return;
     }
 
-    if (item.item_type === 'agent_message') {
+    if (item.type === 'agent_message') {
       if (lineType === 'item.completed' && item.text) {
         emit({ type: 'agent_message', messageId: nextMessageId(), text: item.text, timestamp, source });
       }
       return;
     }
 
-    if (!item.item_type || !TOOL_ITEM_TYPES.has(item.item_type) || !item.id) return;
+    if (!item.type || !TOOL_ITEM_TYPES.has(item.type) || !item.id) return;
 
     if (lineType === 'item.started') {
-      emit({ type: 'tool_call_start', callId: item.id, toolName: item.item_type, args: toolArgs(item), timestamp, source });
+      emit({ type: 'tool_call_start', callId: item.id, toolName: item.type, args: toolArgs(item), timestamp, source });
       return;
     }
 
-    const isError = item.status === 'failed' || (item.item_type === 'command_execution' && item.exit_code !== undefined && item.exit_code !== 0);
+    const isError = item.status === 'failed' || (item.type === 'command_execution' && item.exit_code !== undefined && item.exit_code !== 0);
     emit({
       type: 'tool_call_result',
       callId: item.id,
-      toolName: item.item_type,
+      toolName: item.type,
       status: isError ? 'error' : 'ok',
       result: isError ? undefined : (item.aggregated_output ?? item.changes),
-      errorMessage: isError ? (item.aggregated_output ?? `${item.item_type} failed.`) : undefined,
+      errorMessage: isError ? (item.aggregated_output ?? `${item.type} failed.`) : undefined,
       timestamp,
       source,
     });
@@ -170,7 +177,9 @@ export function createCodexBackend(): AgentBackend {
       });
       unlistenFns.push(unlistenStdout, unlistenExit);
 
-      const args = threadId ? ['exec', 'resume', threadId, '--model', model, ...CODEX_FLAGS, prompt] : ['exec', '--model', model, ...CODEX_FLAGS, prompt];
+      const args = threadId
+        ? ['exec', 'resume', threadId, ...CODEX_COMMON_FLAGS, '--model', model, prompt]
+        : ['exec', ...CODEX_COMMON_FLAGS, '--model', model, prompt];
       await agentProcessService.spawn(CODEX_COMMAND, args, cwd);
     },
 

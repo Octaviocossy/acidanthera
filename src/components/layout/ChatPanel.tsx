@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ChatInput } from '@/components/ai/ChatInput';
 import { ChatMessage } from '@/components/ai/ChatMessage';
-import { ReasoningBlock } from '@/components/ai/ReasoningBlock';
 import { ThinkingIndicator } from '@/components/ai/ThinkingIndicator';
 import { ToolChip, type ToolChipStatus } from '@/components/ai/ToolChip';
 import { cn } from '@/lib/utils';
@@ -23,8 +22,6 @@ function ChatItemRow({ item }: { item: ChatItem }) {
     case 'agent_message':
       // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
       return <ChatMessage role="agent" text={item.text} />;
-    case 'agent_reasoning':
-      return <ReasoningBlock text={item.text} />;
     case 'error':
       return <div className="mx-3 my-2 rounded-sm border border-border-active px-3 py-2 font-mono text-sm text-text">{item.message}</div>;
     case 'tool_call':
