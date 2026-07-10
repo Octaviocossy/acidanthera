@@ -2,14 +2,16 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
+/* Factory mono label chip (DESIGN.md): Geist Mono 12px uppercase, tight tracking, hairline
+   border, no fill — see the accent discipline note in `.agents/ubiquitous-language.md`. */
 const badgeVariants = cva('inline-flex items-center rounded-sm border px-1.5 py-0.5 font-mono text-xs uppercase tracking-caps', {
   variants: {
     tone: {
-      muted: 'border-border bg-surface-2 text-text-dim',
+      muted: 'border-border bg-transparent text-text-dim',
       plain: 'border-border bg-transparent text-text',
-      /* Capable of rendering lime — per accent discipline (doc/v0-spec.md §5.6) this tone
-         is reserved and, in practice, never used anywhere in v0 but the AiFab. */
-      accent: 'border-fab-accent-dim bg-fab-accent-dim/20 text-fab-accent',
+      /* Reserved — per accent discipline this tone is, in practice, never used anywhere in
+         v0 but the AiFab. */
+      accent: 'border-fab-accent bg-transparent text-fab-accent',
     },
   },
   defaultVariants: {
