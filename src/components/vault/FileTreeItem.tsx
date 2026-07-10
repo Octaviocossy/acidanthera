@@ -1,3 +1,4 @@
+import { ChevronGlyph, FileGlyph } from '@/components/vault/glyphs';
 import { cn } from '@/lib/utils';
 
 export interface FileTreeItemProps {
@@ -32,30 +33,5 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       {kind === 'dir' ? <ChevronGlyph collapsed={collapsed} /> : <FileGlyph />}
       <span className="truncate">{label}</span>
     </div>
-  );
-}
-
-function ChevronGlyph({ collapsed }: { collapsed: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={cn('h-3 w-3 shrink-0 text-text-faint transition-transform duration-[var(--dur)] ease-orbit', collapsed ? '' : 'rotate-90')}
-      aria-hidden="true"
-    >
-      <path d="M6 4l4 4-4 4" />
-    </svg>
-  );
-}
-
-function FileGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" className="h-3 w-3 shrink-0 text-text-faint" aria-hidden="true">
-      <path d="M4 1.5h5l3 3v9.5h-8z" />
-    </svg>
   );
 }
