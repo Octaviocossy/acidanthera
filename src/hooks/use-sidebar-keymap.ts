@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
 import { isEditableTarget } from '@/lib/dom/is-editable-target';
+import { resolveDraftParent } from '@/lib/vault/create-entry';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { useAppStore } from '@/stores/app-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 /**
- * Vim-style `j`/`k`/`l`/`h`/`Enter` navigation over the sidebar's visible rows (doc/v0-spec.md
- * §3.4, §5.3). Scoped to fire only while the sidebar is the active region and the app is in
- * normal mode, mirroring how `useGlobalKeymap` scopes its own chords — so it never steals
- * keystrokes meant for the editor or the command line.
+ * Vim-style `j`/`k`/`l`/`h`/`Enter` navigation over the sidebar's visible rows, plus `a`/`A` to
+ * start a new note / folder (doc/v0-spec.md §3.4, §5.3). Scoped to fire only while the sidebar is
+ * the active region and the app is in normal mode, mirroring how `useGlobalKeymap` scopes its own
+ * chords — so it never steals keystrokes meant for the editor or the command line. The
+ * `isEditableTarget` guard is also what makes `a` inert while a draft row's input has focus.
  */
 export function useSidebarKeymap() {
   useEffect(() => {
@@ -21,6 +23,17 @@ export function useSidebarKeymap() {
 
       const sidebar = useSidebarStore.getState();
       const rows = flattenVisibleTree(sidebar.tree, sidebar.expanded);
+
+      // Handled before the empty-tree bail-out below: a vault with no rows is exactly when the
+      // first note has to be creatable.
+      if (event.key === 'a' || event.key === 'A') {
+        const parentPath = resolveDraftParent(rows, sidebar.cursorPath, app.vaultRoot);
+        if (parentPath === null) return;
+        event.preventDefault();
+        sidebar.beginDraft(event.key === 'a' ? 'note' : 'directory', parentPath);
+        return;
+      }
+
       if (rows.length === 0) return;
 
       const currentIndex = rows.findIndex((row) => row.entry.path === sidebar.cursorPath);
