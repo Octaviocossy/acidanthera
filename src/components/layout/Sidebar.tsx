@@ -11,11 +11,12 @@ import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
-/** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). */
+/** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). Hideable via `sidebarOpen` (#38). */
 export function Sidebar() {
   useSidebarKeymap();
 
   const isActive = useAppStore((state) => state.activeRegion === 'sidebar');
+  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const focusRegion = useAppStore((state) => state.focusRegion);
 
@@ -42,6 +43,11 @@ export function Sidebar() {
       unlistenPromise.then((unlisten) => unlisten());
     };
   }, [setTree]);
+
+  // Guard *after* the hooks (as `ChatPanel` does for `chatOpen`): the component stays mounted while
+  // hidden, so the watcher-driven tree refresh above keeps running and re-showing is instant.
+  // `useSidebarKeymap` stays registered too, but is inert — a hidden sidebar is never `activeRegion`.
+  if (!sidebarOpen) return null;
 
   const rows = flattenVisibleTree(tree, expanded);
 
