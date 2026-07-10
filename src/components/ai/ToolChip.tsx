@@ -15,13 +15,19 @@ const STATUS_GLYPH: Record<ToolChipStatus, string> = {
   error: '✕',
 };
 
-/** Tool-call chip — spinner while running, check on success, error on failure (doc/v0-spec.md §5.6). */
+/**
+ * Tool-call chip — spinner while running, check on success, error on failure (doc/v0-spec.md §5.6).
+ * Accent discipline: `running` pulses signal-orange (live), `done` settles to metric-green
+ * (positive), `error` stays monochrome with a heavier border — error is not a third accent color.
+ */
 export function ToolChip({ verb, path, status }: ToolChipProps) {
   return (
     <div
       className={cn(
         'inline-flex max-w-full items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-xs',
-        status === 'error' ? 'border-border-active text-text' : 'border-border-hairline text-text-dim'
+        status === 'running' && 'border-signal text-signal',
+        status === 'done' && 'border-metric text-metric',
+        status === 'error' && 'border-border-active text-text'
       )}
     >
       <span className={cn('shrink-0', status === 'running' && 'animate-pulse')} aria-hidden="true">

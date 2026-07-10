@@ -23,10 +23,10 @@ function ChatItemRow({ item }: { item: ChatItem }) {
       // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
       return <ChatMessage role="agent" text={item.text} />;
     case 'error':
-      return <div className="mx-3 my-2 rounded-sm border border-border-active px-3 py-2 font-mono text-sm text-text">{item.message}</div>;
+      return <div className="mx-4 my-3 rounded-sm border border-border-active px-3 py-2 font-mono text-sm text-text">{item.message}</div>;
     case 'tool_call':
       return (
-        <div className="px-3 py-1">
+        <div className="px-4 py-2">
           <ToolChip verb={item.call.toolName} path={toolPath(item.call.args)} status={TOOL_CHIP_STATUS[item.call.status]} />
         </div>
       );
@@ -49,20 +49,19 @@ export function ChatPanel() {
   if (!chatOpen) return null;
 
   return (
-    <aside
-      className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-surface', isActive ? 'border-border-active' : 'border-border-hairline')}
-      aria-label="AI chat"
-    >
+    <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-bg', isActive ? 'border-border-active' : 'border-border-hairline')} aria-label="AI chat">
       {/* No header chrome (#39), and the engine selector is gone — the engine is chosen only in
           Settings now. This empty band still reserves the FAB's footprint (`--rail-fab` + inset)
           so the FAB, floating top-right over the panel, never overlaps the transcript below. */}
       <div className="h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0" />
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
-        {items.map((item) => (
-          <ChatItemRow key={item.id} item={item} />
-        ))}
-        {turnActive && <ThinkingIndicator />}
+        <div className="divide-y divide-border-hairline">
+          {items.map((item) => (
+            <ChatItemRow key={item.id} item={item} />
+          ))}
+          {turnActive && <ThinkingIndicator />}
+        </div>
       </div>
 
       <ChatInput disabled={turnActive} onSubmit={sendMessage} />
