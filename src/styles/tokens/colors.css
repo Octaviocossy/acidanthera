@@ -1,8 +1,12 @@
 /*
  * Orbit-111 design tokens — colors.
- * Factory design system (`new-system-design-files-to-use/DESIGN.md`). Dark is Factory-pure
- * (obsidian canvas); `useApplyTheme` (#28) sets `data-theme` from the persisted settings, and
- * the light block below is a Factory-derived mirror with the same contrast ordering.
+ * Factory design system (`new-system-design-files-to-use/DESIGN.md`). The raw `--color-*` ramp
+ * below still records the true Factory anchors (obsidian canvas, bone, chalk, …) verbatim. The
+ * semantic tokens (`--bg`, `--text`, …) intentionally run a *softened* variant of Factory —
+ * lifted/dimmed a step in from those pure anchors in both themes, per explicit user preference
+ * to reduce the stark high-contrast feel — rather than aliasing them 1:1. `useApplyTheme` (#28)
+ * sets `data-theme` from the persisted settings; the light block below mirrors the same
+ * softened contrast ordering as dark.
  */
 :root {
   color-scheme: dark;
@@ -19,19 +23,19 @@
   --color-signal-orange: #ee6018;
   --color-metric-green: #a0ca92;
 
-  /* Surfaces */
-  --bg: var(--color-obsidian-canvas);
-  --surface: var(--color-carbon-lift);
-  --surface-2: #252220;
+  /* Surfaces — lifted off pure obsidian for a softer canvas (was #101010 / carbon / #252220). */
+  --bg: #1a1917;
+  --surface: #232120;
+  --surface-2: #2c2a27;
 
-  /* Borders */
+  /* Borders — unchanged (borders aren't the contrast complaint); kept on the Factory ramp. */
   --border: var(--color-ash-stroke);
   --border-active: var(--color-graphite-mid);
 
-  /* Text */
-  --text: var(--color-bone);
-  --text-dim: var(--color-warm-granite);
-  --text-faint: var(--color-graphite-mid);
+  /* Text — softened off pure bone; dim/faint lifted a touch for the lifted canvas. */
+  --text: #e2dfdb;
+  --text-dim: #97908b;
+  --text-faint: #565250;
 
   /* Accent — data-voice only, never decoration or button fill (DESIGN.md "Do's and Don'ts").
      `--fab-accent`/`--fab-accent-dim` kept as an alias to `--accent-signal` for one release so
@@ -47,16 +51,17 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --bg: #fafafa;
-  --surface: #eeeeee;
-  --surface-2: #e4e2df;
+  --bg: #f4f2ef;
+  --surface: #ebe8e4;
+  --surface-2: #e2deda;
 
-  --border: #d6d3d0;
+  --border: #dcd8d4;
   --border-active: var(--color-warm-granite);
 
-  --text: var(--color-obsidian-canvas);
-  --text-dim: #4d4947;
-  --text-faint: var(--color-warm-granite);
+  /* Softened off pure obsidian text for a calmer light surface. */
+  --text: #26231f;
+  --text-dim: #5c5652;
+  --text-faint: #837c77;
 
   /* Signal-orange darkened slightly for WCAG contrast as small text on a light --bg. */
   --accent-signal: #c24d10;

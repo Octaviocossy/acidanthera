@@ -9,9 +9,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         /* Dark Filled Button (DESIGN.md) — the neutral committing action, never a chromatic fill. */
-        primary: 'border-transparent bg-[var(--color-carbon-lift)] text-text hover:bg-[var(--color-graphite-mid)]',
+        primary: 'border-transparent bg-surface text-text hover:bg-surface-2',
         /* Ghost Text Link (DESIGN.md) — border/text shift only, no fill ever appears on hover. */
-        ghost: 'border-[var(--color-ash-stroke)] bg-transparent text-text hover:border-[var(--color-chalk)] hover:text-[var(--color-chalk)]',
+        ghost: 'border-border-hairline bg-transparent text-text hover:border-text hover:text-text',
         /* Light Filled Button (DESIGN.md) — chalk fill, obsidian text; the nav "Log In" treatment. */
         light: 'border-transparent bg-[var(--color-chalk)] text-[var(--color-obsidian-canvas)] hover:bg-[var(--color-bone)]',
         quiet: 'border-transparent bg-transparent text-text-dim hover:text-text',

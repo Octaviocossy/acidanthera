@@ -32,7 +32,10 @@
   --accent-foreground: var(--text);
   --destructive: var(--text);
   --destructive-foreground: var(--bg);
-  --border: var(--border);
+  /* No `--border: var(--border);` alias here — Orbit's own hairline token is already named
+     `--border` (tokens/colors.css), so re-declaring it under the same name here would be a
+     self-reference (invalid at computed-value time); `--color-border` below reads the real
+     token directly. */
   --input: var(--border);
   --ring: var(--border-active);
 }
