@@ -22,7 +22,7 @@ fn default_model() -> String {
 
 
 fn default_editor_font() -> String {
-    "JetBrains Mono".into()
+    "Geist Mono".into()
 }
 
 fn default_theme() -> String {
