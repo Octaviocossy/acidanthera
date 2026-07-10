@@ -138,3 +138,37 @@ body {
 #root {
   height: 100%;
 }
+
+/* Minimalist scrollbars — thin, trackless, theme-aware.
+   Tauri's webview is always WebKit-family (WKWebView / WebKitGTK / Chromium), so
+   `::-webkit-scrollbar` is universally supported. We intentionally do NOT set the
+   standard `scrollbar-width` / `scrollbar-color`: on Safari 18.2+ / modern WebKit,
+   setting either one DISABLES the `::-webkit-scrollbar` pseudo-elements, which would
+   drop this fine-grained styling. Colors use the semantic border tokens so they flip
+   with `data-theme` (#28). This one global rule also covers CM6's `.cm-scroller`
+   (light DOM) — the editor, sidebar tree, and chat transcript all inherit it. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: var(--radius-full);
+  /* Transparent border + padding-box clip insets the thumb to ~4px visible width,
+     so it reads as a hairline sliver rather than a solid 8px bar. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-active);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
