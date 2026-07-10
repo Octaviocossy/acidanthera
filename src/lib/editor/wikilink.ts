@@ -39,14 +39,16 @@ const wikilinkPlugin = ViewPlugin.fromClass(
   }
 );
 
-// Structural, palette-independent (doc/v0-spec.md §5.6 `Wikilink`: "underline + hover, no
-// color") — a `baseTheme`, not a token-driven `EditorView.theme`.
+// Chromatic-free per the design system (`.agents/ubiquitous-language.md` "Wikilinks stay
+// monochrome") — dim by default, bone on hover, never the signal/metric accents.
 const wikilinkStyle = EditorView.baseTheme({
   '.cm-wikilink': {
+    color: 'var(--text-dim)',
     textDecoration: 'none',
     cursor: 'pointer',
   },
   '.cm-wikilink:hover': {
+    color: 'var(--text)',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
   },
