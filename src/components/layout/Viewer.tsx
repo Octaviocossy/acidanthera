@@ -1,4 +1,5 @@
 import { markdown } from '@codemirror/lang-markdown';
+import { EditorView } from '@codemirror/view';
 import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
 import { useMemo } from 'react';
@@ -19,7 +20,12 @@ import { useSettingsStore } from '@/stores/settings-store';
 // base instances — and their state fields, e.g. vim's — survive a theme reconfigure.
 // `vim()` goes first per doc/v0-spec.md §5.1; `regionExit`/`saveKeymap` are `Prec.highest`
 // internally so their array position doesn't matter.
-const BASE_EXTENSIONS = [vim(), regionExit(), saveKeymap, markdown(), vimModeSync, ...wikilink];
+//
+// `EditorView.lineWrapping` soft-wraps long lines instead of scrolling the editor
+// horizontally (#37) — prose notes are the primary content, and a horizontal scrollbar
+// makes them unreadable. It is a stock CM6 extension (not a `basicSetup` option), and it
+// is layout-only: vim keeps its logical-line `j`/`k` motions, with `gj`/`gk` for visual rows.
+const BASE_EXTENSIONS = [vim(), regionExit(), saveKeymap, markdown(), vimModeSync, ...wikilink, EditorView.lineWrapping];
 
 /** The CodeMirror 6 markdown editor region — vim-first, `Ctrl-w` region-exit (doc/v0-spec.md §5.1). */
 export function Viewer() {
