@@ -1,16 +1,23 @@
 /*
  * Orbit-111 design tokens — typography.
- * One face — JetBrains Mono, self-hosted — for both --font-sans and --font-mono.
+ * Two faces — Geist (body/headings) + Geist Mono (labels/eyebrows), self-hosted via
+ * @fontsource-variable — per the Factory design system (`new-system-design-files-to-use/DESIGN.md`).
+ * The @fontsource-variable packages register the family names "Geist Variable" /
+ * "Geist Mono Variable"; "Geist" / "Geist Mono" are kept as fallbacks for a system-installed copy.
  */
 :root {
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --font-sans: var(--font-mono);
+  --font-geist: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-geist-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
 
   /* The editor's font slot — `useApplyTheme` (#28) overrides it from `settings.editorFont`;
      the app chrome deliberately stays on --font-mono. */
   --editor-font: var(--font-mono);
 
-  /* Scale: 11/12/13/14/16/20px */
+  /* Scale: 11/12/13/14/16/20px. sm/md/lg already land on Factory's caption/body-sm/body
+     (12/14/16) triplet; xs/base/xl are Orbit-native sizes Factory doesn't define. */
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 13px;
@@ -18,13 +25,25 @@
   --font-size-lg: 16px;
   --font-size-xl: 20px;
 
-  /* Weights 300–700 */
+  /* Factory heading/display scale — new tokens for later slices (nav, hero, marketing surfaces). */
+  --font-size-heading: 36px;
+  --line-height-heading: 1.1;
+  --font-size-heading-lg: 44px;
+  --line-height-heading-lg: 1.12;
+  --font-size-display: 72px;
+  --line-height-display: 1;
+
+  /* Weights — Factory uses 400 almost everywhere, 500 only for emphasis (e.g. footer heading).
+     Never 600+; the variable fonts above cover the full 100–900 axis regardless. */
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --tracking-display: -0.01em;
-  --tracking-caps: 0.18em;
+  /* Negative tracking scales with size (Factory "Do's": -0.04em at 72px down to -0.02em at 12px). */
+  --tracking-heading: -0.031em;
+  --tracking-heading-lg: -0.025em;
+  --tracking-display: -0.04em;
+  --tracking-caps: -0.02em;
 }

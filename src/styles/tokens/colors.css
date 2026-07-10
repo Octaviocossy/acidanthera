@@ -1,49 +1,66 @@
 /*
  * Orbit-111 design tokens — colors.
- * Vendored from the Orbit-111 Design System (Claude Design project ff2532ab-4501-47c9-8acd-a36fe9719a84).
- * Dark is the default palette on :root; `useApplyTheme` (#28) sets `data-theme` from the
- * persisted settings, and the light block below overrides the same token names.
+ * Factory design system (`new-system-design-files-to-use/DESIGN.md`). Dark is Factory-pure
+ * (obsidian canvas); `useApplyTheme` (#28) sets `data-theme` from the persisted settings, and
+ * the light block below is a Factory-derived mirror with the same contrast ordering.
  */
 :root {
   color-scheme: dark;
 
+  /* Factory raw palette — first-class tokens for direct use alongside the mapped names below. */
+  --color-obsidian-canvas: #101010;
+  --color-carbon-lift: #1d1a18;
+  --color-ash-stroke: #3d3a39;
+  --color-graphite-mid: #4d4947;
+  --color-warm-granite: #8a8380;
+  --color-pale-stone: #b8b3b0;
+  --color-bone: #eeeeee;
+  --color-chalk: #fafafa;
+  --color-signal-orange: #ee6018;
+  --color-metric-green: #a0ca92;
+
   /* Surfaces */
-  --bg: #0a0a0b;
-  --surface: #0e0e10;
-  --surface-2: #141416;
+  --bg: var(--color-obsidian-canvas);
+  --surface: var(--color-carbon-lift);
+  --surface-2: #252220;
 
   /* Borders */
-  --border: #1e1e22;
-  --border-active: #3a3a42;
+  --border: var(--color-ash-stroke);
+  --border-active: var(--color-graphite-mid);
 
   /* Text */
-  --text: #e4e4e7;
-  --text-dim: #71717a;
-  --text-faint: #3f3f46;
+  --text: var(--color-bone);
+  --text-dim: var(--color-warm-granite);
+  --text-faint: var(--color-graphite-mid);
 
-  /* Accent — reserved for the active AiFab only (see accent discipline, doc/v0-spec.md §5.6).
-     Decoupled from the bare `--accent` name, which shadcn's hover-surface semantic owns. */
-  --fab-accent: #a3e635;
-  --fab-accent-dim: #566a1d;
+  /* Accent — data-voice only, never decoration or button fill (DESIGN.md "Do's and Don'ts").
+     `--fab-accent`/`--fab-accent-dim` kept as an alias to `--accent-signal` for one release so
+     child #58 (chat) still compiles before it restyles the AiFab off the old lime accent. */
+  --accent-signal: var(--color-signal-orange);
+  --accent-metric: var(--color-metric-green);
+  --fab-accent: var(--accent-signal);
+  --fab-accent-dim: #7a3410;
 }
 
-/* Light palette — a monochrome zinc mirror of the dark ramp (same contrast ordering:
-   text > dim > faint, border between the surfaces and border-active). The lime pair is
-   darkened/lightened so the accent-on-surface roles keep their contrast. */
+/* Light palette — a Factory-derived mirror (bone/chalk surfaces, obsidian text), same
+   contrast ordering as dark: text > dim > faint, border between the surfaces and border-active. */
 :root[data-theme="light"] {
   color-scheme: light;
 
   --bg: #fafafa;
-  --surface: #f4f4f5;
-  --surface-2: #e9e9eb;
+  --surface: #eeeeee;
+  --surface-2: #e4e2df;
 
-  --border: #dcdce0;
-  --border-active: #b4b4bc;
+  --border: #d6d3d0;
+  --border-active: var(--color-warm-granite);
 
-  --text: #1b1b1f;
-  --text-dim: #6b6b74;
-  --text-faint: #b0b0b8;
+  --text: var(--color-obsidian-canvas);
+  --text-dim: #4d4947;
+  --text-faint: var(--color-warm-granite);
 
-  --fab-accent: #4d7c0f;
-  --fab-accent-dim: #bef264;
+  /* Signal-orange darkened slightly for WCAG contrast as small text on a light --bg. */
+  --accent-signal: #c24d10;
+  --accent-metric: var(--color-metric-green);
+  --fab-accent: var(--accent-signal);
+  --fab-accent-dim: #f3c8ac;
 }

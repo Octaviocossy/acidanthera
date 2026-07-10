@@ -1,11 +1,8 @@
 @import "tailwindcss";
 
-/* Self-hosted JetBrains Mono (weights 300–700, normal style only). */
-@import "@fontsource/jetbrains-mono/300.css";
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
-@import "@fontsource/jetbrains-mono/600.css";
-@import "@fontsource/jetbrains-mono/700.css";
+/* Self-hosted Geist + Geist Mono (variable weight, normal style — Factory's two-face type system). */
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
 @import "./tokens/colors.css";
 @import "./tokens/typography.css";
@@ -29,7 +26,8 @@
   --secondary-foreground: var(--text);
   --muted: var(--surface-2);
   --muted-foreground: var(--text-dim);
-  /* shadcn's hover-surface semantic — monochrome. Orbit's reserved lime lives at --fab-accent. */
+  /* shadcn's hover-surface semantic — monochrome. Orbit's reserved accent lives at --fab-accent
+     (Factory signal-orange, `--accent-signal`). */
   --accent: var(--surface-2);
   --accent-foreground: var(--text);
   --destructive: var(--text);
@@ -74,8 +72,15 @@
   --color-fab-accent: var(--fab-accent);
   --color-fab-accent-dim: var(--fab-accent-dim);
 
+  /* Factory data-voice accents (signal orange / metric green) — never a button fill or
+     decoration, see the accent discipline note in `.agents/ubiquitous-language.md`. */
+  --color-signal: var(--accent-signal);
+  --color-metric: var(--accent-metric);
+
   --font-mono: var(--font-mono);
   --font-sans: var(--font-sans);
+  --font-geist: var(--font-geist);
+  --font-geist-mono: var(--font-geist-mono);
 
   --text-xs: var(--font-size-xs);
   --text-sm: var(--font-size-sm);
@@ -83,12 +88,18 @@
   --text-md: var(--font-size-md);
   --text-lg: var(--font-size-lg);
   --text-xl: var(--font-size-xl);
+  --text-heading: var(--font-size-heading);
+  --text-heading-lg: var(--font-size-heading-lg);
+  --text-display: var(--font-size-display);
 
+  --tracking-heading: var(--tracking-heading);
+  --tracking-heading-lg: var(--tracking-heading-lg);
   --tracking-display: var(--tracking-display);
   --tracking-caps: var(--tracking-caps);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
 
   --ease-orbit: var(--ease);
 }

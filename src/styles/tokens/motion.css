@@ -1,8 +1,9 @@
 /*
  * Orbit-111 design tokens — motion.
- * Fades only, no bounce.
+ * Fades only, no bounce. Easing/duration follow Factory's short, mechanical feel
+ * (`new-system-design-files-to-use/DESIGN.md` "Motion Philosophy").
  */
 :root {
-  --ease: cubic-bezier(0.2, 0, 0, 1);
-  --dur: 160ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 180ms;
 }
