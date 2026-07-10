@@ -166,7 +166,7 @@ Three-region structure, left to right:
 - **Sidebar (left):** collapsible folder-and-file explorer of the vault.
 - **Central viewer:** the open file (markdown editor). The widest region.
 - **AI chat (right):** an **invocable** panel in split view — when opened, the viewer shrinks and both stay visible side by side (not an overlay). Separated by a thin divider.
-- **Floating AI button (FAB):** bottom-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; the **only** place the accent color (lime `--accent #a3e635`) appears — a hint on its outline/spark glyph when active (§5.6).
+- **Floating AI button (FAB):** top-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; the **only** place the accent color (lime `--accent #a3e635`) appears — a hint on its outline/spark glyph when active (§5.6). The chat panel carries **no header chrome** — no rule, no title — so the FAB floats over its top row beside the engine selector.
 
 The chat is a region with open/closed state within the focus state machine (§3.4). The graph is no longer a permanent panel (§5.4).
 

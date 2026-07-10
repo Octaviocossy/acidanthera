@@ -56,15 +56,16 @@ export function ChatPanel() {
       className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-surface', isActive ? 'border-border-active' : 'border-border-hairline')}
       aria-label="AI chat"
     >
-      <div className="flex items-center justify-between border-b border-border-hairline px-3 py-2">
-        <span className="font-mono text-text-faint text-xs uppercase tracking-caps">Chat</span>
-        <div className="flex gap-1">
-          {listBackends().map((backend) => (
-            <button key={backend.id} type="button" onClick={() => setBackend(backend.id)} aria-pressed={backend.id === backendId}>
-              <Badge tone={backend.id === backendId ? 'plain' : 'muted'}>{backend.label}</Badge>
-            </button>
-          ))}
-        </div>
+      {/* No header chrome (#39): no rule, no "Chat" title — the panel opens straight into the
+          transcript. The engine selector sits bare on the surface, sized to the FAB's footprint
+          (`top-4` inset, doubled) so the badges center on the FAB now floating at the top-right,
+          and padded right to clear it. Both derive from `--rail-fab` so they track the rail token. */}
+      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center gap-1 pr-[calc(var(--rail-fab)_+_var(--space-6))] pl-3">
+        {listBackends().map((backend) => (
+          <button key={backend.id} type="button" onClick={() => setBackend(backend.id)} aria-pressed={backend.id === backendId}>
+            <Badge tone={backend.id === backendId ? 'plain' : 'muted'}>{backend.label}</Badge>
+          </button>
+        ))}
       </div>
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
