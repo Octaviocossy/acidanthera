@@ -24,6 +24,8 @@ pub fn run() {
             vault::read_vault_tree,
             vault::read_note,
             vault::write_note,
+            vault::create_note,
+            vault::create_directory,
             settings::read_settings,
             settings::write_settings,
             agent::agent_spawn,
