@@ -2,8 +2,6 @@ import { useEffect, useRef } from 'react';
 import { ChatInput } from '@/components/ai/ChatInput';
 import { ChatMessage } from '@/components/ai/ChatMessage';
 import { ToolChip, type ToolChipStatus } from '@/components/ai/ToolChip';
-import { Badge } from '@/components/ui/badge';
-import { listBackends } from '@/lib/agent/backend-registry';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { type ChatItem, type ChatToolCallStatus, useChatStore } from '@/stores/chat-store';
@@ -40,8 +38,6 @@ export function ChatPanel() {
   const isActive = useAppStore((state) => state.activeRegion === 'chat');
   const items = useChatStore((state) => state.items);
   const turnActive = useChatStore((state) => state.turnActive);
-  const backendId = useChatStore((state) => state.backendId);
-  const setBackend = useChatStore((state) => state.setBackend);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -56,17 +52,10 @@ export function ChatPanel() {
       className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-surface', isActive ? 'border-border-active' : 'border-border-hairline')}
       aria-label="AI chat"
     >
-      {/* No header chrome (#39): no rule, no "Chat" title — the panel opens straight into the
-          transcript. The engine selector sits bare on the surface, sized to the FAB's footprint
-          (`top-4` inset, doubled) so the badges center on the FAB now floating at the top-right,
-          and padded right to clear it. Both derive from `--rail-fab` so they track the rail token. */}
-      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center gap-1 pr-[calc(var(--rail-fab)_+_var(--space-6))] pl-3">
-        {listBackends().map((backend) => (
-          <button key={backend.id} type="button" onClick={() => setBackend(backend.id)} aria-pressed={backend.id === backendId}>
-            <Badge tone={backend.id === backendId ? 'plain' : 'muted'}>{backend.label}</Badge>
-          </button>
-        ))}
-      </div>
+      {/* No header chrome (#39), and the engine selector is gone — the engine is chosen only in
+          Settings now. This empty band still reserves the FAB's footprint (`--rail-fab` + inset)
+          so the FAB, floating top-right over the panel, never overlaps the transcript below. */}
+      <div className="h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0" />
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
         {items.map((item) => (
