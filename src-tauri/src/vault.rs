@@ -1,9 +1,10 @@
 //! Vault filesystem backend (doc/v0-spec.md §3.1, §3.2): opening a vault folder, reading its
-//! `.md` tree, guarded reads/writes, guarded note/directory creation, and a `notify` watcher that
-//! emits `vault-changed`.
+//! `.md` tree, guarded reads/writes, guarded note/directory creation, the agent-context scaffold,
+//! and a `notify` watcher that emits `vault-changed`.
 
 use std::{
     fs,
+    io::Write,
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -130,6 +131,56 @@ fn create_directory_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
     Ok(target)
 }
 
+/// The agent-context pair scaffolded into every adopted vault root (#41). Both headless engines
+/// run with `cwd` = the vault, so these are the project-instruction files they load
+/// (doc/v0-spec.md §4.4): Codex reads `AGENTS.md`, Claude Code reads `CLAUDE.md`, which imports
+/// `AGENTS.md` so one file stays the source of truth. Both are plain `.md`, so `build_tree`
+/// surfaces them and the user can tune the agent's instructions in the editor like any other note.
+const AGENT_CONTEXT_FILES: [(&str, &str); 2] = [
+    ("AGENTS.md", include_str!("../templates/vault-agents.md")),
+    ("CLAUDE.md", include_str!("../templates/vault-claude.md")),
+];
+
+/// Writes `contents` to `root/name` only when nothing sits there, reporting whether it created the
+/// file. `create_new` is atomic, so a vault that already carries its own agent context — hand-edited
+/// or belonging to another project — is never clobbered.
+fn scaffold_file(root: &Path, name: &str, contents: &str) -> VaultResult<bool> {
+    match fs::OpenOptions::new().write(true).create_new(true).open(root.join(name)) {
+        Ok(mut file) => {
+            file.write_all(contents.as_bytes())?;
+            Ok(true)
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+        Err(err) => Err(err.into()),
+    }
+}
+
+/// Scaffolds the agent-context pair into a newly adopted vault root, returning the names it
+/// actually created. Each file is handled independently, so deleting one restores just that one on
+/// the next open. Callers run this *before* `watch`, so the frontend's first `read_vault_tree`
+/// already sees both files and no `vault-changed` fires for the app's own boot-time writes.
+fn scaffold_agent_context(root: &Path) -> VaultResult<Vec<&'static str>> {
+    AGENT_CONTEXT_FILES
+        .iter()
+        .filter_map(|(name, contents)| match scaffold_file(root, name, contents) {
+            Ok(true) => Some(Ok(*name)),
+            Ok(false) => None,
+            Err(err) => Some(Err(err)),
+        })
+        .collect()
+}
+
+/// Best-effort wrapper for the two adopt paths: a vault we cannot write into (read-only mount,
+/// missing permissions) must still open — the agent simply runs without project instructions
+/// rather than the whole vault failing to load.
+fn scaffold_agent_context_or_warn(root: &Path) {
+    match scaffold_agent_context(root) {
+        Ok(created) if !created.is_empty() => log::info!("scaffold_agent_context: created {}", created.join(", ")),
+        Ok(_) => {}
+        Err(err) => log::warn!("scaffold_agent_context: skipped ({err})"),
+    }
+}
+
 /// Recursively lists `dir`, keeping only `.md` files but **every** directory — including empty
 /// ones, so a freshly created folder shows up in the sidebar before it holds any note. Hidden
 /// entries (`.git`, `.obsidian`, …) are skipped.
@@ -206,6 +257,7 @@ pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultRe
             .ok_or(VaultError::NoFolderSelected)?
             .into_path()
             .map_err(|_| VaultError::InvalidPath)?;
+        scaffold_agent_context_or_warn(&root);
         watch(&app, &state, root.clone())?;
         log::info!("pick_vault: adopted vault root {}", root.display());
         Ok(root.to_string_lossy().into_owned())
@@ -226,6 +278,7 @@ pub fn open_vault(path: String, app: AppHandle, state: State<'_, VaultState>) ->
         if !root.is_dir() {
             return Err(VaultError::InvalidPath);
         }
+        scaffold_agent_context_or_warn(&root);
         watch(&app, &state, root.clone())?;
         log::info!("open_vault: adopted vault root {}", root.display());
         Ok(root.to_string_lossy().into_owned())
@@ -472,6 +525,72 @@ mod tests {
 
         assert!(matches!(error, VaultError::InvalidPath));
         assert!(!root.join("missing").exists(), "the parent chain must not be materialized");
+
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn claude_context_template_should_import_the_agents_template() {
+        let claude = AGENT_CONTEXT_FILES.iter().find(|(name, _)| *name == "CLAUDE.md").expect("ships a CLAUDE.md template").1;
+
+        // One source of truth: CLAUDE.md must pull AGENTS.md in rather than restate it.
+        assert!(claude.contains("@AGENTS.md"));
+    }
+
+    #[test]
+    fn scaffold_agent_context_should_create_both_files_in_a_fresh_vault() {
+        let root = temp_root("scaffold-fresh");
+
+        let created = scaffold_agent_context(&root).expect("scaffolds");
+
+        assert_eq!(created, ["AGENTS.md", "CLAUDE.md"]);
+        for (name, contents) in AGENT_CONTEXT_FILES {
+            assert_eq!(fs::read_to_string(root.join(name)).expect("reads back"), contents);
+        }
+
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn scaffold_agent_context_should_surface_both_files_in_the_tree() {
+        let root = temp_root("scaffold-tree");
+        scaffold_agent_context(&root).expect("scaffolds");
+
+        let entries = build_tree(&root).expect("builds tree");
+
+        // Plain `.md` files, so the user can open and tune them in the editor like any note.
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["AGENTS.md", "CLAUDE.md"]);
+
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn scaffold_agent_context_should_not_clobber_an_existing_file() {
+        let root = temp_root("scaffold-existing");
+        fs::write(root.join("AGENTS.md"), "my own instructions").expect("writes agent context");
+
+        let created = scaffold_agent_context(&root).expect("scaffolds");
+
+        // Each file is independent: the hand-written one survives, the missing one is filled in.
+        assert_eq!(created, ["CLAUDE.md"]);
+        assert_eq!(fs::read_to_string(root.join("AGENTS.md")).expect("reads back"), "my own instructions");
+        assert!(root.join("CLAUDE.md").exists());
+
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn scaffold_agent_context_should_be_idempotent_across_reopens() {
+        let root = temp_root("scaffold-idempotent");
+        scaffold_agent_context(&root).expect("scaffolds");
+        fs::write(root.join("AGENTS.md"), "edited by the user").expect("edits agent context");
+
+        // Every boot re-opens the vault; a second scaffold must be a no-op over the user's edits.
+        let created = scaffold_agent_context(&root).expect("scaffolds again");
+
+        assert!(created.is_empty());
+        assert_eq!(fs::read_to_string(root.join("AGENTS.md")).expect("reads back"), "edited by the user");
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
