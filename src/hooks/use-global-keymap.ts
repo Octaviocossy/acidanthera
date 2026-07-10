@@ -6,8 +6,8 @@ const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
 
 /**
  * The app-level global vim keymap (doc/v0-spec.md §3.4). Two prefixes:
- * - `Ctrl-w` then `h`/`l` — jump focus between regions; `c` — toggle the chat panel;
- *   `s` — toggle the settings dialog (#29).
+ * - `Ctrl-w` then `h`/`l` — jump focus between regions; `b` — toggle the sidebar (#38);
+ *   `c` — toggle the chat panel; `s` — toggle the settings dialog (#29).
  *   Tmux/vim-style: a chord, not a modifier held with the second key.
  * - `:` — enter command mode; `Escape` — back to normal.
  * Registered on `window` in the bubble phase (not capture) so a future CodeMirror
@@ -40,6 +40,10 @@ export function useGlobalKeymap() {
           case 'l':
             event.preventDefault();
             store.focusNext();
+            break;
+          case 'b':
+            event.preventDefault();
+            store.toggleSidebar();
             break;
           case 'c':
             event.preventDefault();
