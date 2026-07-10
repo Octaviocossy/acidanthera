@@ -26,7 +26,7 @@ export function EntryDraftRow({ kind, depth, onCommit, onCancel }: EntryDraftRow
   }, []);
 
   return (
-    <div role="treeitem" tabIndex={-1} style={{ paddingLeft: depth * 12 + 8 }} className="flex h-6 shrink-0 items-center gap-1.5 pr-2 font-mono text-sm outline-none">
+    <div role="treeitem" tabIndex={-1} style={{ paddingLeft: depth * 12 + 8 }} className="flex h-6 shrink-0 items-center gap-1.5 pr-2 text-sm outline-none">
       {kind === 'directory' ? <ChevronGlyph collapsed /> : <FileGlyph />}
       <input
         ref={inputRef}

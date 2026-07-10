@@ -24,10 +24,7 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       aria-expanded={kind === 'dir' ? !collapsed : undefined}
       onClick={onClick}
       style={{ paddingLeft: depth * 12 + 8 }}
-      className={cn(
-        'relative flex h-6 shrink-0 cursor-pointer select-none items-center gap-1.5 pr-2 font-mono text-sm',
-        active ? 'bg-surface-2 text-text' : 'text-text-dim hover:text-text'
-      )}
+      className={cn('relative flex h-6 shrink-0 cursor-pointer select-none items-center gap-1.5 pr-2 text-sm', active ? 'bg-surface-2 text-text' : 'text-text-dim hover:text-text')}
     >
       {cursor && <span className="absolute inset-y-0 left-0 w-0.5 bg-border-active" aria-hidden="true" />}
       {kind === 'dir' ? <ChevronGlyph collapsed={collapsed} /> : <FileGlyph />}

@@ -97,7 +97,7 @@ export function Sidebar() {
       aria-label="Vault explorer"
     >
       <div className="flex items-center justify-between gap-1 px-3 py-1.5">
-        <span className="font-mono text-text-faint text-xs uppercase tracking-caps">Vault</span>
+        <span className="font-mono text-text-dim text-xs uppercase tracking-caps">Vault</span>
         {vaultRoot !== null && (
           <div className="flex items-center gap-0.5">
             <Button variant="quiet" size="sm" className="h-5 w-5 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
