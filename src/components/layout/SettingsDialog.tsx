@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { listBackends } from '@/lib/agent/backend-registry';
+import { listModels } from '@/lib/agent/model-catalog';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import type { ThemeName } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
@@ -21,11 +21,12 @@ function SettingsRow({ label, children }: { label: string; children: ReactNode }
 
 /**
  * The settings dialog (#29): a modal overlay editing the four persisted settings (#25) —
- * engine, theme, editor font, vault path — through `useSettingsStore`'s write-through
+ * model, theme, editor font, vault path — through `useSettingsStore`'s write-through
  * `updateSettings`. Monochrome, hand-built on `Button`/`Badge` like every overlay
- * (doc/v0-spec.md §5.6). Selecting an engine also switches the chat backend immediately
- * (the reactive wiring #25 deferred); theme/font values are applied by the theme slice (#28).
- * Opened from the StatusBar button or the `Ctrl-w` `s` chord; Escape or a scrim click closes.
+ * (doc/v0-spec.md §5.6). Selecting a model also switches the chat model (and thus its
+ * engine) immediately (the reactive wiring #25 deferred); theme/font values are applied by
+ * the theme slice (#28). Opened from the StatusBar button or the `Ctrl-w` `s` chord; Escape
+ * or a scrim click closes.
  */
 export function SettingsDialog() {
   const open = useAppStore((state) => state.settingsOpen);
@@ -33,7 +34,7 @@ export function SettingsDialog() {
   const settings = useSettingsStore((state) => state.settings);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
-  const setBackend = useChatStore((state) => state.setBackend);
+  const setModel = useChatStore((state) => state.setModel);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [fontDraft, setFontDraft] = useState('');
@@ -102,21 +103,19 @@ export function SettingsDialog() {
 
         {settings !== null && (
           <div className="flex flex-col gap-4 px-4 py-4">
-            <SettingsRow label="Engine">
-              <div className="flex gap-1">
-                {listBackends().map((backend) => (
+            <SettingsRow label="Model">
+              <div className="flex flex-wrap justify-end gap-1">
+                {listModels().map((model) => (
                   <button
-                    key={backend.id}
+                    key={model.id}
                     type="button"
-                    aria-pressed={backend.id === settings.engine}
+                    aria-pressed={model.id === settings.model}
                     onClick={() => {
-                      void updateSettings({ engine: backend.id });
-                      // Reactive engine wiring (#29): the dialog applies immediately; the
-                      // ChatPanel selector stays a per-session override, never written back.
-                      setBackend(backend.id);
+                      void updateSettings({ model: model.id });
+                      setModel(model.id);
                     }}
                   >
-                    <Badge tone={backend.id === settings.engine ? 'plain' : 'muted'}>{backend.label}</Badge>
+                    <Badge tone={model.id === settings.model ? 'plain' : 'muted'}>{model.label}</Badge>
                   </button>
                 ))}
               </div>

@@ -51,9 +51,18 @@ export function createClaudeCodeBackend(): AgentBackend {
   function translateAssistantLine(line: ClaudeStreamLine, source: AgentSource, timestamp: number, emit: (event: AgentEvent) => void): void {
     const blocks = line.message?.content ?? [];
 
+    // `thinking` blocks precede `text` blocks in the native stream, so reasoning is emitted first (#49).
+    const reasoning = blocks
+      .filter((block) => block.type === 'thinking')
+      .map((block) => block.thinking ?? '')
+      .join('');
+    if (reasoning.length > 0) {
+      emit({ type: 'agent_reasoning', messageId: nextMessageId(), text: reasoning, timestamp, source });
+    }
+
     const text = blocks
-      .filter((block) => block.type === 'text' || block.type === 'thinking')
-      .map((block) => block.text ?? block.thinking ?? '')
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text ?? '')
       .join('');
     if (text.length > 0) {
       emit({ type: 'agent_message', messageId: nextMessageId(), text, timestamp, source });
@@ -104,7 +113,7 @@ export function createClaudeCodeBackend(): AgentBackend {
     id: 'claude-code',
     label: 'Claude Code',
 
-    async start(cwd, onEvent) {
+    async start(cwd, model, onEvent) {
       const unlistenStdout = await agentProcessService.onStdout((raw) => {
         let line: ClaudeStreamLine;
         try {
@@ -119,7 +128,7 @@ export function createClaudeCodeBackend(): AgentBackend {
       });
       unlistenFns.push(unlistenStdout, unlistenExit);
 
-      await agentProcessService.spawn(CLAUDE_COMMAND, CLAUDE_ARGS, cwd);
+      await agentProcessService.spawn(CLAUDE_COMMAND, [...CLAUDE_ARGS, '--model', model], cwd);
     },
 
     async send(prompt) {

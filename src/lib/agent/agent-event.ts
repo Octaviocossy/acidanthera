@@ -13,10 +13,18 @@ interface AgentEventBase {
   source: AgentSource;
 }
 
-/** Complete agent text (reasoning mixed in front) — v0 does not stream deltas. */
+/** Complete agent text — v0 does not stream deltas. */
 export interface AgentMessageEvent extends AgentEventBase {
   type: 'agent_message';
   /** Stable id for this message; leaves the door open for a future delta-streaming evolution. */
+  messageId: string;
+  text: string;
+}
+
+/** Complete agent reasoning/thinking text — surfaced as its own event so the UI can render it distinctly from the final `agent_message` (#49). */
+export interface AgentReasoningEvent extends AgentEventBase {
+  type: 'agent_reasoning';
+  /** Stable id for this reasoning chunk; mirrors `AgentMessageEvent.messageId`. */
   messageId: string;
   text: string;
 }
@@ -61,4 +69,4 @@ export interface AgentErrorEvent extends AgentEventBase {
   message: string;
 }
 
-export type AgentEvent = AgentMessageEvent | ToolCallStartEvent | ToolCallResultEvent | PermissionRequestEvent | TurnDoneEvent | AgentErrorEvent;
+export type AgentEvent = AgentMessageEvent | AgentReasoningEvent | ToolCallStartEvent | ToolCallResultEvent | PermissionRequestEvent | TurnDoneEvent | AgentErrorEvent;
