@@ -15,11 +15,13 @@ const CODEX_COMMAND = 'codex';
 const CODEX_COMMON_FLAGS = ['--json', '--skip-git-repo-check', '-c', 'sandbox_mode="workspace-write"'];
 
 /**
- * Shapes below are pinned against a real captured `codex exec --json` stream (codex-cli 0.143.0):
- * `thread.started` (carries `thread_id`), `turn.started`/`turn.completed`, and `item.started`/
- * `item.completed` lines whose `item` is keyed by `item.type` (`agent_message` | `reasoning` |
- * `command_execution` | `file_change` | `mcp_tool_call` | `web_search`). Only the fields this
- * adapter reads are declared; usage/token bookkeeping on `turn.completed` is intentionally ignored.
+ * Shapes below are pinned against a real captured `codex exec --json` stream (codex-cli 0.143.0),
+ * superseding the earlier best-effort mapping written before Codex was installed on this machine
+ * (#51): `thread.started` (carries `thread_id`), `turn.started`/`turn.completed`, and
+ * `item.started`/`item.completed` lines whose `item` is keyed by `item.type` (`agent_message` |
+ * `reasoning` | `command_execution` | `file_change` | `mcp_tool_call` | `web_search`). Only the
+ * fields this adapter reads are declared; usage/token bookkeeping on `turn.completed` is
+ * intentionally ignored.
  */
 interface CodexItem {
   id?: string;
@@ -40,6 +42,7 @@ interface CodexStreamLine {
   thread_id?: string;
   item?: CodexItem;
   message?: string;
+  error?: { message?: string };
 }
 
 const TOOL_ITEM_TYPES = new Set(['command_execution', 'file_change', 'mcp_tool_call', 'web_search']);
@@ -134,7 +137,7 @@ export function createCodexBackend(): AgentBackend {
         emit({ type: 'turn_done', timestamp, source });
         break;
       case 'turn.failed':
-        emit({ type: 'error', message: line.message ?? 'Codex turn failed.', timestamp, source });
+        emit({ type: 'error', message: line.error?.message ?? line.message ?? 'Codex turn failed.', timestamp, source });
         break;
       case 'error':
         emit({ type: 'error', message: line.message ?? 'Codex turn failed.', timestamp, source });
@@ -180,7 +183,9 @@ export function createCodexBackend(): AgentBackend {
       const args = threadId
         ? ['exec', 'resume', threadId, ...CODEX_COMMON_FLAGS, '--model', model, prompt]
         : ['exec', ...CODEX_COMMON_FLAGS, '--model', model, prompt];
-      await agentProcessService.spawn(CODEX_COMMAND, args, cwd);
+      // `codex exec` treats a piped, still-open stdin as more input to append to the prompt and
+      // blocks reading for it — close stdin immediately since the prompt is already a CLI arg.
+      await agentProcessService.spawn(CODEX_COMMAND, args, cwd, false);
     },
 
     async stop() {

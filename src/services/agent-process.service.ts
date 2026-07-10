@@ -12,8 +12,13 @@ const AGENT_EXIT_EVENT = 'agent-exit';
  * service.
  */
 export const agentProcessService = {
-  /** Spawns `command` with `args` rooted at `cwd`, replacing any process already running. */
-  spawn: (command: string, args: string[], cwd: string): Promise<void> => invoke('agent_spawn', { command, args, cwd }),
+  /**
+   * Spawns `command` with `args` rooted at `cwd`, replacing any process already running.
+   * `keepStdinOpen` (default `true`) controls whether stdin stays writable for later `send`
+   * calls — set `false` for a one-shot process that reads its own stdin to completion (e.g.
+   * `codex exec`), so it isn't left waiting on input that will never arrive.
+   */
+  spawn: (command: string, args: string[], cwd: string, keepStdinOpen = true): Promise<void> => invoke('agent_spawn', { command, args, cwd, keepStdinOpen }),
 
   /** Writes a line to the running process's stdin — a user turn in the backend's own protocol. */
   send: (input: string): Promise<void> => invoke('agent_send', { input }),
