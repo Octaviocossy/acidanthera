@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { getBackend } from '@/lib/agent/backend-registry';
+import { getModel } from '@/lib/agent/model-catalog';
 import { vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { useChatStore } from '@/stores/chat-store';
@@ -20,10 +20,10 @@ export function useSettingsBootstrap() {
         const settings = await useSettingsStore.getState().loadSettings();
         if (cancelled) return;
 
-        // Seed the persisted engine choice — the file is hand-editable, so only adopt an
-        // engine the registry knows — but never yank a session the user already started.
-        if (getBackend(settings.engine) && !useChatStore.getState().sessionStarted) {
-          useChatStore.getState().setBackend(settings.engine);
+        // Seed the persisted model choice — the file is hand-editable, so only adopt a model the
+        // catalog knows — but never yank a session the user already started.
+        if (getModel(settings.model) && !useChatStore.getState().sessionStarted) {
+          useChatStore.getState().setModel(settings.model);
         }
 
         // Don't stomp a vault the user managed to open before the bootstrap finished.

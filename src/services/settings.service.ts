@@ -1,13 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { AgentSource } from '@/lib/agent/agent-event';
+import type { AgentModelId } from '@/lib/agent/model-catalog';
 
 /** The app's color theme, applied by `useApplyTheme` (#28) via the `data-theme` attribute. */
 export type ThemeName = 'dark' | 'light';
 
 /** Persisted user settings. Mirrors the Rust `Settings` (`src-tauri/src/settings.rs`). */
 export interface Settings {
-  /** The agent engine seeded into the chat at boot. */
-  engine: AgentSource;
+  /** The agent model seeded into the chat at boot; its engine is derived from the catalog. */
+  model: AgentModelId;
   /** Editor font family, applied by `useApplyTheme` (#28) via `--editor-font`. */
   editorFont: string;
   theme: ThemeName;

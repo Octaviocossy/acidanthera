@@ -5,7 +5,7 @@ import type { AgentEvent, AgentSource } from '../agent-event';
 
 const CODEX_COMMAND = 'codex';
 /** `--full-auto` is Codex's equivalent of Claude Code's `--allowedTools` scoping (doc/v0-spec.md §4.4): auto-approve, sandboxed to the vault. */
-const CODEX_BASE_ARGS = ['exec', '--json', '--full-auto'];
+const CODEX_FLAGS = ['--json', '--full-auto'];
 
 /**
  * Codex is not installed on this machine (epic Open Questions, `.agents/plans/2026-07-05-epic-orbit-111-v0.md`),
@@ -64,6 +64,7 @@ function toolArgs(item: CodexItem): Record<string, unknown> {
  */
 export function createCodexBackend(): AgentBackend {
   let cwd = '';
+  let model = '';
   let onEvent: ((event: AgentEvent) => void) | undefined;
   let threadId: string | undefined;
   const unlistenFns: UnlistenFn[] = [];
@@ -131,8 +132,9 @@ export function createCodexBackend(): AgentBackend {
     id: 'codex',
     label: 'Codex',
 
-    async start(startCwd, startOnEvent) {
+    async start(startCwd, startModel, startOnEvent) {
       cwd = startCwd;
+      model = startModel;
       onEvent = startOnEvent;
       threadId = undefined;
     },
@@ -161,7 +163,7 @@ export function createCodexBackend(): AgentBackend {
       });
       unlistenFns.push(unlistenStdout, unlistenExit);
 
-      const args = threadId ? ['exec', 'resume', threadId, '--json', '--full-auto', prompt] : [...CODEX_BASE_ARGS, prompt];
+      const args = threadId ? ['exec', 'resume', threadId, '--model', model, ...CODEX_FLAGS, prompt] : ['exec', '--model', model, ...CODEX_FLAGS, prompt];
       await agentProcessService.spawn(CODEX_COMMAND, args, cwd);
     },
 

@@ -1,5 +1,5 @@
 //! Persisted user settings (epic #24, child #25): a JSON file in the platform app-config dir
-//! holding the agent engine, editor font, theme, and vault path. Read once at boot by the
+//! holding the agent model, editor font, theme, and vault path. Read once at boot by the
 //! frontend settings store; written through on every settings change.
 
 use std::{fs, path::PathBuf};
@@ -16,9 +16,10 @@ const SETTINGS_FILE: &str = "settings.json";
 /// Directory name of the default vault, created under the user's documents dir on first boot.
 const DEFAULT_VAULT_DIR: &str = "orbit-brain";
 
-fn default_engine() -> String {
-    "claude-code".into()
+fn default_model() -> String {
+    "gpt-5.4-mini".into()
 }
+
 
 fn default_editor_font() -> String {
     "JetBrains Mono".into()
@@ -35,7 +36,7 @@ fn default_theme() -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    pub engine: String,
+    pub model: String,
     pub editor_font: String,
     pub theme: String,
     pub vault_path: String,
@@ -44,7 +45,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            engine: default_engine(),
+            model: default_model(),
             editor_font: default_editor_font(),
             theme: default_theme(),
             vault_path: String::new(),
@@ -106,8 +107,8 @@ pub fn read_settings(app: AppHandle) -> SettingsResult<Settings> {
 #[tauri::command]
 pub fn write_settings(app: AppHandle, settings: Settings) -> SettingsResult<()> {
     log::info!(
-        "write_settings: engine={} theme={} vault_path={}",
-        settings.engine,
+        "write_settings: model={} theme={} vault_path={}",
+        settings.model,
         settings.theme,
         settings.vault_path
     );
@@ -136,15 +137,15 @@ mod tests {
     fn settings_should_fill_missing_fields_with_defaults_when_deserializing() {
         let settings: Settings = serde_json::from_str(r#"{ "theme": "light" }"#).expect("parses");
         assert_eq!(
-            (settings.theme.as_str(), settings.engine.as_str(), settings.vault_path.as_str()),
-            ("light", "claude-code", "")
+            (settings.theme.as_str(), settings.model.as_str(), settings.vault_path.as_str()),
+            ("light", "gpt-5.4-mini", "")
         );
     }
 
     #[test]
     fn settings_should_round_trip_through_json() {
         let settings = Settings {
-            engine: "codex".into(),
+            model: "sonnet-5".into(),
             editor_font: "Menlo".into(),
             theme: "light".into(),
             vault_path: "/tmp/vault".into(),

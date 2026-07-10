@@ -104,7 +104,7 @@ export function createClaudeCodeBackend(): AgentBackend {
     id: 'claude-code',
     label: 'Claude Code',
 
-    async start(cwd, onEvent) {
+    async start(cwd, model, onEvent) {
       const unlistenStdout = await agentProcessService.onStdout((raw) => {
         let line: ClaudeStreamLine;
         try {
@@ -119,7 +119,7 @@ export function createClaudeCodeBackend(): AgentBackend {
       });
       unlistenFns.push(unlistenStdout, unlistenExit);
 
-      await agentProcessService.spawn(CLAUDE_COMMAND, CLAUDE_ARGS, cwd);
+      await agentProcessService.spawn(CLAUDE_COMMAND, [...CLAUDE_ARGS, '--model', model], cwd);
     },
 
     async send(prompt) {
