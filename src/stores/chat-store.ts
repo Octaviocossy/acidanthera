@@ -20,6 +20,7 @@ export interface ChatToolCall {
 export type ChatItem =
   | { kind: 'user_message'; id: string; text: string }
   | { kind: 'agent_message'; id: string; text: string }
+  | { kind: 'agent_reasoning'; id: string; text: string }
   | { kind: 'tool_call'; id: string; call: ChatToolCall }
   | { kind: 'error'; id: string; message: string };
 
@@ -45,6 +46,9 @@ function applyAgentEvent(state: ChatState, event: AgentEvent): Partial<ChatState
   switch (event.type) {
     case 'agent_message':
       return { items: [...state.items, { kind: 'agent_message', id: event.messageId, text: event.text }] };
+
+    case 'agent_reasoning':
+      return { items: [...state.items, { kind: 'agent_reasoning', id: event.messageId, text: event.text }] };
 
     case 'tool_call_start':
       return {
