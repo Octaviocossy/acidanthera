@@ -76,8 +76,15 @@ export function createCodexBackend(): AgentBackend {
   }
 
   function translateItem(item: CodexItem, lineType: 'item.started' | 'item.completed', source: AgentSource, timestamp: number, emit: (event: AgentEvent) => void): void {
-    if (item.item_type === 'agent_message' || item.item_type === 'reasoning') {
-      // Reasoning is mixed into the normal text, not a separate event (doc/v0-spec.md §4.3).
+    if (item.item_type === 'reasoning') {
+      // Surfaced as its own event so the UI can render it distinctly from `agent_message` (#49).
+      if (lineType === 'item.completed' && item.text) {
+        emit({ type: 'agent_reasoning', messageId: nextMessageId(), text: item.text, timestamp, source });
+      }
+      return;
+    }
+
+    if (item.item_type === 'agent_message') {
       if (lineType === 'item.completed' && item.text) {
         emit({ type: 'agent_message', messageId: nextMessageId(), text: item.text, timestamp, source });
       }
