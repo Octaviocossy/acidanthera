@@ -1,7 +1,8 @@
 # Plan: Epic — Adopt the Factory design system
 
-> Status: **in-progress**
+> Status: **completed**
 > Created: 2026-07-10
+> Updated: 2026-07-10
 > Issue: #55
 
 ## Goal
@@ -32,10 +33,10 @@ Spec source: `new-system-design-files-to-use/` (`DESIGN.md`, `design-tokens.json
 | Wave | Issue | Branch | Title | Status |
 |------|-------|--------|-------|--------|
 | 1 | #56 | `56-factory-token-font-foundation` | feat: Factory token & font foundation | done (PR #61 merged) |
-| 2 | #57 | `57-restyle-app-chrome-factory` | feat: restyle app chrome (sidebar, status & command bars) to Factory | pending |
-| 2 | #58 | `58-restyle-chat-ai-factory` | feat: restyle chat & AI surface to Factory | pending |
-| 2 | #59 | `59-restyle-editor-factory` | feat: restyle editor surface to Factory | pending |
-| 2 | #60 | `60-restyle-settings-theme-factory` | feat: restyle settings dialog & theme application to Factory | pending |
+| 2 | #57 | `57-restyle-app-chrome-factory` | feat: restyle app chrome (sidebar, status & command bars) to Factory | done (PR #62 merged) |
+| 2 | #58 | `58-restyle-chat-ai-factory` | feat: restyle chat & AI surface to Factory | done (PR #63 merged) |
+| 2 | #59 | `59-restyle-editor-factory` | feat: restyle editor surface to Factory | done (PR #64 merged) |
+| 2 | #60 | `60-restyle-settings-theme-factory` | feat: restyle settings dialog & theme application to Factory | done (PR #65 merged) |
 
 ## Dependency Edges
 
