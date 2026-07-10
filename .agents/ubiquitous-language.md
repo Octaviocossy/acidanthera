@@ -33,7 +33,10 @@
 > bar stripped to a bare engine selector; Hideable sidebar: `sidebarOpen` gates the sidebar
 > `FocusRegion`, toggled by `Ctrl-w b` or the StatusBar button; Vault entry creation backend:
 > guarded `create_note`/`create_directory` commands; `read_vault_tree` now surfaces empty
-> directories)
+> directories; `SettingsDialog` restyled to Factory — panel border `border-border-active`→
+> `border-border-hairline`, radius `rounded-md`→`rounded-lg` (`--radius-lg`), value/input text
+> (editor font input, vault path) switched from `font-mono` to `font-sans` (mono stays reserved
+> for field labels); Rust `default_editor_font()` stale literal `"JetBrains Mono"`→`"Geist Mono"`)
 > **Canonical types**: `src/` (TS), `src-tauri/src/` (Rust)
 
 ---
@@ -186,3 +189,4 @@
 | 2026-07-10 | Fixed Codex adapter flags → `--json --skip-git-repo-check -c sandbox_mode="workspace-write"` (resume-safe) | Codex refused to run in a non-git vault, and multi-turn crashed on `--full-auto`/`--sandbox`, which `codex exec resume` rejects |
 | 2026-07-10 | Removed `ReasoningBlock`; `ChatItem` no longer has an `agent_reasoning` variant (event discarded in `applyAgentEvent`) | Hide agent thinking text from the transcript — show only the final response; `AgentEvent.agent_reasoning` and both backends kept for trivial reversibility |
 | 2026-07-10 | Rewrote `tokens/colors.css` to Factory (obsidian/carbon/ash/bone/chalk dark ramp + a Factory-derived light mirror), added `--accent-signal`/`--accent-metric`; `--fab-accent`/`--fab-accent-dim` (lime) now alias the new accents; two-face typography — `--font-sans` (Geist) / `--font-mono` (Geist Mono) via `@fontsource-variable/geist{,-mono}` (JetBrains Mono removed), `--tracking-caps` tightened to `-0.02em`, added heading/display size + tracking tokens; `spacing.css` radii re-scaled (`--radius-md` → 10px, added `--radius-lg: 20px`); `motion.css` eased to Factory's mechanical feel; `Button`/`Badge` restyled to Factory (Dark Filled/Ghost Text Link/new `light` variant; hairline no-fill label chip) | Factory token & font foundation (#56, epic #55 wave 1): the values-only re-skin every other Factory slice (#57–#60) builds on — token *names* stay stable so downstream components aren't touched |
+| 2026-07-10 | `SettingsDialog` panel restyled to Factory (`border-border-hairline`, `rounded-lg`/`--radius-lg`, still no shadow); editor-font input and vault-path text switched `font-mono`→`font-sans` (field labels stay mono uppercase); Rust `default_editor_font()` default value `"JetBrains Mono"`→`"Geist Mono"` | Restyle settings dialog & theme application to Factory (#60, epic #55 wave 2): flat modal + reconciled font default now that JetBrains Mono is no longer bundled (#56) |

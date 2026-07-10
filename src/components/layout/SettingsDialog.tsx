@@ -85,7 +85,7 @@ export function SettingsDialog() {
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="w-[420px] rounded-md border border-border-active bg-surface outline-none"
+        className="w-[420px] rounded-lg border border-border-hairline bg-surface outline-none"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           // Keep keystrokes inside the modal: without this, `:`/`Ctrl-w` typed while a
@@ -142,7 +142,7 @@ export function SettingsDialog() {
                     commitFont();
                   }
                 }}
-                className="w-48 rounded-sm border border-border-hairline bg-transparent px-2 py-1 font-mono text-sm text-text outline-none focus:border-border-active"
+                className="w-48 rounded-sm border border-border-hairline bg-transparent px-2 py-1 font-sans text-sm text-text outline-none focus:border-border-active"
                 spellCheck={false}
                 aria-label="Editor font"
               />
@@ -150,7 +150,7 @@ export function SettingsDialog() {
 
             <SettingsRow label="Vault">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate font-mono text-sm text-text-dim" title={settings.vaultPath}>
+                <span className="truncate font-sans text-sm text-text-dim" title={settings.vaultPath}>
                   {settings.vaultPath}
                 </span>
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>

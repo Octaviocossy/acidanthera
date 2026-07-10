@@ -1,6 +1,6 @@
 # Plan: Restyle settings dialog & theme application to Factory
 
-> Status: **approved**
+> Status: **completed**
 > Created: 2026-07-10
 > Updated: 2026-07-10
 > Issue: #60
@@ -67,12 +67,14 @@ font setting defaults to Geist. Confirm `useApplyTheme` still drives `data-theme
 
 ## Validation Criteria
 
-- [ ] `pnpm check && pnpm build` pass.
-- [ ] `pnpm dev`: opening Settings shows a flat Factory modal (hairline border, no shadow, mono
+- [x] `pnpm check && pnpm build` pass.
+- [x] `pnpm dev`: opening Settings shows a flat Factory modal (hairline border, no shadow, mono
       labels); switching theme flips the whole app between Factory dark and Factory light live;
-      changing the font applies to the editor live.
-- [ ] Default editor font resolves to Geist Mono; no JetBrains Mono literal remains in
-      `use-apply-theme.ts`.
+      changing the font applies to the editor live. *(not manually smoke-tested in this headless
+      run — no display available; verified via code/token inspection instead.)*
+- [x] Default editor font resolves to Geist Mono; no JetBrains Mono literal remains in
+      `use-apply-theme.ts` (there never was one there — the stale literal was actually in
+      `src-tauri/src/settings.rs`'s `default_editor_font()`, fixed as part of this change).
 
 ## Open Questions
 
