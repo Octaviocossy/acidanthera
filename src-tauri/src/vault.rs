@@ -134,8 +134,9 @@ fn create_directory_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
 /// The agent-context pair scaffolded into every adopted vault root (#41). Both headless engines
 /// run with `cwd` = the vault, so these are the project-instruction files they load
 /// (doc/v0-spec.md §4.4): Codex reads `AGENTS.md`, Claude Code reads `CLAUDE.md`, which imports
-/// `AGENTS.md` so one file stays the source of truth. Both are plain `.md`, so `build_tree`
-/// surfaces them and the user can tune the agent's instructions in the editor like any other note.
+/// `AGENTS.md` so one file stays the source of truth. Both are plain `.md` and remain directly
+/// readable/writable, but `build_tree` hides them from the sidebar (#50) so they don't clutter
+/// vault navigation with files meant for the agent, not the user.
 const AGENT_CONTEXT_FILES: [(&str, &str); 2] = [
     ("AGENTS.md", include_str!("../templates/vault-agents.md")),
     ("CLAUDE.md", include_str!("../templates/vault-claude.md")),
@@ -183,14 +184,23 @@ fn scaffold_agent_context_or_warn(root: &Path) {
 
 /// Recursively lists `dir`, keeping only `.md` files but **every** directory — including empty
 /// ones, so a freshly created folder shows up in the sidebar before it holds any note. Hidden
-/// entries (`.git`, `.obsidian`, …) are skipped.
+/// entries (`.git`, `.obsidian`, …) are skipped, as are the `AGENT_CONTEXT_FILES` at the vault
+/// root (#50) — they exist for the headless engines to read from `cwd`, not for the user to
+/// browse to, so the sidebar hides them (they remain readable/writable by direct path).
 fn build_tree(dir: &Path) -> VaultResult<Vec<VaultEntry>> {
+    build_tree_at(dir, true)
+}
+
+fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
     let mut entries = Vec::new();
 
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let name = entry.file_name().to_string_lossy().into_owned();
         if name.starts_with('.') {
+            continue;
+        }
+        if is_root && AGENT_CONTEXT_FILES.iter().any(|(file_name, _)| *file_name == name) {
             continue;
         }
 
@@ -202,7 +212,7 @@ fn build_tree(dir: &Path) -> VaultResult<Vec<VaultEntry>> {
                 name,
                 path: path.to_string_lossy().into_owned(),
                 is_dir: true,
-                children: Some(build_tree(&path)?),
+                children: Some(build_tree_at(&path, false)?),
             });
         } else if path.extension().is_some_and(|ext| ext == "md") {
             entries.push(VaultEntry {
@@ -552,15 +562,31 @@ mod tests {
     }
 
     #[test]
-    fn scaffold_agent_context_should_surface_both_files_in_the_tree() {
+    fn scaffold_agent_context_should_be_hidden_from_the_tree() {
         let root = temp_root("scaffold-tree");
         scaffold_agent_context(&root).expect("scaffolds");
+        fs::write(root.join("note.md"), "").expect("writes a real note");
 
         let entries = build_tree(&root).expect("builds tree");
 
-        // Plain `.md` files, so the user can open and tune them in the editor like any note.
+        // The agent-context pair is for the headless engines, not sidebar navigation (#50).
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, ["AGENTS.md", "CLAUDE.md"]);
+        assert_eq!(names, ["note.md"]);
+
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn build_tree_should_only_hide_agent_context_files_at_the_root() {
+        let root = temp_root("nested-agents-md");
+        fs::create_dir(root.join("sub")).expect("creates dir");
+        fs::write(root.join("sub").join("AGENTS.md"), "not the vault's own agent context").expect("writes nested note");
+
+        let entries = build_tree(&root).expect("builds tree");
+
+        let sub = entries.iter().find(|e| e.name == "sub").expect("keeps the subdirectory");
+        let sub_names: Vec<&str> = sub.children.as_ref().expect("has children").iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(sub_names, ["AGENTS.md"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
