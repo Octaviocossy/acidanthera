@@ -8,13 +8,24 @@ export type GlobalMode = 'normal' | 'command';
 
 const REGION_ORDER: FocusRegion[] = ['sidebar', 'viewer', 'chat'];
 
-function reachableRegions(chatOpen: boolean): FocusRegion[] {
-  return REGION_ORDER.filter((region) => region !== 'chat' || chatOpen);
+/**
+ * The regions the focus state machine can reach right now. A hidden sidebar (#38) and a closed
+ * chat are both unreachable, so `Ctrl-w h`/`l` skip over them. `viewer` is always reachable,
+ * which is what guarantees the returned list is never empty.
+ */
+function reachableRegions({ sidebarOpen, chatOpen }: Pick<AppState, 'sidebarOpen' | 'chatOpen'>): FocusRegion[] {
+  return REGION_ORDER.filter((region) => {
+    if (region === 'sidebar') return sidebarOpen;
+    if (region === 'chat') return chatOpen;
+    return true;
+  });
 }
 
 interface AppState {
   activeRegion: FocusRegion;
   mode: GlobalMode;
+  /** Whether the sidebar region is shown (#38). Unlike `settingsOpen` this gates a `FocusRegion`. */
+  sidebarOpen: boolean;
   chatOpen: boolean;
   /** Whether the settings dialog overlay is up (#29). An overlay, not a `FocusRegion`. */
   settingsOpen: boolean;
@@ -26,6 +37,9 @@ interface AppState {
   focusNext: () => void;
   focusPrevious: () => void;
   setMode: (mode: GlobalMode) => void;
+  openSidebar: () => void;
+  closeSidebar: () => void;
+  toggleSidebar: () => void;
   openChat: () => void;
   closeChat: () => void;
   toggleChat: () => void;
@@ -38,30 +52,41 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   activeRegion: 'viewer',
   mode: 'normal',
+  sidebarOpen: true,
   chatOpen: false,
   settingsOpen: false,
   vaultRoot: null,
 
   focusRegion: (region) => {
-    if (!reachableRegions(get().chatOpen).includes(region)) return;
+    if (!reachableRegions(get()).includes(region)) return;
     set({ activeRegion: region });
   },
 
   focusNext: () => {
-    const { activeRegion, chatOpen } = get();
-    const regions = reachableRegions(chatOpen);
-    const index = regions.indexOf(activeRegion);
+    const state = get();
+    const regions = reachableRegions(state);
+    const index = regions.indexOf(state.activeRegion);
     set({ activeRegion: regions[(index + 1) % regions.length] });
   },
 
   focusPrevious: () => {
-    const { activeRegion, chatOpen } = get();
-    const regions = reachableRegions(chatOpen);
-    const index = regions.indexOf(activeRegion);
+    const state = get();
+    const regions = reachableRegions(state);
+    const index = regions.indexOf(state.activeRegion);
     set({ activeRegion: regions[(index - 1 + regions.length) % regions.length] });
   },
 
   setMode: (mode) => set({ mode }),
+
+  openSidebar: () => set({ sidebarOpen: true }),
+
+  closeSidebar: () =>
+    set((state) => ({
+      sidebarOpen: false,
+      activeRegion: state.activeRegion === 'sidebar' ? 'viewer' : state.activeRegion,
+    })),
+
+  toggleSidebar: () => (get().sidebarOpen ? get().closeSidebar() : get().openSidebar()),
 
   openChat: () => set({ chatOpen: true }),
 
