@@ -27,14 +27,14 @@ const THEME_SPEC = {
     lineHeight: '1.6',
   },
   '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: 'var(--text)',
+    borderLeftColor: 'var(--border-active)',
   },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: 'var(--surface-2)',
+    backgroundColor: 'var(--border)',
   },
   '.cm-gutters': {
     backgroundColor: 'var(--bg)',
-    color: 'var(--text-faint)',
+    color: 'var(--text-dim)',
     border: 'none',
   },
   '.cm-lineNumbers .cm-gutterElement': {
@@ -45,7 +45,7 @@ const THEME_SPEC = {
   },
   '.cm-activeLineGutter': {
     backgroundColor: 'transparent',
-    color: 'var(--text-dim)',
+    color: 'var(--text)',
   },
   '.cm-matchingBracket, .cm-nonmatchingBracket': {
     backgroundColor: 'var(--surface-2)',
