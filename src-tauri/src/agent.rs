@@ -23,6 +23,8 @@ use crate::logging::LogResult;
 pub enum AgentProcessError {
     #[error("no agent process is running")]
     NotRunning,
+    #[error("the running agent process was spawned with its stdin closed")]
+    StdinClosed,
     #[error("`{command}` was not found. Install it and make sure it is on your PATH (also checked /opt/homebrew/bin, /usr/local/bin, ~/.local/bin, ~/.cargo/bin).")]
     CommandNotFound { command: String },
     #[error(transparent)]
@@ -42,7 +44,11 @@ type AgentProcessResult<T> = Result<T, AgentProcessError>;
 
 struct RunningAgent {
     child: Child,
-    stdin: ChildStdin,
+    /// `None` once the caller opted out of a writable stdin (`keep_stdin_open: false`) — closed
+    /// immediately after spawn so a one-shot CLI that reads until stdin EOF (e.g. Codex, which
+    /// appends piped stdin to the prompt as a `<stdin>` block) doesn't hang waiting for input
+    /// that will never arrive.
+    stdin: Option<ChildStdin>,
 }
 
 /// Tracks the single running agent process, if any. Spawning a new one replaces it.
@@ -151,16 +157,20 @@ where
 
 /// Spawns `command` with `args` in `cwd`, replacing any process already running for this
 /// session. Streams stdout as `agent-stdout` events, stderr as `agent-stderr` events, and
-/// emits `agent-exit` when the process's stdout stream closes.
+/// emits `agent-exit` when the process's stdout stream closes. `keep_stdin_open` controls
+/// whether the child's stdin stays open for later `agent_send` calls (a long-lived process
+/// like Claude Code's `-p --input-format stream-json`) or is closed immediately after spawn
+/// (a one-shot process like `codex exec`, which otherwise blocks reading for more input).
 #[tauri::command]
 pub fn agent_spawn(
     command: String,
     args: Vec<String>,
     cwd: String,
+    keep_stdin_open: bool,
     app: AppHandle,
     state: State<'_, AgentProcessState>,
 ) -> AgentProcessResult<()> {
-    log::info!("agent_spawn: command={command} args={args:?} cwd={cwd}");
+    log::info!("agent_spawn: command={command} args={args:?} cwd={cwd} keep_stdin_open={keep_stdin_open}");
     (|| {
         stop_running(&state);
 
@@ -189,6 +199,9 @@ pub fn agent_spawn(
         spawn_line_reader(app.clone(), stdout, "agent-stdout", true);
         spawn_line_reader(app, stderr, "agent-stderr", false);
 
+        // Dropping `stdin` here closes the pipe's write end, signaling EOF to the child.
+        let stdin = if keep_stdin_open { Some(stdin) } else { None };
+
         *lock(&state) = Some(RunningAgent { child, stdin });
         Ok(())
     })()
@@ -203,8 +216,9 @@ pub fn agent_send(input: String, state: State<'_, AgentProcessState>) -> AgentPr
     (|| {
         let mut guard = lock(&state);
         let running = guard.as_mut().ok_or(AgentProcessError::NotRunning)?;
-        writeln!(running.stdin, "{input}")?;
-        running.stdin.flush()?;
+        let stdin = running.stdin.as_mut().ok_or(AgentProcessError::StdinClosed)?;
+        writeln!(stdin, "{input}")?;
+        stdin.flush()?;
         Ok(())
     })()
     .log_err("agent_send")
