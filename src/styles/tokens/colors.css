@@ -1,9 +1,12 @@
 /*
  * Orbit-111 design tokens — colors.
  * Vendored from the Orbit-111 Design System (Claude Design project ff2532ab-4501-47c9-8acd-a36fe9719a84).
- * Dark-only: these are the only color values the app ever uses, on :root, unconditionally.
+ * Dark is the default palette on :root; `useApplyTheme` (#28) sets `data-theme` from the
+ * persisted settings, and the light block below overrides the same token names.
  */
 :root {
+  color-scheme: dark;
+
   /* Surfaces */
   --bg: #0a0a0b;
   --surface: #0e0e10;
@@ -22,4 +25,25 @@
      Decoupled from the bare `--accent` name, which shadcn's hover-surface semantic owns. */
   --fab-accent: #a3e635;
   --fab-accent-dim: #566a1d;
+}
+
+/* Light palette — a monochrome zinc mirror of the dark ramp (same contrast ordering:
+   text > dim > faint, border between the surfaces and border-active). The lime pair is
+   darkened/lightened so the accent-on-surface roles keep their contrast. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #fafafa;
+  --surface: #f4f4f5;
+  --surface-2: #e9e9eb;
+
+  --border: #dcdce0;
+  --border-active: #b4b4bc;
+
+  --text: #1b1b1f;
+  --text-dim: #6b6b74;
+  --text-faint: #b0b0b8;
+
+  --fab-accent: #4d7c0f;
+  --fab-accent-dim: #bef264;
 }
