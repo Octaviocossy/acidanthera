@@ -1,6 +1,6 @@
 # Plan: Restyle chat & AI surface to Factory
 
-> Status: **approved**
+> Status: **completed**
 > Created: 2026-07-10
 > Updated: 2026-07-10
 > Issue: #58
@@ -75,14 +75,21 @@ ground" figure/ground move to agent messages.
 
 ## Validation Criteria
 
-- [ ] `pnpm check && pnpm build` pass.
+- [x] `pnpm check && pnpm build` pass.
 - [ ] `pnpm dev`: sending a message shows a signal-orange in-flight indicator; a running tool
       chip is orange, a completed one green; the FAB shows an orange status signal, not a lime
-      accent.
-- [ ] Grep confirms no remaining lime usage in `ai/*`; accents appear only as signals, never as
+      accent. **Not manually verified** — this headless execution environment has no GUI/browser
+      to drive the running app; the styling was verified by reading the compiled CSS output
+      (`dist/assets/index-*.css` contains `#ee6018`/`#a0ca92` wired to `.text-signal`/`.bg-signal`/
+      `.border-signal`/`.text-metric`/`.border-metric`) rather than by visual inspection.
+- [x] Grep confirms no remaining lime usage in `ai/*`; accents appear only as signals, never as
       button/card fills.
 
 ## Open Questions
 
 - Bone light-card vs dark hairline-card for agent messages — implementer's call for legibility;
   document the choice in the PR.
+  - **Resolved:** dark hairline-card (Feature Card treatment — `border-border-hairline`,
+    `rounded-md`, no fill) for agent turns; user turns stay card-less/quiet. A bone light-card
+    per message would have flooded a multi-turn transcript with bright figures, working against
+    the "not a wall of bright cards" guidance in Architecture Decisions above.
