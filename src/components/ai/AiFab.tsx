@@ -2,9 +2,9 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 
 /**
- * The floating AI button — top-right, the *only* place the reserved lime accent
- * (`--fab-accent`) appears, as a hint on the outline/spark glyph when the chat is open
- * (doc/v0-spec.md §5.0, §5.6 accent discipline).
+ * The floating AI button — top-right monochrome chrome. When the chat is open it carries a
+ * signal-orange Status Pulse dot (DESIGN.md "Status Pulse"): the FAB itself stays neutral
+ * chrome, never an orange fill (accent discipline, `.agents/ubiquitous-language.md`).
  *
  * Anchored to the top-right of the content area (#39): when the chat is open it floats
  * over the panel's header-less top row; when closed it clears the Viewer's bottom-right
@@ -21,11 +21,12 @@ export function AiFab() {
       aria-pressed={chatOpen}
       aria-label={chatOpen ? 'Close AI chat' : 'Open AI chat'}
       className={cn(
-        'absolute top-4 right-4 flex h-[var(--rail-fab)] w-[var(--rail-fab)] items-center justify-center rounded-full border bg-surface-2 transition-colors duration-[var(--dur)] ease-orbit hover:bg-border-active',
-        chatOpen ? 'border-fab-accent text-fab-accent' : 'border-border-active text-text-dim'
+        'absolute top-4 right-4 flex h-[var(--rail-fab)] w-[var(--rail-fab)] items-center justify-center rounded-sm border bg-surface transition-colors duration-[var(--dur)] ease-orbit hover:border-border-active hover:text-text',
+        chatOpen ? 'border-border-active text-text' : 'border-border-hairline text-text-dim'
       )}
     >
       <SparkGlyph className="h-4 w-4" />
+      {chatOpen && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" />}
     </button>
   );
 }
