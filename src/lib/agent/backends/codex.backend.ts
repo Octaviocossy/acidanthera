@@ -180,9 +180,7 @@ export function createCodexBackend(): AgentBackend {
       });
       unlistenFns.push(unlistenStdout, unlistenExit);
 
-      const args = threadId
-        ? ['exec', 'resume', threadId, ...CODEX_COMMON_FLAGS, '--model', model, prompt]
-        : ['exec', ...CODEX_COMMON_FLAGS, '--model', model, prompt];
+      const args = threadId ? ['exec', 'resume', threadId, ...CODEX_COMMON_FLAGS, '--model', model, prompt] : ['exec', ...CODEX_COMMON_FLAGS, '--model', model, prompt];
       // `codex exec` treats a piped, still-open stdin as more input to append to the prompt and
       // blocks reading for it — close stdin immediately since the prompt is already a CLI arg.
       await agentProcessService.spawn(CODEX_COMMAND, args, cwd, false);
