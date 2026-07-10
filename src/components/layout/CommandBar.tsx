@@ -22,7 +22,7 @@ export function CommandBar() {
   if (mode !== 'command') return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 flex h-7 items-center gap-1 border-t border-border-active bg-surface px-3">
+    <div className="absolute inset-x-0 bottom-0 flex h-7 items-center gap-1 border-t border-border-hairline bg-surface px-3">
       <span className="font-mono text-text-dim">:</span>
       <input
         ref={inputRef}
