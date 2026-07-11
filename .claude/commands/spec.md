@@ -1,7 +1,7 @@
 ---
 description: One-shot — break a spec into an epic + children, then execute them in parallel
 argument-hint: [spec text OR path to a spec file]
-allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__list_issues, mcp__github__issue_write, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__create_pull_request, mcp__github__add_issue_comment
+allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__list_issues, mcp__github__issue_write, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__list_commits, mcp__github__create_pull_request, mcp__github__add_issue_comment
 ---
 
 Repository remote (parse owner/repo from this):

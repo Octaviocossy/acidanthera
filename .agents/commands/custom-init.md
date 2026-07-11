@@ -721,7 +721,7 @@ _None documented yet._
 - Available: `comment-issue` — add a comment to the thread of the GitHub issue for the current branch.
 - Available: `ship-note` — post a ship-note of the executed work to the current branch's issue (does not close it).
 - Available: `spec-breakdown` — decompose a large spec into an epic issue + N child issues with a dependency graph.
-- Available: `execute-epic` — execute an epic's child issues in parallel (one wave/frontier per run), then open PRs.
+- Available: `execute-epic` — execute an epic's child issues in parallel, auto-merging each wave into the epic integration branch, then open one epic PR.
 - Available: `spec` — one-shot: break a spec into an epic + children, then execute them in parallel.
 
 ## GitHub MCP server
@@ -743,8 +743,9 @@ Decompose a large spec into an epic + N child issues and execute them in paralle
 shell runner. Full conventions in `.agents/rules/parallel-orchestration.md`.
 
 **Epic/child model:** An *epic* is a GitHub issue with a child task-list + ` ```waves ` graph
-block. Each *child* is a full-plan issue with `> Epic: #<n>` and `> Depends on: #…` headers.
-Children use branch names `<issue#>-<kebab-title>`; epic branches may be `epic/<slug>`.
+block, backed by a real, long-lived **epic integration branch** `epic/<epic#>-<slug>`. Each
+*child* is a full-plan issue with `> Epic: #<n>` and `> Depends on: #…` headers. Children use
+branch names `<issue#>-<kebab-title>` and branch off the epic branch, not `main` directly.
 
 **Setup (one-time):**
 1. Copy `.agents/parallel.config.example` → `.agents/parallel.config` (gitignored).
@@ -753,12 +754,14 @@ Children use branch names `<issue#>-<kebab-title>`; epic branches may be `epic/<
 
 **Runner:** `.agents/scripts/run-parallel-issues.sh` — one worktree + headless agent per child,
 concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). The runner commits and pushes each
-successful branch; the orchestrating agent opens PRs via MCP. `GITHUB_TOKEN` is never sourced
-by the runner — headless agents have no GitHub access by design.
+successful branch, then (given `--epic <branch>`) auto-merges it into the epic integration
+branch — the orchestrating agent only reads epic-branch state and opens the final PR via MCP.
+`GITHUB_TOKEN` is never sourced by the runner — headless agents have no GitHub access by design.
 
-**Wave flow:** `/execute-epic` runs the current frontier (dependency-satisfied, not-yet-done
-children) in parallel, opens PRs (`Closes #<child>`), ticks the epic task-list, then **stops**
-asking you to merge this wave's PRs before the next wave. Re-running advances (idempotent).
+**Wave flow:** `/execute-epic` creates an epic integration branch `epic/<epic#>-<slug>`, runs
+each runnable wave in turn, and the runner **auto-merges each child branch into the epic
+branch** — waves advance with no manual merge. At completion it opens a single `epic → main`
+PR. Re-running is idempotent (done children are detected from the epic branch).
 
 **Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`.
 Override in `.agents/parallel.config`.
@@ -824,9 +827,11 @@ Stop at the first that yields a verified, existing **issue** (not a PR):
 
 - **Child branches:** `<issue#>-<kebab-title>` (e.g. `12-keystroke-capture`). The leading
   numeric segment resolves these via precedence #1 above — no special handling required.
-- **Epic branch:** may be `epic/<slug>` (e.g. `epic/add-keystroke-counting`). No numeric
-  prefix — resolves via title-slug fuzzy match (precedence #3). This note is informational;
-  the resolution precedence is unchanged.
+- **Epic branch:** `epic/<epic#>-<slug>` (e.g. `epic/55-orbit-111-v0`) — the epic
+  **integration branch** the parallel runner writes to (`parallel-orchestration.md`).
+  The leading numeric segment (after the `epic/` prefix) resolves it via precedence #1
+  above, same as a child branch — deterministic, not a fuzzy title match. This note is
+  informational; the resolution precedence is unchanged.
 
 ## Rules
 
@@ -1517,13 +1522,33 @@ Omit `> Depends on:` when the child has no dependencies.
 
 ---
 
+## Epic Integration Branch
+
+Each epic has a real, long-lived branch — `epic/<epic#>-<slug>` — cut from `main`.
+Every child branches off the epic branch (not `main` directly) and is **merged back
+into it automatically by the runner** once the child's own branch is pushed
+(`.agents/scripts/run-parallel-issues.sh --epic <branch>`). The runner is the epic
+branch's **single writer**, serialized through a `.worktrees/.merge.lock` `mkdir` lock
+and a dedicated `__epic__` worktree — same-wave children merge one at a time, in
+whatever order they finish.
+
+`main` receives the epic's work only once, through the final `epic → main` pull
+request `/execute-epic` opens after every child is integrated. There is no per-child
+PR and no manual merge step between waves — `/execute-epic` loops every runnable wave
+in a single invocation, advancing as soon as the runner reports each wave's children
+merged.
+
+---
+
 ## Branch Naming
 
 - **Children:** `<issue#>-<kebab-title>` (e.g. `12-keystroke-capture`).
   The leading numeric segment is resolved by precedence #1 in `issue-resolution.md`, so
   all issue-aware commands (`/execute-issue`, `/ship-note`, etc.) work on child branches.
-- **Epic:** the branch from which `/execute-epic` is run may be `epic/<slug>`.
-  Resolved by title-slug fuzzy match (precedence #3 in `issue-resolution.md`).
+- **Epic:** the integration branch is `epic/<epic#>-<slug>` (e.g.
+  `epic/55-orbit-111-v0`). The leading numeric segment (after the `epic/` prefix)
+  resolves via precedence #1 in `issue-resolution.md`, same as a child branch —
+  deterministic, not a fuzzy title match.
 
 ---
 
@@ -1580,20 +1605,33 @@ by calling `mcp__github__issue_read` (`method: "get"`) per child. If GitHub data
 
 ### Runnable frontier (at execution time)
 
-The frontier = children whose dependencies are **all merged into `main`** AND which are
-not yet done:
+The frontier = pending children whose dependencies are **all done**, where **done**
+means the child's merge commit is present on the **epic integration branch** (not
+merged into `main` — `main` only receives the final epic PR):
 
-- **Done / merged:** `mcp__github__list_pull_requests { head:"<owner>:<branch>", state:"all" }`
-  returns a PR with `merged_at` set → skip (done).
-- **In-progress:** an open PR for that branch exists → skip (already running/waiting).
-- **Pending:** no PR found and not merged → include in this run.
+- **Done:** `mcp__github__list_commits { owner, repo, sha: "<epic branch>", per_page: 100 }`
+  returns a commit whose message contains `Merge child #<child>` → skip (done). If the
+  epic branch does not exist yet (404), no child is done.
+- **Failed/conflict (this run):** appears in `.worktrees/.mergefail` or
+  `.worktrees/.failed` after a runner invocation → its dependents stay blocked.
+- **Pending:** otherwise → eligible for the frontier once its dependencies are done.
+
+`/execute-epic` loops this frontier computation across **every runnable wave in one
+invocation** — it does not stop after a single wave.
 
 ---
 
 ## Runner Contract
 
-**Input:** one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
+**Input:** an optional `--epic <branch>` flag, as the **first** argument, followed by
+one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
 
+- `--epic <branch>` — optional. When present, children are cut from and auto-merged
+  into `<branch>` (the epic integration branch) instead of `BASE_BRANCH`. Also honored
+  from the `EPIC_BRANCH` environment variable as a fallback. Must come first so the
+  invocation still starts with `sh .agents/scripts/run-parallel-issues.sh …` (keeps the
+  Claude wrapper's `Bash(sh .agents/scripts/run-parallel-issues.sh:*)` allow-pattern
+  matching).
 - `<issue>` — numeric GitHub issue number (no spaces).
 - `<branch>` — git branch name (no spaces, e.g. `12-keystroke-capture`).
 - `<title>` — human title (may contain spaces and `:`); split is on the **first two colons only**.
@@ -1602,13 +1640,21 @@ not yet done:
 
 - Pushes a branch per successful child (commit + push). Never pushes a broken/empty branch.
 - Appends `<issue> <branch>` to `.worktrees/.pushed` on success.
-- Appends `<issue>` to `.worktrees/.failed` on failure.
-- Exit code = number of failures (0 = all succeeded).
+- Appends `<issue>` to `.worktrees/.failed` on agent/worktree/push failure.
+- When `--epic` is set: after a child's own push succeeds, the runner merges it into
+  the epic branch (serialized — see Epic Integration Branch above) and appends
+  `<issue> <branch>` to `.worktrees/.merged` on success, or `<issue>` to
+  `.worktrees/.mergefail` on a merge conflict (the child branch stays pushed; only the
+  merge failed). A merge conflict counts as a failure for this run.
+- Exit code = number of `.failed` + `.mergefail` entries (0 = all succeeded and, when
+  `--epic` is set, integrated).
 
 **Invoke via the Bash tool:**
 
 ```sh
 sh .agents/scripts/run-parallel-issues.sh "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
+# or, with an epic integration branch:
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-orbit-111-v0 "<issue>:<branch>:<title>" ...
 ```
 
 ---
@@ -1642,9 +1688,16 @@ via MCP in the normal session.
 | `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap (seconds); 0 disables |
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
+| `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
 
 Worktrees are removed on success (unless `KEEP_WORKTREES=1`) and retained on failure so
-the agent log can be inspected at `.worktrees/<branch>.log`. Manual cleanup:
+the agent log can be inspected at `.worktrees/<branch>.log`. The epic branch itself is
+written only through `.worktrees/.merge.lock` (an atomic `mkdir` lock) plus a dedicated
+`.worktrees/__epic__` checkout, so concurrent child merges never race. A merge conflict
+leaves the child branch pushed and intact, records the child in `.worktrees/.mergefail`,
+blocks its dependents, and is safely retried once a human resolves the conflict and
+re-runs `/execute-epic` (already-integrated children are re-detected as done). Manual
+cleanup:
 
 ```sh
 git worktree prune
@@ -1671,21 +1724,26 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 
 ---
 
-## Manual-Merge Checkpoint Model
+## Auto-Merge Integration Model
 
-Children always branch off `main`. `/execute-epic` runs the **current frontier** in
-parallel, opens PRs (`Closes #<child>`), posts ship-notes, ticks the epic task-list,
-then **stops** and asks you to merge this wave's PRs before the next wave. Re-running
-`/execute-epic` is idempotent: it skips done children and computes the new frontier.
+Children branch off the **epic integration branch** (not `main` directly — see Epic
+Integration Branch above). `/execute-epic` runs each runnable wave in turn; the runner
+auto-merges every successful child into the epic branch as soon as its own push
+succeeds, so the next wave's frontier becomes runnable with **no manual merge step**.
+A single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
+integrated or blocked, then opens **one `epic → main` PR**. Re-running is idempotent:
+done children are detected from the epic branch's commit history, so only the
+remaining frontier runs.
 
 ### Documented opt-ins (NOT built — describe trade-offs only)
 
-- **`--stacked`:** children in later waves branch off prior-wave branches instead of
-  `main`. Enables faster iteration but requires sequential merge order and rebase
-  coordination. Built only on explicit request.
-- **Auto-merge between waves:** automatically merges each wave before advancing. Reduces
-  oversight and can propagate broken changes into later-wave branches. Built only on
-  explicit request.
+- **`--stacked`:** children in later waves branch off prior-wave *child* branches
+  instead of the epic branch directly. Enables faster iteration but requires sequential
+  merge order and rebase coordination. Built only on explicit request.
+- **`--per-wave`:** stop after each wave (instead of auto-advancing) so a human can
+  review the epic branch's state before the runner integrates the next wave. Restores
+  the old manual-merge-checkpoint cadence for teams that want a review gate mid-epic,
+  at the cost of requiring a re-run per wave. Built only on explicit request.
 ````
 
 ---
@@ -1702,10 +1760,22 @@ then **stops** and asks you to merge this wave's PRs before the next wave. Re-ru
 #   <title>  human title (may contain spaces and ':'), used in commit + prompt
 # Split is on the FIRST TWO colons only, so titles may contain ':'.
 #
-# Per issue: worktree+branch off BASE_BRANCH, run the headless agent ($AGENT_EXEC_CMD)
-# to implement the issue by following .agents/commands/execute-issue.md, then (only on
-# success) commit + push. No GitHub API here. Config from .agents/parallel.config or env.
-# Exit status = number of FAILED issues (0 = all succeeded).
+# Per issue: worktree+branch off BASE_BRANCH (or the epic integration branch, when
+# --epic <branch> is passed), run the headless agent ($AGENT_EXEC_CMD) to implement the
+# issue by following .agents/commands/execute-issue.md, then (only on success) commit +
+# push. No GitHub API here. Config from .agents/parallel.config or env.
+#
+# --epic <branch>  optional; when present, children cut from and auto-merge into this
+#                   branch after their own push succeeds (serialized via a `.merge.lock`
+#                   mkdir lock + a dedicated __epic__ worktree — this script is the
+#                   single writer of the epic branch). A merge conflict is recorded in
+#                   .mergefail (the child branch stays pushed, just not integrated) and
+#                   counts as a failure for this run's exit status.
+#
+# Outputs: .pushed (issue+branch per pushed child), .failed (issue per agent/push
+# failure), .merged (issue+branch per child merged into the epic branch), .mergefail
+# (issue per child that could not be merged into the epic branch).
+# Exit status = number of FAILED + MERGEFAIL issues (0 = all succeeded and integrated).
 
 set -u
 
@@ -1727,6 +1797,17 @@ AGENT_TIMEOUT=${AGENT_TIMEOUT:-1800}      # seconds per issue; 0 disables
 [ -f "$PROJECT_ROOT/.agents/parallel.config" ] && . "$PROJECT_ROOT/.agents/parallel.config"
 
 log() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
+
+# ---- optional epic integration branch (enables the auto-merge model) ----
+EPIC_BRANCH=${EPIC_BRANCH:-}
+if [ "${1:-}" = "--epic" ]; then
+  [ "$#" -ge 2 ] || { log "FATAL: --epic requires a branch argument"; exit 2; }
+  EPIC_BRANCH=$2
+  shift 2
+fi
+EPIC_MERGE_FLAGS=${EPIC_MERGE_FLAGS:---no-ff}   # how children merge into the epic branch
+EPIC_WT="$WORKTREES_DIR/__epic__"               # dedicated checkout of the epic branch
+MERGE_LOCK="$WORKTREES_DIR/.merge.lock"         # serialize merge+push (single writer)
 
 if [ "$#" -eq 0 ]; then
   log "usage: $0 <issue:branch:title> [<issue:branch:title> ...]"
@@ -1758,12 +1839,40 @@ run_with_timeout() {
   return "$_rc"
 }
 
+acquire_lock() { until mkdir "$MERGE_LOCK" 2>/dev/null; do sleep 1; done; }
+release_lock() { rmdir "$MERGE_LOCK" 2>/dev/null || true; }
+
+# Create/refresh the epic worktree so it sits at the epic branch's current tip.
+# If the branch already exists on origin, check that out; else cut it from BASE_BRANCH
+# and publish it. Runs once, before any child fans out. No-op when EPIC_BRANCH is empty.
+ensure_epic_branch() {
+  [ -n "$EPIC_BRANCH" ] || return 0
+  # Guard: refuse if the epic branch is checked out in the PRIMARY worktree (we cannot
+  # also check it out here). The user should run /execute-epic from main or another branch.
+  _cur=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ "$_cur" = "$EPIC_BRANCH" ]; then
+    log "FATAL: epic branch '$EPIC_BRANCH' is checked out in the primary worktree."
+    log "       Check out 'main' (or any other branch) before running the epic runner."
+    exit 5
+  fi
+  git fetch --quiet origin >/dev/null 2>&1 || true
+  [ -e "$EPIC_WT" ] && { git worktree remove --force "$EPIC_WT" >/dev/null 2>&1 || rm -rf "$EPIC_WT"; }
+  if git ls-remote --exit-code --heads origin "$EPIC_BRANCH" >/dev/null 2>&1; then
+    git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "origin/$EPIC_BRANCH" >/dev/null 2>&1
+  else
+    git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "origin/$BASE_BRANCH" >/dev/null 2>&1 \
+      || git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "$BASE_BRANCH" >/dev/null 2>&1
+    git -C "$EPIC_WT" push -u origin "$EPIC_BRANCH" >/dev/null 2>&1
+  fi
+}
+
 process_issue() {
   _issue=$1; _branch=$2; _title=$3
   _wt="$WORKTREES_DIR/$_branch"
   _logf="$WORKTREES_DIR/$_branch.log"
 
-  log "[#$_issue] start -> $_branch (base $BASE_BRANCH)"
+  _base_ref=${EPIC_BRANCH:-$BASE_BRANCH}
+  log "[#$_issue] start -> $_branch (base $_base_ref)"
 
   if [ -e "$_wt" ]; then
     git worktree remove --force "$_wt" >/dev/null 2>&1 || rm -rf "$_wt"
@@ -1771,7 +1880,7 @@ process_issue() {
   if git show-ref --verify --quiet "refs/heads/$_branch"; then
     git worktree add "$_wt" "$_branch" >>"$_logf" 2>&1
   else
-    git worktree add "$_wt" -b "$_branch" "$BASE_BRANCH" >>"$_logf" 2>&1
+    git worktree add "$_wt" -b "$_branch" "$_base_ref" >>"$_logf" 2>&1
   fi
   if [ "$?" -ne 0 ]; then
     log "[#$_issue] FAILED: could not create worktree (see $_logf)"
@@ -1832,6 +1941,30 @@ EOF
 
   log "[#$_issue] OK: pushed $_branch"
   echo "$_issue $_branch" >> "$WORKTREES_DIR/.pushed"
+
+  # child branch is pushed and recorded in .pushed above; now integrate it.
+  if [ -n "$EPIC_BRANCH" ]; then
+    acquire_lock
+    git -C "$EPIC_WT" fetch --quiet origin "$EPIC_BRANCH" >>"$_logf" 2>&1
+    git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1
+    # shellcheck disable=SC2086
+    if git -C "$EPIC_WT" merge $EPIC_MERGE_FLAGS "$_branch" \
+         -m "Merge child #$_issue ($_branch) into $EPIC_BRANCH" >>"$_logf" 2>&1 \
+       && git -C "$EPIC_WT" push origin "$EPIC_BRANCH" >>"$_logf" 2>&1; then
+      echo "$_issue $_branch" >> "$WORKTREES_DIR/.merged"
+      log "[#$_issue] OK: merged $_branch into $EPIC_BRANCH"
+      release_lock
+    else
+      git -C "$EPIC_WT" merge --abort >>"$_logf" 2>&1 || true
+      git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1 || true
+      echo "$_issue" >> "$WORKTREES_DIR/.mergefail"
+      log "[#$_issue] MERGEFAIL: $_branch did not integrate into $EPIC_BRANCH (see $_logf)"
+      release_lock
+      # branch is pushed and safe; a human resolves the conflict. Treat as this-child failure.
+      return 1
+    fi
+  fi
+
   if [ "$KEEP_WORKTREES" -ne 1 ]; then
     git worktree remove --force "$_wt" >/dev/null 2>&1 || rm -rf "$_wt"
   fi
@@ -1841,6 +1974,9 @@ EOF
 # ---- concurrency: job-slot loop, dash-safe (no `wait -n`) ----
 : > "$WORKTREES_DIR/.failed"
 : > "$WORKTREES_DIR/.pushed"
+: > "$WORKTREES_DIR/.merged"
+: > "$WORKTREES_DIR/.mergefail"
+ensure_epic_branch
 running_pids=""
 running_count=0
 
@@ -1867,10 +2003,16 @@ done
 while [ "$running_count" -gt 0 ]; do drain_one; done
 
 failed=$(grep -c . "$WORKTREES_DIR/.failed" 2>/dev/null); failed=${failed:-0}
+mergefail=$(grep -c . "$WORKTREES_DIR/.mergefail" 2>/dev/null); mergefail=${mergefail:-0}
 pushed=$(grep -c . "$WORKTREES_DIR/.pushed" 2>/dev/null); pushed=${pushed:-0}
-log "wave complete: $pushed pushed, $failed failed."
-[ "$failed" -gt 0 ] && log "failed: $(tr '\n' ' ' < "$WORKTREES_DIR/.failed")"
-exit "$failed"
+merged=$(grep -c . "$WORKTREES_DIR/.merged" 2>/dev/null); merged=${merged:-0}
+total_fail=$((failed + mergefail))
+if [ -n "$EPIC_BRANCH" ] && [ "$KEEP_WORKTREES" -ne 1 ]; then
+  git worktree remove --force "$EPIC_WT" >/dev/null 2>&1 || rm -rf "$EPIC_WT"
+fi
+log "wave complete: $pushed pushed, $merged merged, $failed failed, $mergefail merge-conflict."
+[ "$total_fail" -gt 0 ] && log "not integrated: $(tr '\n' ' ' < "$WORKTREES_DIR/.failed") $(tr '\n' ' ' < "$WORKTREES_DIR/.mergefail")"
+exit "$total_fail"
 ```
 
 ---
@@ -1892,7 +2034,13 @@ AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 PARALLEL_MAX_CONCURRENCY=3     # issues running at once (each is a full agent process)
 MAX_CHILDREN=12                # hard cap per wave; runner refuses beyond this
 WORKTREES_DIR=.worktrees       # gitignored
-BASE_BRANCH=main               # children cut from main (manual-merge-checkpoint model)
+BASE_BRANCH=main               # the branch the epic integration branch is cut from
+                                # (children branch off the epic branch, not directly off this)
+
+# EPIC_BRANCH is passed per-run by /execute-epic via '--epic <branch>'; not set here.
+
+EPIC_MERGE_FLAGS="--no-ff"     # how each child merges into the epic branch; --no-ff
+                                # keeps child boundaries for clean revert
 
 # Optional acceptance gate run inside each worktree before commit+push (empty = skip here).
 #   Swift : xcodebuild -scheme KeyCount -destination 'platform=macOS' build
@@ -2025,6 +2173,7 @@ Write `.agents/plans/[yyyy-mm-dd]-epic-<slug>.md` using this template:
 > Status: **draft**
 > Created: [YYYY-MM-DD]
 > Issue: #<epic>
+> Integration branch: epic/<epic>-<slug>
 
 ## Goal
 <1–2 sentences>
@@ -2048,6 +2197,8 @@ Write `.agents/plans/[yyyy-mm-dd]-epic-<slug>.md` using this template:
 
 Respond with:
 - Epic issue URL and number
+- The integration branch name (`epic/<epic>-<slug>`) that `/execute-epic` will create
+  and auto-merge each wave's children into
 - Each child issue URL, number, branch, and assigned wave
 - The computed waves table
 - A reminder to run `/execute-epic` (or `/spec` if this was called stand-alone)
@@ -2068,12 +2219,13 @@ Respond with:
 ````
 # Command: execute-epic
 
-Execute the children of a GitHub **epic** issue in parallel — one wave (frontier) per
-run — then open PRs, post ship-notes, tick the epic task-list, and stop for a manual
-merge checkpoint before the next wave. Re-running is idempotent.
+Execute the children of a GitHub **epic** issue against a dedicated **epic integration
+branch** — the runner auto-merges each successful child into it, so waves advance with
+no manual merge step. Runs every runnable wave to completion in one invocation, then
+opens a **single `epic → main` pull request**. Re-running is idempotent.
 
-`$ARGUMENTS` is **optional**: `skip confirm` (skip step 6) or `dry-run` (stop after
-step 6, printing the plan but not running the runner).
+`$ARGUMENTS` is **optional**: `skip confirm` (skip step 7) or `dry-run` (stop after
+step 7, printing the plan but not running the runner).
 
 ## Context injected by the wrapper
 
@@ -2096,7 +2248,8 @@ with `mcp__github__issue_read` (`method: "get"`) to get `title` and `body`.
 ### 3 — Find the epic plan
 
 Search `.agents/plans/*.md` for a file whose header contains `> Issue: #<epic>`. If
-found, use its `Children & Waves` table and edge list as the primary source of truth.
+found, use its `Children & Waves` table and edge list as the primary source of truth
+(and its `> Integration branch:` header line, if present, per Step 5 below).
 
 If no plan file exists, reconstruct the graph from GitHub:
 1. Parse the epic body's child task-list for child issue numbers.
@@ -2113,104 +2266,100 @@ wave. Apply the cycle guard; stop and report if a cycle is detected.
 
 Display the full wave plan to the user.
 
-### 5 — Determine the runnable frontier
+### 5 — Derive the integration branch
 
-For each child, check its status via
-`mcp__github__list_pull_requests { head:"<owner>:<branch>", state:"all" }`:
+Compute `EPIC_BRANCH = epic/<epic#>-<kebab-slug-of-epic-title>` (strip a leading
+`epic:` from the title; kebab-case the rest; keep it under ~50 chars). This is derived
+from the **epic issue**, independent of the branch the user invoked from. State it
+explicitly in the plan display. If the epic plan file has a `> Integration branch:`
+header, prefer that value (it was fixed at `/spec-breakdown` time).
 
-- **Merged PR** (`merged_at` set) → done; skip.
-- **Open PR** → in-progress; skip (already running/waiting).
-- **No PR** and no merged branch → pending.
+### 6 — Determine per-child status against the epic branch
 
-The frontier = pending children whose **all** dependencies have merged PRs.
+For each child, classify:
 
-If the frontier is empty and no pending children remain, the epic is complete → post
-the final summary comment (see step 9) and stop.
+- **done** — the epic branch already contains its merge. Detect via
+  `mcp__github__list_commits { owner, repo, sha: "<EPIC_BRANCH>", per_page: 100 }` and
+  match a commit whose message contains `Merge child #<child>`. If the call 404s (the
+  epic branch does not exist yet), treat **all** children as not-done.
+- **failed/conflict (this session)** — appears in `.worktrees/.mergefail` or
+  `.worktrees/.failed` after a run (used during the wave loop, step 8).
+- **pending** — otherwise.
 
-If the frontier is empty but pending children remain (their deps are not yet merged),
-tell the user which children are blocked and what needs to be merged first, then stop.
+If every child is already done, skip to step 9 (open/verify the epic PR).
 
-### 6 — Confirm
+### 7 — Confirm
 
 Unless `$ARGUMENTS` contains `skip confirm`, print and wait for explicit confirmation:
 
 - Epic title and number
-- Full wave plan (all waves, marking done/in-progress/pending per child)
-- The frontier about to run (child number, branch, title)
+- The **integration branch** name (`EPIC_BRANCH`)
+- Full wave plan (all waves, marking done/pending per child)
 - The `AGENT_EXEC_CMD` that will be used
 - Concurrency cap (`PARALLEL_MAX_CONCURRENCY`)
 - Any warnings (CLI not on PATH, children > `MAX_CHILDREN`, etc.)
 
 If `$ARGUMENTS` contains `dry-run`, stop here after printing the plan.
 
-### 7 — Run the frontier
+### 8 — Wave loop (auto-advance)
 
-Use the Bash tool to invoke the runner with one quoted arg per frontier child:
+Repeat until no progress:
 
-```sh
-sh .agents/scripts/run-parallel-issues.sh "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
-```
+1. Compute the **frontier** = pending children whose **every** dependency is **done**
+   (merged into the epic branch).
+2. If the frontier is empty **and** pending children remain, their dependencies failed
+   or conflicted → report which children are blocked and why, then break the loop.
+3. If the frontier is empty **and** no pending children remain → the epic is fully
+   integrated → go to step 9.
+4. Invoke the runner **once** for the frontier, passing `--epic`:
+   ```sh
+   sh .agents/scripts/run-parallel-issues.sh --epic <EPIC_BRANCH> \
+     "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
+   ```
+   Wait for it to finish.
+5. Read `.worktrees/.merged` (integrated), `.worktrees/.mergefail` (conflict — branch
+   pushed but not integrated), `.worktrees/.failed` (agent/worktree failure).
+6. **For each merged child:** post a ship-note comment to the child issue
+   (`mcp__github__add_issue_comment`, mirroring `/ship-note`: Summary, Files changed
+   from `.worktrees/<branch>.log`, Validation, and the `#<child> → <EPIC_BRANCH>`
+   integration reference), then tick the epic task-list item
+   (`mcp__github__issue_write`, `method: "update"`, `- [ ] #<child>` → `- [x] #<child>`,
+   preserving the rest of the body). Mark the child **done** in local state.
+7. **For each mergefail/failed child:** post a failure comment
+   (`mcp__github__add_issue_comment`) noting the cause (agent exit, or a merge conflict
+   with `<EPIC_BRANCH>`) and that `.worktrees/<branch>.log` is retained. **Do not** tick
+   the task-list. Its dependents stay blocked.
+8. If this iteration merged **zero** children, break (no-progress guard) to avoid
+   looping forever. Bound the loop to at most the number of waves.
 
-Wait for the runner to complete. Its exit code = number of failures.
+### 9 — Open the single epic PR and post the final summary
 
-### 8 — Process results
-
-Read `.worktrees/.pushed` (successful children) and `.worktrees/.failed` (failed).
-
-**For each pushed child:**
-1. Open a PR:
-   `mcp__github__create_pull_request { owner, repo, head:"<branch>", base:"main",
-   title:"<child title>", body:"Closes #<child>\n\nPart of epic #<epic>.\n\n<1–2 sentence summary>" }`
-2. Post a ship-note comment to the child issue:
-   `mcp__github__add_issue_comment` — mirror `/ship-note` structure (Summary, Files
-   changed from the worktree log, Validation results, branch/PR reference).
-3. Tick the epic task-list item for this child:
-   `mcp__github__issue_write` (`method: "update"`) — change `- [ ] #<child>` to `- [x] #<child>` in
-   the epic body. Preserve the rest of the body verbatim.
-
-**For each failed child:**
-1. Do not open a PR.
-2. Post a failure comment to the child issue:
-   `mcp__github__add_issue_comment` — note the failure, agent exit code, and that
-   the worktree log is retained at `.worktrees/<branch>.log` for inspection.
-
-### 9 — Merge checkpoint or final summary
-
-**If later waves remain pending:**
-
-Post a comment on the epic issue listing:
-- This wave's PRs (child → PR URL)
-- What to do next: merge this wave's PRs into `main`, then re-run `/execute-epic`
-  to advance to the next wave
-
-Then tell the user the same message in-session and stop.
-
-**If no pending children remain (all done or this was the last wave):**
-
-Post a final summary comment on the epic (`mcp__github__add_issue_comment`):
-
-```
-## Epic Complete
-
-All child issues have been implemented and PRs opened.
-
-| Child | Branch | PR | Status |
-|-------|--------|----|--------|
-| #<a> | `<branch>` | <PR URL> | merged / open |
-
-Recommended merge order follows the wave plan above.
-```
+- If **all** children are done: ensure a PR exists for the epic branch —
+  `mcp__github__list_pull_requests { head:"<owner>:<EPIC_BRANCH>", state:"all" }`; if
+  none, `mcp__github__create_pull_request { owner, repo, head:"<EPIC_BRANCH>",
+  base:"main", title:"<epic title>", body:"Closes #<epic>\n\nIntegrates all child
+  issues:\n<child table>" }`.
+- Post a final summary comment on the epic (`mcp__github__add_issue_comment`) with the
+  child → status table and the epic PR URL.
+- If some children failed/conflicted: **do not** open the epic PR; report the blocked
+  set and stop (re-running `/execute-epic` after the human fixes the conflict is
+  idempotent — already-merged children are detected as done in step 6).
 
 ## Rules
 
 - Follow `issue-resolution.md` to identify the epic from the current branch.
-- Follow `parallel-orchestration.md` for wave computation, frontier detection, and
-  runner invocation.
-- Re-running is idempotent — skip done/in-progress children; only run the frontier.
+- Follow `parallel-orchestration.md` for wave computation, the epic integration branch,
+  and the runner invocation.
+- The runner integrates each child into the epic branch; the agent never merges — it
+  only reads epic-branch state via `mcp__github__list_commits` and opens the final PR.
+- Waves auto-advance in a single run: the wave loop keeps invoking the runner on the
+  newly-runnable frontier until the epic is complete or blocked.
+- Re-running is idempotent — done children are detected from the epic branch; only
+  pending children in the current frontier run.
 - Never push or commit directly; the runner handles that.
-- `dry-run` stops after printing the plan (step 6); no runner call, no GitHub writes.
-- Two-wave runs require a manual merge checkpoint between waves (always stop and instruct
-  the user to merge before advancing).
+- `dry-run` stops after printing the plan (step 7); no runner call, no GitHub writes.
+- One `epic → main` PR at completion — no per-child PRs. Per-child traceability comes
+  from ship-note comments and epic task-list ticking.
 ````
 
 ---
@@ -2221,8 +2370,9 @@ Recommended merge order follows the wave plan above.
 # Command: spec
 
 One-shot pipeline: decompose a large spec into an epic + child issues, pause for
-human review, then execute the first wave in parallel. This command **chains**
-`/spec-breakdown` and `/execute-epic`; it does not duplicate their logic.
+human review, then auto-advance every wave into the epic integration branch. This
+command **chains** `/spec-breakdown` and `/execute-epic`; it does not duplicate their
+logic.
 
 `$ARGUMENTS` — spec text or path to a spec file (passed through to `/spec-breakdown`).
 
@@ -2258,8 +2408,9 @@ Once the user approves, follow `.agents/commands/execute-epic.md` on the epic ju
 created. The `skip confirm` flag is implicit (the review pause in Phase 2 served that
 purpose); do not ask for another confirmation.
 
-Execute through step 9 of `execute-epic.md`. Stop at the merge checkpoint as
-`execute-epic.md` prescribes.
+Execute through step 9 of `execute-epic.md`, which auto-advances all runnable waves in
+one run (the runner merges each child into the epic integration branch as it lands —
+no manual merge checkpoint) and opens one `epic → main` PR at completion.
 
 ## Rules
 
@@ -2296,9 +2447,9 @@ Spec (text or file path): $ARGUMENTS
 
 ```
 ---
-description: Execute an epic's child issues in parallel (one wave/frontier per run), then open PRs
+description: Execute an epic's child issues, auto-merging each wave into the epic integration branch, then open one epic PR
 argument-hint: [optional: "skip confirm" | "dry-run"]
-allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__issue_read, mcp__github__list_issues, mcp__github__list_pull_requests, mcp__github__create_pull_request, mcp__github__add_issue_comment, mcp__github__issue_write
+allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__issue_read, mcp__github__list_issues, mcp__github__list_pull_requests, mcp__github__list_commits, mcp__github__create_pull_request, mcp__github__add_issue_comment, mcp__github__issue_write
 ---
 
 Repository remote (parse owner/repo from this):
@@ -2322,7 +2473,7 @@ Options (optional): $ARGUMENTS
 ---
 description: One-shot — break a spec into an epic + children, then execute them in parallel
 argument-hint: [spec text OR path to a spec file]
-allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__list_issues, mcp__github__issue_write, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__create_pull_request, mcp__github__add_issue_comment
+allowed-tools: Bash(git:*), Bash(sh .agents/scripts/run-parallel-issues.sh:*), mcp__github__list_issues, mcp__github__issue_write, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__list_commits, mcp__github__create_pull_request, mcp__github__add_issue_comment
 ---
 
 Repository remote (parse owner/repo from this):
@@ -2364,7 +2515,7 @@ Spec (text or file path): $ARGUMENTS
 
 ```
 ---
-description: Execute an epic's child issues in parallel (one wave/frontier per run), then open PRs
+description: Execute an epic's child issues, auto-merging each wave into the epic integration branch, then open one epic PR
 ---
 
 Repository remote (parse owner/repo from this):

@@ -1,5 +1,5 @@
 ---
-description: Execute an epic's child issues in parallel (one wave/frontier per run), then open PRs
+description: Execute an epic's child issues, auto-merging each wave into the epic integration branch, then open one epic PR
 ---
 
 Repository remote (parse owner/repo from this):

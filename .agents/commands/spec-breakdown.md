@@ -115,6 +115,7 @@ Write `.agents/plans/[yyyy-mm-dd]-epic-<slug>.md` using this template:
 > Status: **draft**
 > Created: [YYYY-MM-DD]
 > Issue: #<epic>
+> Integration branch: epic/<epic>-<slug>
 
 ## Goal
 <1–2 sentences>
@@ -138,6 +139,8 @@ Write `.agents/plans/[yyyy-mm-dd]-epic-<slug>.md` using this template:
 
 Respond with:
 - Epic issue URL and number
+- The integration branch name (`epic/<epic>-<slug>`) that `/execute-epic` will create
+  and auto-merge each wave's children into
 - Each child issue URL, number, branch, and assigned wave
 - The computed waves table
 - A reminder to run `/execute-epic` (or `/spec` if this was called stand-alone)

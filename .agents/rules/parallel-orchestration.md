@@ -52,13 +52,33 @@ Omit `> Depends on:` when the child has no dependencies.
 
 ---
 
+## Epic Integration Branch
+
+Each epic has a real, long-lived branch — `epic/<epic#>-<slug>` — cut from `main`.
+Every child branches off the epic branch (not `main` directly) and is **merged back
+into it automatically by the runner** once the child's own branch is pushed
+(`.agents/scripts/run-parallel-issues.sh --epic <branch>`). The runner is the epic
+branch's **single writer**, serialized through a `.worktrees/.merge.lock` `mkdir` lock
+and a dedicated `__epic__` worktree — same-wave children merge one at a time, in
+whatever order they finish.
+
+`main` receives the epic's work only once, through the final `epic → main` pull
+request `/execute-epic` opens after every child is integrated. There is no per-child
+PR and no manual merge step between waves — `/execute-epic` loops every runnable wave
+in a single invocation, advancing as soon as the runner reports each wave's children
+merged.
+
+---
+
 ## Branch Naming
 
 - **Children:** `<issue#>-<kebab-title>` (e.g. `12-keystroke-capture`).
   The leading numeric segment is resolved by precedence #1 in `issue-resolution.md`, so
   all issue-aware commands (`/execute-issue`, `/ship-note`, etc.) work on child branches.
-- **Epic:** the branch from which `/execute-epic` is run may be `epic/<slug>`.
-  Resolved by title-slug fuzzy match (precedence #3 in `issue-resolution.md`).
+- **Epic:** the integration branch is `epic/<epic#>-<slug>` (e.g.
+  `epic/55-orbit-111-v0`). The leading numeric segment (after the `epic/` prefix)
+  resolves via precedence #1 in `issue-resolution.md`, same as a child branch —
+  deterministic, not a fuzzy title match.
 
 ---
 
@@ -115,20 +135,33 @@ by calling `mcp__github__issue_read` (`method: "get"`) per child. If GitHub data
 
 ### Runnable frontier (at execution time)
 
-The frontier = children whose dependencies are **all merged into `main`** AND which are
-not yet done:
+The frontier = pending children whose dependencies are **all done**, where **done**
+means the child's merge commit is present on the **epic integration branch** (not
+merged into `main` — `main` only receives the final epic PR):
 
-- **Done / merged:** `mcp__github__list_pull_requests { head:"<owner>:<branch>", state:"all" }`
-  returns a PR with `merged_at` set → skip (done).
-- **In-progress:** an open PR for that branch exists → skip (already running/waiting).
-- **Pending:** no PR found and not merged → include in this run.
+- **Done:** `mcp__github__list_commits { owner, repo, sha: "<epic branch>", per_page: 100 }`
+  returns a commit whose message contains `Merge child #<child>` → skip (done). If the
+  epic branch does not exist yet (404), no child is done.
+- **Failed/conflict (this run):** appears in `.worktrees/.mergefail` or
+  `.worktrees/.failed` after a runner invocation → its dependents stay blocked.
+- **Pending:** otherwise → eligible for the frontier once its dependencies are done.
+
+`/execute-epic` loops this frontier computation across **every runnable wave in one
+invocation** — it does not stop after a single wave.
 
 ---
 
 ## Runner Contract
 
-**Input:** one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
+**Input:** an optional `--epic <branch>` flag, as the **first** argument, followed by
+one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
 
+- `--epic <branch>` — optional. When present, children are cut from and auto-merged
+  into `<branch>` (the epic integration branch) instead of `BASE_BRANCH`. Also honored
+  from the `EPIC_BRANCH` environment variable as a fallback. Must come first so the
+  invocation still starts with `sh .agents/scripts/run-parallel-issues.sh …` (keeps the
+  Claude wrapper's `Bash(sh .agents/scripts/run-parallel-issues.sh:*)` allow-pattern
+  matching).
 - `<issue>` — numeric GitHub issue number (no spaces).
 - `<branch>` — git branch name (no spaces, e.g. `12-keystroke-capture`).
 - `<title>` — human title (may contain spaces and `:`); split is on the **first two colons only**.
@@ -137,13 +170,21 @@ not yet done:
 
 - Pushes a branch per successful child (commit + push). Never pushes a broken/empty branch.
 - Appends `<issue> <branch>` to `.worktrees/.pushed` on success.
-- Appends `<issue>` to `.worktrees/.failed` on failure.
-- Exit code = number of failures (0 = all succeeded).
+- Appends `<issue>` to `.worktrees/.failed` on agent/worktree/push failure.
+- When `--epic` is set: after a child's own push succeeds, the runner merges it into
+  the epic branch (serialized — see Epic Integration Branch above) and appends
+  `<issue> <branch>` to `.worktrees/.merged` on success, or `<issue>` to
+  `.worktrees/.mergefail` on a merge conflict (the child branch stays pushed; only the
+  merge failed). A merge conflict counts as a failure for this run.
+- Exit code = number of `.failed` + `.mergefail` entries (0 = all succeeded and, when
+  `--epic` is set, integrated).
 
 **Invoke via the Bash tool:**
 
 ```sh
 sh .agents/scripts/run-parallel-issues.sh "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
+# or, with an epic integration branch:
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-orbit-111-v0 "<issue>:<branch>:<title>" ...
 ```
 
 ---
@@ -177,9 +218,16 @@ via MCP in the normal session.
 | `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap (seconds); 0 disables |
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
+| `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
 
 Worktrees are removed on success (unless `KEEP_WORKTREES=1`) and retained on failure so
-the agent log can be inspected at `.worktrees/<branch>.log`. Manual cleanup:
+the agent log can be inspected at `.worktrees/<branch>.log`. The epic branch itself is
+written only through `.worktrees/.merge.lock` (an atomic `mkdir` lock) plus a dedicated
+`.worktrees/__epic__` checkout, so concurrent child merges never race. A merge conflict
+leaves the child branch pushed and intact, records the child in `.worktrees/.mergefail`,
+blocks its dependents, and is safely retried once a human resolves the conflict and
+re-runs `/execute-epic` (already-integrated children are re-detected as done). Manual
+cleanup:
 
 ```sh
 git worktree prune
@@ -206,18 +254,23 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 
 ---
 
-## Manual-Merge Checkpoint Model
+## Auto-Merge Integration Model
 
-Children always branch off `main`. `/execute-epic` runs the **current frontier** in
-parallel, opens PRs (`Closes #<child>`), posts ship-notes, ticks the epic task-list,
-then **stops** and asks you to merge this wave's PRs before the next wave. Re-running
-`/execute-epic` is idempotent: it skips done children and computes the new frontier.
+Children branch off the **epic integration branch** (not `main` directly — see Epic
+Integration Branch above). `/execute-epic` runs each runnable wave in turn; the runner
+auto-merges every successful child into the epic branch as soon as its own push
+succeeds, so the next wave's frontier becomes runnable with **no manual merge step**.
+A single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
+integrated or blocked, then opens **one `epic → main` PR**. Re-running is idempotent:
+done children are detected from the epic branch's commit history, so only the
+remaining frontier runs.
 
 ### Documented opt-ins (NOT built — describe trade-offs only)
 
-- **`--stacked`:** children in later waves branch off prior-wave branches instead of
-  `main`. Enables faster iteration but requires sequential merge order and rebase
-  coordination. Built only on explicit request.
-- **Auto-merge between waves:** automatically merges each wave before advancing. Reduces
-  oversight and can propagate broken changes into later-wave branches. Built only on
-  explicit request.
+- **`--stacked`:** children in later waves branch off prior-wave *child* branches
+  instead of the epic branch directly. Enables faster iteration but requires sequential
+  merge order and rebase coordination. Built only on explicit request.
+- **`--per-wave`:** stop after each wave (instead of auto-advancing) so a human can
+  review the epic branch's state before the runner integrates the next wave. Restores
+  the old manual-merge-checkpoint cadence for teams that want a review gate mid-epic,
+  at the cost of requiring a re-run per wave. Built only on explicit request.

@@ -7,10 +7,22 @@
 #   <title>  human title (may contain spaces and ':'), used in commit + prompt
 # Split is on the FIRST TWO colons only, so titles may contain ':'.
 #
-# Per issue: worktree+branch off BASE_BRANCH, run the headless agent ($AGENT_EXEC_CMD)
-# to implement the issue by following .agents/commands/execute-issue.md, then (only on
-# success) commit + push. No GitHub API here. Config from .agents/parallel.config or env.
-# Exit status = number of FAILED issues (0 = all succeeded).
+# Per issue: worktree+branch off BASE_BRANCH (or the epic integration branch, when
+# --epic <branch> is passed), run the headless agent ($AGENT_EXEC_CMD) to implement the
+# issue by following .agents/commands/execute-issue.md, then (only on success) commit +
+# push. No GitHub API here. Config from .agents/parallel.config or env.
+#
+# --epic <branch>  optional; when present, children cut from and auto-merge into this
+#                   branch after their own push succeeds (serialized via a `.merge.lock`
+#                   mkdir lock + a dedicated __epic__ worktree — this script is the
+#                   single writer of the epic branch). A merge conflict is recorded in
+#                   .mergefail (the child branch stays pushed, just not integrated) and
+#                   counts as a failure for this run's exit status.
+#
+# Outputs: .pushed (issue+branch per pushed child), .failed (issue per agent/push
+# failure), .merged (issue+branch per child merged into the epic branch), .mergefail
+# (issue per child that could not be merged into the epic branch).
+# Exit status = number of FAILED + MERGEFAIL issues (0 = all succeeded and integrated).
 
 set -u
 
@@ -32,6 +44,17 @@ AGENT_TIMEOUT=${AGENT_TIMEOUT:-1800}      # seconds per issue; 0 disables
 [ -f "$PROJECT_ROOT/.agents/parallel.config" ] && . "$PROJECT_ROOT/.agents/parallel.config"
 
 log() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >&2; }
+
+# ---- optional epic integration branch (enables the auto-merge model) ----
+EPIC_BRANCH=${EPIC_BRANCH:-}
+if [ "${1:-}" = "--epic" ]; then
+  [ "$#" -ge 2 ] || { log "FATAL: --epic requires a branch argument"; exit 2; }
+  EPIC_BRANCH=$2
+  shift 2
+fi
+EPIC_MERGE_FLAGS=${EPIC_MERGE_FLAGS:---no-ff}   # how children merge into the epic branch
+EPIC_WT="$WORKTREES_DIR/__epic__"               # dedicated checkout of the epic branch
+MERGE_LOCK="$WORKTREES_DIR/.merge.lock"         # serialize merge+push (single writer)
 
 if [ "$#" -eq 0 ]; then
   log "usage: $0 <issue:branch:title> [<issue:branch:title> ...]"
@@ -63,12 +86,40 @@ run_with_timeout() {
   return "$_rc"
 }
 
+acquire_lock() { until mkdir "$MERGE_LOCK" 2>/dev/null; do sleep 1; done; }
+release_lock() { rmdir "$MERGE_LOCK" 2>/dev/null || true; }
+
+# Create/refresh the epic worktree so it sits at the epic branch's current tip.
+# If the branch already exists on origin, check that out; else cut it from BASE_BRANCH
+# and publish it. Runs once, before any child fans out. No-op when EPIC_BRANCH is empty.
+ensure_epic_branch() {
+  [ -n "$EPIC_BRANCH" ] || return 0
+  # Guard: refuse if the epic branch is checked out in the PRIMARY worktree (we cannot
+  # also check it out here). The user should run /execute-epic from main or another branch.
+  _cur=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ "$_cur" = "$EPIC_BRANCH" ]; then
+    log "FATAL: epic branch '$EPIC_BRANCH' is checked out in the primary worktree."
+    log "       Check out 'main' (or any other branch) before running the epic runner."
+    exit 5
+  fi
+  git fetch --quiet origin >/dev/null 2>&1 || true
+  [ -e "$EPIC_WT" ] && { git worktree remove --force "$EPIC_WT" >/dev/null 2>&1 || rm -rf "$EPIC_WT"; }
+  if git ls-remote --exit-code --heads origin "$EPIC_BRANCH" >/dev/null 2>&1; then
+    git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "origin/$EPIC_BRANCH" >/dev/null 2>&1
+  else
+    git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "origin/$BASE_BRANCH" >/dev/null 2>&1 \
+      || git worktree add -B "$EPIC_BRANCH" "$EPIC_WT" "$BASE_BRANCH" >/dev/null 2>&1
+    git -C "$EPIC_WT" push -u origin "$EPIC_BRANCH" >/dev/null 2>&1
+  fi
+}
+
 process_issue() {
   _issue=$1; _branch=$2; _title=$3
   _wt="$WORKTREES_DIR/$_branch"
   _logf="$WORKTREES_DIR/$_branch.log"
 
-  log "[#$_issue] start -> $_branch (base $BASE_BRANCH)"
+  _base_ref=${EPIC_BRANCH:-$BASE_BRANCH}
+  log "[#$_issue] start -> $_branch (base $_base_ref)"
 
   if [ -e "$_wt" ]; then
     git worktree remove --force "$_wt" >/dev/null 2>&1 || rm -rf "$_wt"
@@ -76,7 +127,7 @@ process_issue() {
   if git show-ref --verify --quiet "refs/heads/$_branch"; then
     git worktree add "$_wt" "$_branch" >>"$_logf" 2>&1
   else
-    git worktree add "$_wt" -b "$_branch" "$BASE_BRANCH" >>"$_logf" 2>&1
+    git worktree add "$_wt" -b "$_branch" "$_base_ref" >>"$_logf" 2>&1
   fi
   if [ "$?" -ne 0 ]; then
     log "[#$_issue] FAILED: could not create worktree (see $_logf)"
@@ -137,6 +188,30 @@ EOF
 
   log "[#$_issue] OK: pushed $_branch"
   echo "$_issue $_branch" >> "$WORKTREES_DIR/.pushed"
+
+  # child branch is pushed and recorded in .pushed above; now integrate it.
+  if [ -n "$EPIC_BRANCH" ]; then
+    acquire_lock
+    git -C "$EPIC_WT" fetch --quiet origin "$EPIC_BRANCH" >>"$_logf" 2>&1
+    git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1
+    # shellcheck disable=SC2086
+    if git -C "$EPIC_WT" merge $EPIC_MERGE_FLAGS "$_branch" \
+         -m "Merge child #$_issue ($_branch) into $EPIC_BRANCH" >>"$_logf" 2>&1 \
+       && git -C "$EPIC_WT" push origin "$EPIC_BRANCH" >>"$_logf" 2>&1; then
+      echo "$_issue $_branch" >> "$WORKTREES_DIR/.merged"
+      log "[#$_issue] OK: merged $_branch into $EPIC_BRANCH"
+      release_lock
+    else
+      git -C "$EPIC_WT" merge --abort >>"$_logf" 2>&1 || true
+      git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1 || true
+      echo "$_issue" >> "$WORKTREES_DIR/.mergefail"
+      log "[#$_issue] MERGEFAIL: $_branch did not integrate into $EPIC_BRANCH (see $_logf)"
+      release_lock
+      # branch is pushed and safe; a human resolves the conflict. Treat as this-child failure.
+      return 1
+    fi
+  fi
+
   if [ "$KEEP_WORKTREES" -ne 1 ]; then
     git worktree remove --force "$_wt" >/dev/null 2>&1 || rm -rf "$_wt"
   fi
@@ -146,6 +221,9 @@ EOF
 # ---- concurrency: job-slot loop, dash-safe (no `wait -n`) ----
 : > "$WORKTREES_DIR/.failed"
 : > "$WORKTREES_DIR/.pushed"
+: > "$WORKTREES_DIR/.merged"
+: > "$WORKTREES_DIR/.mergefail"
+ensure_epic_branch
 running_pids=""
 running_count=0
 
@@ -172,7 +250,13 @@ done
 while [ "$running_count" -gt 0 ]; do drain_one; done
 
 failed=$(grep -c . "$WORKTREES_DIR/.failed" 2>/dev/null); failed=${failed:-0}
+mergefail=$(grep -c . "$WORKTREES_DIR/.mergefail" 2>/dev/null); mergefail=${mergefail:-0}
 pushed=$(grep -c . "$WORKTREES_DIR/.pushed" 2>/dev/null); pushed=${pushed:-0}
-log "wave complete: $pushed pushed, $failed failed."
-[ "$failed" -gt 0 ] && log "failed: $(tr '\n' ' ' < "$WORKTREES_DIR/.failed")"
-exit "$failed"
+merged=$(grep -c . "$WORKTREES_DIR/.merged" 2>/dev/null); merged=${merged:-0}
+total_fail=$((failed + mergefail))
+if [ -n "$EPIC_BRANCH" ] && [ "$KEEP_WORKTREES" -ne 1 ]; then
+  git worktree remove --force "$EPIC_WT" >/dev/null 2>&1 || rm -rf "$EPIC_WT"
+fi
+log "wave complete: $pushed pushed, $merged merged, $failed failed, $mergefail merge-conflict."
+[ "$total_fail" -gt 0 ] && log "not integrated: $(tr '\n' ' ' < "$WORKTREES_DIR/.failed") $(tr '\n' ' ' < "$WORKTREES_DIR/.mergefail")"
+exit "$total_fail"

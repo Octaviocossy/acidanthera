@@ -12,7 +12,13 @@ AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 PARALLEL_MAX_CONCURRENCY=3     # issues running at once (each is a full agent process)
 MAX_CHILDREN=12                # hard cap per wave; runner refuses beyond this
 WORKTREES_DIR=.worktrees       # gitignored
-BASE_BRANCH=main               # children cut from main (manual-merge-checkpoint model)
+BASE_BRANCH=main               # the branch the epic integration branch is cut from
+                                # (children branch off the epic branch, not directly off this)
+
+# EPIC_BRANCH is passed per-run by /execute-epic via '--epic <branch>'; not set here.
+
+EPIC_MERGE_FLAGS="--no-ff"     # how each child merges into the epic branch; --no-ff
+                                # keeps child boundaries for clean revert
 
 # Optional acceptance gate run inside each worktree before commit+push (empty = skip here).
 #   Swift : xcodebuild -scheme KeyCount -destination 'platform=macOS' build

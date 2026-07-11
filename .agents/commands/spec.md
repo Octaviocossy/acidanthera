@@ -1,8 +1,9 @@
 # Command: spec
 
 One-shot pipeline: decompose a large spec into an epic + child issues, pause for
-human review, then execute the first wave in parallel. This command **chains**
-`/spec-breakdown` and `/execute-epic`; it does not duplicate their logic.
+human review, then auto-advance every wave into the epic integration branch. This
+command **chains** `/spec-breakdown` and `/execute-epic`; it does not duplicate their
+logic.
 
 `$ARGUMENTS` — spec text or path to a spec file (passed through to `/spec-breakdown`).
 
@@ -38,8 +39,9 @@ Once the user approves, follow `.agents/commands/execute-epic.md` on the epic ju
 created. The `skip confirm` flag is implicit (the review pause in Phase 2 served that
 purpose); do not ask for another confirmation.
 
-Execute through step 9 of `execute-epic.md`. Stop at the merge checkpoint as
-`execute-epic.md` prescribes.
+Execute through step 9 of `execute-epic.md`, which auto-advances all runnable waves in
+one run (the runner merges each child into the epic integration branch as it lands —
+no manual merge checkpoint) and opens one `epic → main` PR at completion.
 
 ## Rules
 

@@ -51,7 +51,7 @@ _None documented yet._
 - Available: `comment-issue` — add a comment to the thread of the GitHub issue for the current branch.
 - Available: `ship-note` — post a ship-note of the executed work to the current branch's issue (does not close it).
 - Available: `spec-breakdown` — decompose a large spec into an epic issue + N child issues with a dependency graph.
-- Available: `execute-epic` — execute an epic's child issues in parallel (one wave/frontier per run), then open PRs.
+- Available: `execute-epic` — execute an epic's child issues in parallel, auto-merging each wave into the epic integration branch, then open one epic PR.
 - Available: `spec` — one-shot: break a spec into an epic + children, then execute them in parallel.
 
 ## GitHub MCP server
@@ -73,8 +73,9 @@ Decompose a large spec into an epic + N child issues and execute them in paralle
 shell runner. Full conventions in `.agents/rules/parallel-orchestration.md`.
 
 **Epic/child model:** An *epic* is a GitHub issue with a child task-list + ` ```waves ` graph
-block. Each *child* is a full-plan issue with `> Epic: #<n>` and `> Depends on: #…` headers.
-Children use branch names `<issue#>-<kebab-title>`; epic branches may be `epic/<slug>`.
+block, backed by a real, long-lived **epic integration branch** `epic/<epic#>-<slug>`. Each
+*child* is a full-plan issue with `> Epic: #<n>` and `> Depends on: #…` headers. Children use
+branch names `<issue#>-<kebab-title>` and branch off the epic branch, not `main` directly.
 
 **Setup (one-time):**
 1. Copy `.agents/parallel.config.example` → `.agents/parallel.config` (gitignored).
@@ -83,12 +84,14 @@ Children use branch names `<issue#>-<kebab-title>`; epic branches may be `epic/<
 
 **Runner:** `.agents/scripts/run-parallel-issues.sh` — one worktree + headless agent per child,
 concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). The runner commits and pushes each
-successful branch; the orchestrating agent opens PRs via MCP. `GITHUB_TOKEN` is never sourced
-by the runner — headless agents have no GitHub access by design.
+successful branch, then (given `--epic <branch>`) auto-merges it into the epic integration
+branch — the orchestrating agent only reads epic-branch state and opens the final PR via MCP.
+`GITHUB_TOKEN` is never sourced by the runner — headless agents have no GitHub access by design.
 
-**Wave flow:** `/execute-epic` runs the current frontier (dependency-satisfied, not-yet-done
-children) in parallel, opens PRs (`Closes #<child>`), ticks the epic task-list, then **stops**
-asking you to merge this wave's PRs before the next wave. Re-running advances (idempotent).
+**Wave flow:** `/execute-epic` creates an epic integration branch `epic/<epic#>-<slug>`, runs
+each runnable wave in turn, and the runner **auto-merges each child branch into the epic
+branch** — waves advance with no manual merge. At completion it opens a single `epic → main`
+PR. Re-running is idempotent (done children are detected from the epic branch).
 
 **Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`.
 Override in `.agents/parallel.config`.
