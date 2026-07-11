@@ -6,7 +6,7 @@
 
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, Stdio},
@@ -70,21 +70,26 @@ fn stop_running(state: &AgentProcessState) {
 }
 
 /// Directories that commonly hold user-installed CLIs but are absent from the minimal PATH a
-/// GUI-launched (Finder/Spotlight) macOS app inherits. `$HOME`-relative entries expand at call
-/// time. Order is best-effort; the inherited PATH is always searched first (see `resolve_command`).
-fn extra_path_dirs() -> Vec<PathBuf> {
+/// GUI-launched (Finder/Spotlight) macOS app inherits. `home` supplies the `$HOME`-relative
+/// entries' prefix (`None` skips them, mirroring a machine with no `$HOME` set). Order is
+/// best-effort; the inherited PATH is always searched first (see `resolve_command_in`).
+fn extra_path_dirs_from(home: Option<&OsStr>) -> Vec<PathBuf> {
     let mut dirs = vec![
         PathBuf::from("/opt/homebrew/bin"),
         PathBuf::from("/opt/homebrew/sbin"),
         PathBuf::from("/usr/local/bin"),
     ];
-    if let Some(home) = env::var_os("HOME") {
+    if let Some(home) = home {
         let home = PathBuf::from(home);
         for rel in [".local/bin", ".cargo/bin", ".bun/bin", ".npm-global/bin", ".volta/bin"] {
             dirs.push(home.join(rel));
         }
     }
     dirs
+}
+
+fn extra_path_dirs() -> Vec<PathBuf> {
+    extra_path_dirs_from(env::var_os("HOME").as_deref())
 }
 
 /// True if `path` is an existing, executable regular file. `metadata` follows symlinks, so a
@@ -106,34 +111,43 @@ fn is_executable_file(path: &Path) -> bool {
     }
 }
 
-/// Resolves a bare `command` name to an absolute executable path, searching the inherited
-/// PATH first, then `extra_path_dirs()`. A `command` that already contains a path separator is
-/// returned unchanged (the caller/`Command` handles it). Returns `None` if nothing matches.
-fn resolve_command(command: &str) -> Option<PathBuf> {
+/// Resolves `command` against an explicit, ordered list of candidate directories, returning the
+/// first existing executable match. A `command` that already contains a path separator is
+/// returned unchanged (the caller/`Command` handles it) without consulting `search_dirs` at all.
+fn resolve_command_in(command: &str, search_dirs: &[PathBuf]) -> Option<PathBuf> {
     if command.contains('/') {
         return Some(PathBuf::from(command));
     }
+    search_dirs.iter().map(|dir| dir.join(command)).find(|candidate| is_executable_file(candidate))
+}
+
+/// Resolves a bare `command` name to an absolute executable path, searching the inherited
+/// PATH first, then `extra_path_dirs()`. Returns `None` if nothing matches.
+fn resolve_command(command: &str) -> Option<PathBuf> {
     let inherited: Vec<PathBuf> = env::var_os("PATH")
         .map(|p| env::split_paths(&p).collect())
         .unwrap_or_default();
-    inherited
-        .into_iter()
-        .chain(extra_path_dirs())
-        .map(|dir| dir.join(command))
-        .find(|candidate| is_executable_file(candidate))
+    let search_dirs: Vec<PathBuf> = inherited.into_iter().chain(extra_path_dirs()).collect();
+    resolve_command_in(command, &search_dirs)
 }
 
-/// The inherited PATH with `extra_path_dirs()` appended (deduped), for the spawned child's env
-/// so the engine's own sub-tools (node, git, …) also resolve under a minimal GUI PATH.
-fn augmented_path() -> OsString {
-    let inherited = env::var_os("PATH").unwrap_or_default();
+/// `inherited` (a `PATH`-style value) with `extra` appended, skipping any directory already
+/// present. Falls back to `inherited` verbatim if the combined list fails to rejoin (e.g. a
+/// directory containing the platform's path separator).
+fn augmented_path_from(inherited: OsString, extra: Vec<PathBuf>) -> OsString {
     let mut dirs: Vec<PathBuf> = env::split_paths(&inherited).collect();
-    for dir in extra_path_dirs() {
+    for dir in extra {
         if !dirs.contains(&dir) {
             dirs.push(dir);
         }
     }
     env::join_paths(dirs).unwrap_or(inherited)
+}
+
+/// The inherited PATH with `extra_path_dirs()` appended (deduped), for the spawned child's env
+/// so the engine's own sub-tools (node, git, …) also resolve under a minimal GUI PATH.
+fn augmented_path() -> OsString {
+    augmented_path_from(env::var_os("PATH").unwrap_or_default(), extra_path_dirs())
 }
 
 /// Reads `reader` line by line, emitting each non-empty line as `event`. When `emit_exit_on_close`
@@ -230,4 +244,223 @@ pub fn agent_stop(state: State<'_, AgentProcessState>) -> AgentProcessResult<()>
     log::info!("agent_stop");
     stop_running(&state);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// A unique temp dir per test, so filesystem-based cases never collide or race.
+    fn temp_dir(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("orbit-agent-{}-{label}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("creates temp dir");
+        dir
+    }
+
+    /// Writes an empty file at `path`; `executable` controls the unix `+x` bits.
+    fn write_fixture(path: &Path, executable: bool) {
+        fs::write(path, "").expect("writes fixture");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = if executable { 0o755 } else { 0o644 };
+            fs::set_permissions(path, fs::Permissions::from_mode(mode)).expect("sets permissions");
+        }
+    }
+
+    #[test]
+    fn is_executable_file_should_accept_only_existing_executable_regular_files() {
+        let dir = temp_dir("is-executable");
+
+        let executable = dir.join("tool");
+        write_fixture(&executable, true);
+        assert!(is_executable_file(&executable));
+
+        #[cfg(unix)]
+        {
+            let not_executable = dir.join("data.txt");
+            write_fixture(&not_executable, false);
+            assert!(!is_executable_file(&not_executable));
+        }
+
+        let missing = dir.join("ghost");
+        assert!(!is_executable_file(&missing));
+
+        let subdir = dir.join("subdir");
+        fs::create_dir_all(&subdir).expect("creates subdir");
+        assert!(!is_executable_file(&subdir));
+
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn is_executable_file_should_reject_a_dangling_symlink() {
+        let dir = temp_dir("dangling-symlink");
+        let link = dir.join("broken-cask");
+        std::os::unix::fs::symlink(dir.join("does-not-exist"), &link).expect("creates symlink");
+
+        assert!(!is_executable_file(&link));
+
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn resolve_command_in_should_return_a_slashed_command_unchanged_without_searching() {
+        // Even a nonexistent search list must not matter — a path-like command bypasses search.
+        let resolved = resolve_command_in("./relative/tool", &[]);
+        assert_eq!(resolved, Some(PathBuf::from("./relative/tool")));
+
+        let resolved = resolve_command_in("/usr/bin/env", &[PathBuf::from("/nonexistent")]);
+        assert_eq!(resolved, Some(PathBuf::from("/usr/bin/env")));
+    }
+
+    #[test]
+    fn resolve_command_in_should_find_a_bare_command_in_the_search_dirs() {
+        let dir = temp_dir("resolve-found");
+        let tool = dir.join("orbit-tool");
+        write_fixture(&tool, true);
+
+        let resolved = resolve_command_in("orbit-tool", &[dir.clone()]);
+
+        assert_eq!(resolved, Some(tool));
+
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn resolve_command_in_should_search_dirs_in_order_and_use_the_first_match() {
+        let first = temp_dir("resolve-order-first");
+        let second = temp_dir("resolve-order-second");
+        write_fixture(&first.join("orbit-tool"), true);
+        write_fixture(&second.join("orbit-tool"), true);
+
+        let resolved = resolve_command_in("orbit-tool", &[first.clone(), second.clone()]);
+
+        assert_eq!(resolved, Some(first.join("orbit-tool")));
+
+        fs::remove_dir_all(&first).expect("cleans up");
+        fs::remove_dir_all(&second).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_command_in_should_skip_a_non_executable_match_and_keep_searching() {
+        let first = temp_dir("resolve-skip-non-exec-first");
+        let second = temp_dir("resolve-skip-non-exec-second");
+        write_fixture(&first.join("orbit-tool"), false);
+        write_fixture(&second.join("orbit-tool"), true);
+
+        let resolved = resolve_command_in("orbit-tool", &[first.clone(), second.clone()]);
+
+        assert_eq!(resolved, Some(second.join("orbit-tool")));
+
+        fs::remove_dir_all(&first).expect("cleans up");
+        fs::remove_dir_all(&second).expect("cleans up");
+    }
+
+    #[test]
+    fn resolve_command_in_should_return_none_when_no_search_dir_has_the_command() {
+        let dir = temp_dir("resolve-missing");
+
+        let resolved = resolve_command_in("orbit-tool-that-does-not-exist", &[dir.clone()]);
+
+        assert_eq!(resolved, None);
+
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn extra_path_dirs_from_should_always_include_the_fixed_macos_dirs() {
+        let dirs = extra_path_dirs_from(None);
+
+        assert!(dirs.contains(&PathBuf::from("/opt/homebrew/bin")));
+        assert!(dirs.contains(&PathBuf::from("/opt/homebrew/sbin")));
+        assert!(dirs.contains(&PathBuf::from("/usr/local/bin")));
+    }
+
+    #[test]
+    fn extra_path_dirs_from_should_skip_home_relative_dirs_when_home_is_none() {
+        let dirs = extra_path_dirs_from(None);
+
+        assert!(!dirs.iter().any(|d| d.ends_with(".cargo/bin")));
+        assert!(!dirs.iter().any(|d| d.ends_with(".local/bin")));
+    }
+
+    #[test]
+    fn extra_path_dirs_from_should_expand_home_relative_dirs_when_home_is_given() {
+        let home = OsString::from("/Users/tester");
+        let dirs = extra_path_dirs_from(Some(&home));
+
+        for rel in [".local/bin", ".cargo/bin", ".bun/bin", ".npm-global/bin", ".volta/bin"] {
+            assert!(dirs.contains(&PathBuf::from("/Users/tester").join(rel)), "missing {rel}");
+        }
+    }
+
+    #[test]
+    fn augmented_path_from_should_append_extra_dirs_not_already_present() {
+        let inherited = OsString::from("/usr/bin:/bin");
+        let extra = vec![PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")];
+
+        let augmented = augmented_path_from(inherited, extra);
+        let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
+
+        assert_eq!(
+            dirs,
+            vec![
+                PathBuf::from("/usr/bin"),
+                PathBuf::from("/bin"),
+                PathBuf::from("/opt/homebrew/bin"),
+                PathBuf::from("/usr/local/bin"),
+            ]
+        );
+    }
+
+    #[test]
+    fn augmented_path_from_should_not_duplicate_a_dir_already_on_the_inherited_path() {
+        let inherited = OsString::from("/usr/bin:/opt/homebrew/bin");
+        let extra = vec![PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")];
+
+        let augmented = augmented_path_from(inherited, extra);
+        let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
+
+        assert_eq!(
+            dirs,
+            vec![
+                PathBuf::from("/usr/bin"),
+                PathBuf::from("/opt/homebrew/bin"),
+                PathBuf::from("/usr/local/bin"),
+            ]
+        );
+    }
+
+    #[test]
+    fn augmented_path_from_should_handle_an_empty_inherited_path() {
+        let augmented = augmented_path_from(OsString::new(), vec![PathBuf::from("/opt/homebrew/bin")]);
+
+        // `env::split_paths("")` yields one empty component (matches the platform's own
+        // parsing of an empty `PATH`), so the extra dir is appended after it, not instead of it.
+        let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
+        assert_eq!(dirs, vec![PathBuf::from(""), PathBuf::from("/opt/homebrew/bin")]);
+    }
+
+    #[test]
+    fn command_not_found_error_should_report_the_missing_command_and_search_locations() {
+        let error = AgentProcessError::CommandNotFound { command: "ghost-cli".into() };
+
+        let message = error.to_string();
+        assert!(message.contains("ghost-cli"));
+        assert!(message.contains("PATH"));
+    }
+
+    #[test]
+    fn agent_process_error_should_serialize_as_a_plain_string() {
+        let error = AgentProcessError::StdinClosed;
+
+        let json = serde_json::to_string(&error).expect("serializes");
+
+        assert_eq!(json, "\"the running agent process was spawned with its stdin closed\"");
+    }
 }
