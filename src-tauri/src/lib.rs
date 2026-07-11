@@ -1,4 +1,5 @@
 mod agent;
+mod chats;
 mod logging;
 mod settings;
 mod vault;
@@ -28,6 +29,10 @@ pub fn run() {
             vault::create_directory,
             settings::read_settings,
             settings::write_settings,
+            chats::save_chat,
+            chats::read_chat,
+            chats::list_chats,
+            chats::delete_chat,
             agent::agent_spawn,
             agent::agent_send,
             agent::agent_stop,

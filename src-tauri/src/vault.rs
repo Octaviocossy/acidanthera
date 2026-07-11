@@ -78,6 +78,15 @@ fn current_root(state: &VaultState) -> VaultResult<PathBuf> {
     lock(state).root.clone().ok_or(VaultError::NoVaultOpen)
 }
 
+impl VaultState {
+    /// The currently open vault root, if any. Lets sibling stores (e.g. the chat store,
+    /// `chats.rs`) resolve paths against the *same* root the vault commands use, without
+    /// exposing the private `VaultInner`/`lock`.
+    pub fn root(&self) -> Option<PathBuf> {
+        lock(self).root.clone()
+    }
+}
+
 /// Resolves `target` to a canonical path guaranteed to live inside `root`, rejecting any
 /// traversal outside it (`..` segments, symlinks, or an absolute path from elsewhere).
 fn guarded_path(root: &Path, target: &str) -> VaultResult<PathBuf> {
