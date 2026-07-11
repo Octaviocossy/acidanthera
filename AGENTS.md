@@ -90,11 +90,12 @@ branch — the orchestrating agent only reads epic-branch state and opens the fi
 
 **Wave flow:** `/execute-epic` creates an epic integration branch `epic/<epic#>-<slug>`, runs
 each runnable wave in turn, and the runner **auto-merges each child branch into the epic
-branch** — waves advance with no manual merge. At completion it opens a single `epic → main`
-PR. Re-running is idempotent (done children are detected from the epic branch).
+branch** — waves advance with no manual merge. Each integrated child issue is **closed** and
+its branch **deleted** (opt out with `KEEP_CHILD_BRANCHES=1`). At completion it opens a single
+`epic → main` PR. Re-running is idempotent (done children are detected from the epic branch).
 
-**Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`.
-Override in `.agents/parallel.config`.
+**Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`,
+`KEEP_CHILD_BRANCHES=0`. Override in `.agents/parallel.config`.
 
 ## Code Structure
 <!-- TODO: document the framework, router style, key directories, and any import conventions -->

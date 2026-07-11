@@ -103,7 +103,9 @@ Repeat until no progress:
 6. **For each merged child:** post a ship-note comment to the child issue
    (`mcp__github__add_issue_comment`, mirroring `/ship-note`: Summary, Files changed
    from `.worktrees/<branch>.log`, Validation, and the `#<child> → <EPIC_BRANCH>`
-   integration reference), then tick the epic task-list item
+   integration reference); **close the child issue** (`mcp__github__issue_write`,
+   `method: "update"`, `state: "closed"`, `state_reason: "completed"`) — the runner has
+   already deleted its branch; then tick the epic task-list item
    (`mcp__github__issue_write`, `method: "update"`, `- [ ] #<child>` → `- [x] #<child>`,
    preserving the rest of the body). Mark the child **done** in local state.
 7. **For each mergefail/failed child:** post a failure comment
@@ -115,6 +117,14 @@ Repeat until no progress:
 
 ### 9 — Open the single epic PR and post the final summary
 
+- **Reconcile done children (self-heal).** For every child classified **done**, make sure
+  its GitHub issue is closed: fetch the still-open set once with
+  `mcp__github__list_issues { owner, repo, state:"open" }` and, for any done child still in
+  it, `mcp__github__issue_write` (`method:"update"`, `state:"closed"`,
+  `state_reason:"completed"`). This catches children merged in a prior/interrupted run or
+  before per-child closing existed. **Do not** touch child branches here — branch lifecycle
+  is the runner's (it honors `KEEP_CHILD_BRANCHES`). **Never** close the **epic** issue —
+  it closes when the `epic → main` PR merges.
 - If **all** children are done: ensure a PR exists for the epic branch —
   `mcp__github__list_pull_requests { head:"<owner>:<EPIC_BRANCH>", state:"all" }`; if
   none, `mcp__github__create_pull_request { owner, repo, head:"<EPIC_BRANCH>",
@@ -141,3 +151,7 @@ Repeat until no progress:
 - `dry-run` stops after printing the plan (step 7); no runner call, no GitHub writes.
 - One `epic → main` PR at completion — no per-child PRs. Per-child traceability comes
   from ship-note comments and epic task-list ticking.
+- On clean integration each child is **closed** (agent, `issue_write` → `state:"closed"`,
+  `state_reason:"completed"`) and its **branch deleted** (runner, unless
+  `KEEP_CHILD_BRANCHES=1`). The **epic** issue and the **epic branch** are never
+  closed/deleted by this flow — the epic closes via the `epic → main` PR's `Closes #<epic>`.

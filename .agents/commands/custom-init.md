@@ -760,11 +760,12 @@ branch — the orchestrating agent only reads epic-branch state and opens the fi
 
 **Wave flow:** `/execute-epic` creates an epic integration branch `epic/<epic#>-<slug>`, runs
 each runnable wave in turn, and the runner **auto-merges each child branch into the epic
-branch** — waves advance with no manual merge. At completion it opens a single `epic → main`
-PR. Re-running is idempotent (done children are detected from the epic branch).
+branch** — waves advance with no manual merge. Each integrated child issue is **closed** and
+its branch **deleted** (opt out with `KEEP_CHILD_BRANCHES=1`). At completion it opens a single
+`epic → main` PR. Re-running is idempotent (done children are detected from the epic branch).
 
-**Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`.
-Override in `.agents/parallel.config`.
+**Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`,
+`KEEP_CHILD_BRANCHES=0`. Override in `.agents/parallel.config`.
 
 ## Code Structure
 <!-- TODO: document the framework, router style, key directories, and any import conventions -->
@@ -1646,6 +1647,10 @@ one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
   `<issue> <branch>` to `.worktrees/.merged` on success, or `<issue>` to
   `.worktrees/.mergefail` on a merge conflict (the child branch stays pushed; only the
   merge failed). A merge conflict counts as a failure for this run.
+- When `--epic` is set and a child integrates cleanly, the runner then **deletes that
+  child's branch from origin** (`git push origin --delete`, unless
+  `KEEP_CHILD_BRANCHES=1`) — the child is fully contained in the epic branch. A merge
+  conflict never deletes the branch (it stays pushed for a human to resolve).
 - Exit code = number of `.failed` + `.mergefail` entries (0 = all succeeded and, when
   `--epic` is set, integrated).
 
@@ -1689,6 +1694,7 @@ via MCP in the normal session.
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
 | `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
+| `KEEP_CHILD_BRANCHES` | 0 | 1 = keep a child's branch after it merges into the epic branch (default deletes it from origin) |
 
 Worktrees are removed on success (unless `KEEP_WORKTREES=1`) and retained on failure so
 the agent log can be inspected at `.worktrees/<branch>.log`. The epic branch itself is
@@ -1729,11 +1735,14 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 Children branch off the **epic integration branch** (not `main` directly — see Epic
 Integration Branch above). `/execute-epic` runs each runnable wave in turn; the runner
 auto-merges every successful child into the epic branch as soon as its own push
-succeeds, so the next wave's frontier becomes runnable with **no manual merge step**.
-A single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
-integrated or blocked, then opens **one `epic → main` PR**. Re-running is idempotent:
-done children are detected from the epic branch's commit history, so only the
-remaining frontier runs.
+succeeds, then **deletes that child's now-redundant branch** (unless
+`KEEP_CHILD_BRANCHES=1`), so the next wave's frontier becomes runnable with **no manual
+merge step**. Per child, `/execute-epic` also **closes the integrated child issue**. A
+single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
+integrated or blocked, then opens **one `epic → main` PR**. The **epic** issue is closed
+by that PR's `Closes #<epic>`; neither the epic issue nor the epic branch is
+closed/deleted mid-flow. Re-running is idempotent: done children are detected from the
+epic branch's commit history, so only the remaining frontier runs.
 
 ### Documented opt-ins (NOT built — describe trade-offs only)
 
@@ -1771,6 +1780,8 @@ remaining frontier runs.
 #                   single writer of the epic branch). A merge conflict is recorded in
 #                   .mergefail (the child branch stays pushed, just not integrated) and
 #                   counts as a failure for this run's exit status.
+#                   On a clean merge the child's branch is deleted from origin (unless
+#                   KEEP_CHILD_BRANCHES=1) — it is fully contained in the epic branch.
 #
 # Outputs: .pushed (issue+branch per pushed child), .failed (issue per agent/push
 # failure), .merged (issue+branch per child merged into the epic branch), .mergefail
@@ -1792,6 +1803,7 @@ BASE_BRANCH=${BASE_BRANCH:-main}
 ACCEPTANCE_CMD=${ACCEPTANCE_CMD:-}        # empty = skip acceptance gate in the runner
 KEEP_WORKTREES=${KEEP_WORKTREES:-0}
 AGENT_TIMEOUT=${AGENT_TIMEOUT:-1800}      # seconds per issue; 0 disables
+KEEP_CHILD_BRANCHES=${KEEP_CHILD_BRANCHES:-0}  # 1 = keep a child's branch after it merges into the epic branch
 
 # shellcheck disable=SC1091
 [ -f "$PROJECT_ROOT/.agents/parallel.config" ] && . "$PROJECT_ROOT/.agents/parallel.config"
@@ -1954,6 +1966,14 @@ EOF
       echo "$_issue $_branch" >> "$WORKTREES_DIR/.merged"
       log "[#$_issue] OK: merged $_branch into $EPIC_BRANCH"
       release_lock
+      # child is fully contained in the epic branch now; drop its branch unless asked to keep it.
+      if [ "$KEEP_CHILD_BRANCHES" -ne 1 ]; then
+        if git push origin --delete "$_branch" >>"$_logf" 2>&1; then
+          log "[#$_issue] deleted merged branch $_branch (remote)"
+        else
+          log "[#$_issue] note: could not delete branch $_branch (already gone?) — see $_logf"
+        fi
+      fi
     else
       git -C "$EPIC_WT" merge --abort >>"$_logf" 2>&1 || true
       git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1 || true
@@ -2049,6 +2069,8 @@ ACCEPTANCE_CMD=""
 
 KEEP_WORKTREES=0               # 1 = keep worktrees on success (debug)
 AGENT_TIMEOUT=1800             # per-issue wall-clock cap (seconds); 0 disables
+KEEP_CHILD_BRANCHES=0          # 1 = keep a child's branch after it merges into the epic
+                                # branch (default 0 deletes the merged child branch from origin)
 ```
 
 ---
@@ -2322,7 +2344,9 @@ Repeat until no progress:
 6. **For each merged child:** post a ship-note comment to the child issue
    (`mcp__github__add_issue_comment`, mirroring `/ship-note`: Summary, Files changed
    from `.worktrees/<branch>.log`, Validation, and the `#<child> → <EPIC_BRANCH>`
-   integration reference), then tick the epic task-list item
+   integration reference); **close the child issue** (`mcp__github__issue_write`,
+   `method: "update"`, `state: "closed"`, `state_reason: "completed"`) — the runner has
+   already deleted its branch; then tick the epic task-list item
    (`mcp__github__issue_write`, `method: "update"`, `- [ ] #<child>` → `- [x] #<child>`,
    preserving the rest of the body). Mark the child **done** in local state.
 7. **For each mergefail/failed child:** post a failure comment
@@ -2334,6 +2358,14 @@ Repeat until no progress:
 
 ### 9 — Open the single epic PR and post the final summary
 
+- **Reconcile done children (self-heal).** For every child classified **done**, make sure
+  its GitHub issue is closed: fetch the still-open set once with
+  `mcp__github__list_issues { owner, repo, state:"open" }` and, for any done child still in
+  it, `mcp__github__issue_write` (`method:"update"`, `state:"closed"`,
+  `state_reason:"completed"`). This catches children merged in a prior/interrupted run or
+  before per-child closing existed. **Do not** touch child branches here — branch lifecycle
+  is the runner's (it honors `KEEP_CHILD_BRANCHES`). **Never** close the **epic** issue —
+  it closes when the `epic → main` PR merges.
 - If **all** children are done: ensure a PR exists for the epic branch —
   `mcp__github__list_pull_requests { head:"<owner>:<EPIC_BRANCH>", state:"all" }`; if
   none, `mcp__github__create_pull_request { owner, repo, head:"<EPIC_BRANCH>",
@@ -2360,6 +2392,10 @@ Repeat until no progress:
 - `dry-run` stops after printing the plan (step 7); no runner call, no GitHub writes.
 - One `epic → main` PR at completion — no per-child PRs. Per-child traceability comes
   from ship-note comments and epic task-list ticking.
+- On clean integration each child is **closed** (agent, `issue_write` → `state:"closed"`,
+  `state_reason:"completed"`) and its **branch deleted** (runner, unless
+  `KEEP_CHILD_BRANCHES=1`). The **epic** issue and the **epic branch** are never
+  closed/deleted by this flow — the epic closes via the `epic → main` PR's `Closes #<epic>`.
 ````
 
 ---

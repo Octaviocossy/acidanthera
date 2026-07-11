@@ -18,6 +18,8 @@
 #                   single writer of the epic branch). A merge conflict is recorded in
 #                   .mergefail (the child branch stays pushed, just not integrated) and
 #                   counts as a failure for this run's exit status.
+#                   On a clean merge the child's branch is deleted from origin (unless
+#                   KEEP_CHILD_BRANCHES=1) — it is fully contained in the epic branch.
 #
 # Outputs: .pushed (issue+branch per pushed child), .failed (issue per agent/push
 # failure), .merged (issue+branch per child merged into the epic branch), .mergefail
@@ -39,6 +41,7 @@ BASE_BRANCH=${BASE_BRANCH:-main}
 ACCEPTANCE_CMD=${ACCEPTANCE_CMD:-}        # empty = skip acceptance gate in the runner
 KEEP_WORKTREES=${KEEP_WORKTREES:-0}
 AGENT_TIMEOUT=${AGENT_TIMEOUT:-1800}      # seconds per issue; 0 disables
+KEEP_CHILD_BRANCHES=${KEEP_CHILD_BRANCHES:-0}  # 1 = keep a child's branch after it merges into the epic branch
 
 # shellcheck disable=SC1091
 [ -f "$PROJECT_ROOT/.agents/parallel.config" ] && . "$PROJECT_ROOT/.agents/parallel.config"
@@ -201,6 +204,14 @@ EOF
       echo "$_issue $_branch" >> "$WORKTREES_DIR/.merged"
       log "[#$_issue] OK: merged $_branch into $EPIC_BRANCH"
       release_lock
+      # child is fully contained in the epic branch now; drop its branch unless asked to keep it.
+      if [ "$KEEP_CHILD_BRANCHES" -ne 1 ]; then
+        if git push origin --delete "$_branch" >>"$_logf" 2>&1; then
+          log "[#$_issue] deleted merged branch $_branch (remote)"
+        else
+          log "[#$_issue] note: could not delete branch $_branch (already gone?) — see $_logf"
+        fi
+      fi
     else
       git -C "$EPIC_WT" merge --abort >>"$_logf" 2>&1 || true
       git -C "$EPIC_WT" reset --hard "origin/$EPIC_BRANCH" >>"$_logf" 2>&1 || true

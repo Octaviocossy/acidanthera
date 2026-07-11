@@ -176,6 +176,10 @@ one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
   `<issue> <branch>` to `.worktrees/.merged` on success, or `<issue>` to
   `.worktrees/.mergefail` on a merge conflict (the child branch stays pushed; only the
   merge failed). A merge conflict counts as a failure for this run.
+- When `--epic` is set and a child integrates cleanly, the runner then **deletes that
+  child's branch from origin** (`git push origin --delete`, unless
+  `KEEP_CHILD_BRANCHES=1`) — the child is fully contained in the epic branch. A merge
+  conflict never deletes the branch (it stays pushed for a human to resolve).
 - Exit code = number of `.failed` + `.mergefail` entries (0 = all succeeded and, when
   `--epic` is set, integrated).
 
@@ -219,6 +223,7 @@ via MCP in the normal session.
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
 | `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
+| `KEEP_CHILD_BRANCHES` | 0 | 1 = keep a child's branch after it merges into the epic branch (default deletes it from origin) |
 
 Worktrees are removed on success (unless `KEEP_WORKTREES=1`) and retained on failure so
 the agent log can be inspected at `.worktrees/<branch>.log`. The epic branch itself is
@@ -259,11 +264,14 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 Children branch off the **epic integration branch** (not `main` directly — see Epic
 Integration Branch above). `/execute-epic` runs each runnable wave in turn; the runner
 auto-merges every successful child into the epic branch as soon as its own push
-succeeds, so the next wave's frontier becomes runnable with **no manual merge step**.
-A single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
-integrated or blocked, then opens **one `epic → main` PR**. Re-running is idempotent:
-done children are detected from the epic branch's commit history, so only the
-remaining frontier runs.
+succeeds, then **deletes that child's now-redundant branch** (unless
+`KEEP_CHILD_BRANCHES=1`), so the next wave's frontier becomes runnable with **no manual
+merge step**. Per child, `/execute-epic` also **closes the integrated child issue**. A
+single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
+integrated or blocked, then opens **one `epic → main` PR**. The **epic** issue is closed
+by that PR's `Closes #<epic>`; neither the epic issue nor the epic branch is
+closed/deleted mid-flow. Re-running is idempotent: done children are detected from the
+epic branch's commit history, so only the remaining frontier runs.
 
 ### Documented opt-ins (NOT built — describe trade-offs only)
 

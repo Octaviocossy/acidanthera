@@ -27,3 +27,5 @@ ACCEPTANCE_CMD=""
 
 KEEP_WORKTREES=0               # 1 = keep worktrees on success (debug)
 AGENT_TIMEOUT=1800             # per-issue wall-clock cap (seconds); 0 disables
+KEEP_CHILD_BRANCHES=0          # 1 = keep a child's branch after it merges into the epic
+                                # branch (default 0 deletes the merged child branch from origin)
