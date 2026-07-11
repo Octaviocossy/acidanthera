@@ -224,8 +224,12 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
                 children: Some(build_tree_at(&path, false)?),
             });
         } else if path.extension().is_some_and(|ext| ext == "md") {
+            let display_name = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or(name);
             entries.push(VaultEntry {
-                name,
+                name: display_name,
                 path: path.to_string_lossy().into_owned(),
                 is_dir: false,
                 children: None,
@@ -407,7 +411,7 @@ mod tests {
         let entries = build_tree(&root).expect("builds tree");
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, ["note.md"]);
+        assert_eq!(names, ["note"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -421,7 +425,7 @@ mod tests {
         let entries = build_tree(&root).expect("builds tree");
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, ["z-dir", "a-note.md"]);
+        assert_eq!(names, ["z-dir", "a-note"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -475,7 +479,7 @@ mod tests {
         // The new note is a real tree row, not just a file on disk.
         let entries = build_tree(&root).expect("builds tree");
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].name, "ideas.md");
+        assert_eq!(entries[0].name, "ideas");
         assert!(!entries[0].is_dir);
 
         fs::remove_dir_all(&root).expect("cleans up");
@@ -580,7 +584,7 @@ mod tests {
 
         // The agent-context pair is for the headless engines, not sidebar navigation (#50).
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, ["note.md"]);
+        assert_eq!(names, ["note"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -595,7 +599,7 @@ mod tests {
 
         let sub = entries.iter().find(|e| e.name == "sub").expect("keeps the subdirectory");
         let sub_names: Vec<&str> = sub.children.as_ref().expect("has children").iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(sub_names, ["AGENTS.md"]);
+        assert_eq!(sub_names, ["AGENTS"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
