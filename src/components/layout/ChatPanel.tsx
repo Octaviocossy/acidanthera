@@ -3,6 +3,7 @@ import { ChatInput } from '@/components/ai/ChatInput';
 import { ChatMessage } from '@/components/ai/ChatMessage';
 import { ThinkingIndicator } from '@/components/ai/ThinkingIndicator';
 import { ToolChip, type ToolChipStatus } from '@/components/ai/ToolChip';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { type ChatItem, type ChatToolCallStatus, useChatStore } from '@/stores/chat-store';
@@ -40,6 +41,7 @@ export function ChatPanel() {
   const items = useChatStore((state) => state.items);
   const turnActive = useChatStore((state) => state.turnActive);
   const sendMessage = useChatStore((state) => state.sendMessage);
+  const newChat = useChatStore((state) => state.newChat);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,9 +53,14 @@ export function ChatPanel() {
   return (
     <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-bg', isActive ? 'border-border-active' : 'border-border-hairline')} aria-label="AI chat">
       {/* No header chrome (#39), and the engine selector is gone — the engine is chosen only in
-          Settings now. This empty band still reserves the FAB's footprint (`--rail-fab` + inset)
-          so the FAB, floating top-right over the panel, never overlaps the transcript below. */}
-      <div className="h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0" />
+          Settings now. This band reserves the FAB's footprint (`--rail-fab` + inset) so the FAB,
+          floating top-right over the panel, never overlaps the transcript below; the left-aligned
+          "New chat" control starts a fresh thread (the prior one is auto-saved to `.orbit/chats/`). */}
+      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center px-3">
+        <Button variant="quiet" size="sm" className="uppercase tracking-caps" onClick={newChat}>
+          New chat
+        </Button>
+      </div>
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="divide-y divide-border-hairline">
