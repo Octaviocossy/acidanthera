@@ -12,6 +12,10 @@
 - Read `.agents/ubiquitous-language.md` before writing or reviewing any code that touches domain entities, type names, or data contracts.
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
 
+## Testing
+- Test runner: Vitest, configured in `vite.config.ts` (`test` block) — no separate `vitest.config.ts`.
+- Full conventions (what to test, file placement, harness usage) are in `.agents/rules/testing.md`. Read it before writing or reviewing tests.
+
 ## Workspace
 - Package manager: pnpm @ 10 (unpinned — no `packageManager` field in `package.json`)
 - Node: >=18 (required by Vite 7 / React 19; no `engines` field pinned)
@@ -24,7 +28,7 @@
 - Build: `pnpm build`
 - Lint: `pnpm lint`
 - Type check: `pnpm build` (the only `tsc` invocation is inside `build`)
-- Test: _none configured yet — no test runner installed_
+- Test: `pnpm test` (Vitest, run once; `pnpm test:watch` for watch mode, `pnpm coverage` for a v8 coverage report)
 - Format: `pnpm format`
 - Check (lint+format): `pnpm check`
 
