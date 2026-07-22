@@ -3,13 +3,15 @@ import type { EditorBuffer } from '@/stores/editor-store';
 
 interface EditorTabsProps {
   buffers: readonly EditorBuffer[];
-  activeBufferId: string;
+  activeBufferId: string | null;
   onActivate: (bufferId: string) => void;
   onClose: (bufferId: string) => void;
 }
 
 /** Accessible session-buffer navigation, kept separate from the mounted editor views. */
 export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: EditorTabsProps) {
+  if (buffers.length === 0) return null;
+
   return (
     <div role="tablist" aria-label="Open files" className="flex shrink-0 overflow-x-auto border-b border-border-hairline bg-surface">
       {buffers.map((buffer) => {

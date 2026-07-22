@@ -3,17 +3,17 @@ import { Button } from '@/components/ui/button';
 import type { EditorBuffer } from '@/stores/editor-store';
 
 interface CloseBufferDialogProps {
-  buffer: EditorBuffer;
+  buffer: EditorBuffer | null;
   onSave: () => Promise<boolean>;
   onDiscard: () => void;
   onCancel: () => void;
 }
 
-/** Guards closing unsaved editor buffers without conflating saved and scratch behavior. */
+/** Guards closing a dirty editor buffer without losing unsaved changes. */
 export function CloseBufferDialog({ buffer, onSave, onDiscard, onCancel }: CloseBufferDialogProps) {
   const [saving, setSaving] = useState(false);
   const titleId = useId();
-  const savedBuffer = buffer.filePath !== null;
+  if (buffer === null) return null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -38,11 +38,9 @@ export function CloseBufferDialog({ buffer, onSave, onDiscard, onCancel }: Close
           <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
             Discard
           </Button>
-          {savedBuffer && (
-            <Button variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          )}
+          <Button variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
         </div>
       </div>
     </div>

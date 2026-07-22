@@ -30,4 +30,10 @@ describe('EditorTabs', () => {
     expect(onActivate).toHaveBeenCalledWith('two');
     expect(onClose).toHaveBeenCalledWith('two');
   });
+
+  it('renders nothing without open buffers', () => {
+    render(<EditorTabs buffers={[]} activeBufferId={null} onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
 });

@@ -14,7 +14,7 @@ export function Viewer() {
   const isActive = useAppStore((state) => state.activeRegion === 'viewer');
   const buffers = useEditorStore((state) => state.buffers);
   const activeBufferId = useEditorStore((state) => state.activeBufferId);
-  const vimMode = useEditorStore((state) => activeEditorBuffer(state).vimMode);
+  const vimMode = useEditorStore((state) => activeEditorBuffer(state)?.vimMode);
   const activateBuffer = useEditorStore((state) => state.activateBuffer);
   const closeBuffer = useEditorStore((state) => state.closeBuffer);
   const completeSaveRequest = useEditorStore((state) => state.completeSaveRequest);
@@ -34,7 +34,6 @@ export function Viewer() {
   const saveAndClose = async () => {
     if (closingBuffer === undefined) return false;
     const request = createEditorSaveRequest(closingBuffer);
-    if (request === undefined) return false;
 
     try {
       await saveBuffer(request);
@@ -54,24 +53,30 @@ export function Viewer() {
     <main aria-label="Editor" className={cn('relative flex h-full flex-1 flex-col overflow-hidden border-t-2 bg-bg', isActive ? 'border-border-active' : 'border-transparent')}>
       <EditorTabs buffers={buffers} activeBufferId={activeBufferId} onActivate={activateBuffer} onClose={requestClose} />
       <div className="min-h-0 flex-1">
-        {buffers.map((buffer) => (
-          <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />
-        ))}
+        {buffers.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <span className="font-sans text-display text-text-faint tracking-display">ORBIT</span>
+            <span className="font-mono text-text-dim text-xs">Ctrl-w f to open a note</span>
+          </div>
+        ) : (
+          buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)
+        )}
       </div>
-      <div className="pointer-events-none absolute right-3 bottom-3">
-        <Badge tone="muted">{vimMode}</Badge>
-      </div>
-      {closingBuffer !== undefined && (
-        <CloseBufferDialog
-          buffer={closingBuffer}
-          onSave={saveAndClose}
-          onDiscard={() => {
-            closeBuffer(closingBuffer.id);
-            setClosingBufferId(null);
-          }}
-          onCancel={() => setClosingBufferId(null)}
-        />
+      {vimMode !== undefined && (
+        <div className="pointer-events-none absolute right-3 bottom-3">
+          <Badge tone="muted">{vimMode}</Badge>
+        </div>
       )}
+      <CloseBufferDialog
+        buffer={closingBuffer ?? null}
+        onSave={saveAndClose}
+        onDiscard={() => {
+          if (closingBuffer === undefined) return;
+          closeBuffer(closingBuffer.id);
+          setClosingBufferId(null);
+        }}
+        onCancel={() => setClosingBufferId(null)}
+      />
     </main>
   );
 }
