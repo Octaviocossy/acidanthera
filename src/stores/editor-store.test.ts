@@ -76,3 +76,25 @@ describe('requestSave', () => {
     expect(useEditorStore.getState().saveRequests.map((request) => request.filePath)).toEqual(['/vault/one.md', '/vault/two.md']);
   });
 });
+
+describe('closeBuffer', () => {
+  it('activates the next buffer when closing the active one', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = useEditorStore.getState().activeBufferId;
+    store.openFile('/vault/two.md', 'two');
+    const two = useEditorStore.getState().activeBufferId;
+    store.activateBuffer(one);
+
+    store.closeBuffer(one);
+
+    expect(useEditorStore.getState()).toMatchObject({ activeBufferId: two });
+    expect(useEditorStore.getState().buffers.map((buffer) => buffer.id)).not.toContain(one);
+  });
+
+  it('replaces the final buffer with a clean scratch buffer', () => {
+    useEditorStore.getState().closeBuffer('scratch-test');
+
+    expect(useEditorStore.getState().buffers).toEqual([expect.objectContaining({ filePath: null, dirty: false, title: 'Untitled' })]);
+  });
+});

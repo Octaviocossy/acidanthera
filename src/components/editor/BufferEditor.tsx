@@ -28,7 +28,7 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
   );
 
   return (
-    <div className={cn('h-full min-h-0', active ? 'block' : 'hidden')}>
+    <div id={`editor-buffer-${buffer.id}`} role="tabpanel" className={cn('h-full min-h-0', active ? 'block' : 'hidden')}>
       <CodeMirror
         className="h-full"
         value={buffer.content}
