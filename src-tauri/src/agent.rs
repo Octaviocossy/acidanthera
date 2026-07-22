@@ -81,7 +81,13 @@ fn extra_path_dirs_from(home: Option<&OsStr>) -> Vec<PathBuf> {
     ];
     if let Some(home) = home {
         let home = PathBuf::from(home);
-        for rel in [".local/bin", ".cargo/bin", ".bun/bin", ".npm-global/bin", ".volta/bin"] {
+        for rel in [
+            ".local/bin",
+            ".cargo/bin",
+            ".bun/bin",
+            ".npm-global/bin",
+            ".volta/bin",
+        ] {
             dirs.push(home.join(rel));
         }
     }
@@ -118,7 +124,10 @@ fn resolve_command_in(command: &str, search_dirs: &[PathBuf]) -> Option<PathBuf>
     if command.contains('/') {
         return Some(PathBuf::from(command));
     }
-    search_dirs.iter().map(|dir| dir.join(command)).find(|candidate| is_executable_file(candidate))
+    search_dirs
+        .iter()
+        .map(|dir| dir.join(command))
+        .find(|candidate| is_executable_file(candidate))
 }
 
 /// Resolves a bare `command` name to an absolute executable path, searching the inherited
@@ -184,12 +193,16 @@ pub fn agent_spawn(
     app: AppHandle,
     state: State<'_, AgentProcessState>,
 ) -> AgentProcessResult<()> {
-    log::info!("agent_spawn: command={command} args={args:?} cwd={cwd} keep_stdin_open={keep_stdin_open}");
+    log::info!(
+        "agent_spawn: command={command} args={args:?} cwd={cwd} keep_stdin_open={keep_stdin_open}"
+    );
     (|| {
         stop_running(&state);
 
-        let resolved = resolve_command(&command)
-            .ok_or_else(|| AgentProcessError::CommandNotFound { command: command.clone() })?;
+        let resolved =
+            resolve_command(&command).ok_or_else(|| AgentProcessError::CommandNotFound {
+                command: command.clone(),
+            })?;
 
         let mut child = Command::new(&resolved)
             .args(&args)
@@ -200,9 +213,9 @@ pub fn agent_spawn(
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => {
-                    AgentProcessError::CommandNotFound { command: command.clone() }
-                }
+                std::io::ErrorKind::NotFound => AgentProcessError::CommandNotFound {
+                    command: command.clone(),
+                },
                 _ => AgentProcessError::Io(e),
             })?;
 
@@ -230,7 +243,10 @@ pub fn agent_send(input: String, state: State<'_, AgentProcessState>) -> AgentPr
     (|| {
         let mut guard = lock(&state);
         let running = guard.as_mut().ok_or(AgentProcessError::NotRunning)?;
-        let stdin = running.stdin.as_mut().ok_or(AgentProcessError::StdinClosed)?;
+        let stdin = running
+            .stdin
+            .as_mut()
+            .ok_or(AgentProcessError::StdinClosed)?;
         writeln!(stdin, "{input}")?;
         stdin.flush()?;
         Ok(())
@@ -323,7 +339,7 @@ mod tests {
         let tool = dir.join("orbit-tool");
         write_fixture(&tool, true);
 
-        let resolved = resolve_command_in("orbit-tool", &[dir.clone()]);
+        let resolved = resolve_command_in("orbit-tool", std::slice::from_ref(&dir));
 
         assert_eq!(resolved, Some(tool));
 
@@ -365,7 +381,8 @@ mod tests {
     fn resolve_command_in_should_return_none_when_no_search_dir_has_the_command() {
         let dir = temp_dir("resolve-missing");
 
-        let resolved = resolve_command_in("orbit-tool-that-does-not-exist", &[dir.clone()]);
+        let resolved =
+            resolve_command_in("orbit-tool-that-does-not-exist", std::slice::from_ref(&dir));
 
         assert_eq!(resolved, None);
 
@@ -394,15 +411,27 @@ mod tests {
         let home = OsString::from("/Users/tester");
         let dirs = extra_path_dirs_from(Some(&home));
 
-        for rel in [".local/bin", ".cargo/bin", ".bun/bin", ".npm-global/bin", ".volta/bin"] {
-            assert!(dirs.contains(&PathBuf::from("/Users/tester").join(rel)), "missing {rel}");
+        for rel in [
+            ".local/bin",
+            ".cargo/bin",
+            ".bun/bin",
+            ".npm-global/bin",
+            ".volta/bin",
+        ] {
+            assert!(
+                dirs.contains(&PathBuf::from("/Users/tester").join(rel)),
+                "missing {rel}"
+            );
         }
     }
 
     #[test]
     fn augmented_path_from_should_append_extra_dirs_not_already_present() {
         let inherited = OsString::from("/usr/bin:/bin");
-        let extra = vec![PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")];
+        let extra = vec![
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+        ];
 
         let augmented = augmented_path_from(inherited, extra);
         let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
@@ -421,7 +450,10 @@ mod tests {
     #[test]
     fn augmented_path_from_should_not_duplicate_a_dir_already_on_the_inherited_path() {
         let inherited = OsString::from("/usr/bin:/opt/homebrew/bin");
-        let extra = vec![PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")];
+        let extra = vec![
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+        ];
 
         let augmented = augmented_path_from(inherited, extra);
         let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
@@ -438,17 +470,23 @@ mod tests {
 
     #[test]
     fn augmented_path_from_should_handle_an_empty_inherited_path() {
-        let augmented = augmented_path_from(OsString::new(), vec![PathBuf::from("/opt/homebrew/bin")]);
+        let augmented =
+            augmented_path_from(OsString::new(), vec![PathBuf::from("/opt/homebrew/bin")]);
 
         // `env::split_paths("")` yields one empty component (matches the platform's own
         // parsing of an empty `PATH`), so the extra dir is appended after it, not instead of it.
         let dirs: Vec<PathBuf> = env::split_paths(&augmented).collect();
-        assert_eq!(dirs, vec![PathBuf::from(""), PathBuf::from("/opt/homebrew/bin")]);
+        assert_eq!(
+            dirs,
+            vec![PathBuf::from(""), PathBuf::from("/opt/homebrew/bin")]
+        );
     }
 
     #[test]
     fn command_not_found_error_should_report_the_missing_command_and_search_locations() {
-        let error = AgentProcessError::CommandNotFound { command: "ghost-cli".into() };
+        let error = AgentProcessError::CommandNotFound {
+            command: "ghost-cli".into(),
+        };
 
         let message = error.to_string();
         assert!(message.contains("ghost-cli"));
@@ -461,6 +499,9 @@ mod tests {
 
         let json = serde_json::to_string(&error).expect("serializes");
 
-        assert_eq!(json, "\"the running agent process was spawned with its stdin closed\"");
+        assert_eq!(
+            json,
+            "\"the running agent process was spawned with its stdin closed\""
+        );
     }
 }

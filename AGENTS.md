@@ -13,7 +13,8 @@
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
 
 ## Testing
-- Test runner: Vitest, configured in `vite.config.ts` (`test` block) — no separate `vitest.config.ts`.
+- Frontend test runner: Vitest, configured in `vite.config.ts` (`test` block) — no separate `vitest.config.ts`.
+- Backend test runner: Cargo, with Rust unit tests co-located in `src-tauri/src/**` modules.
 - Full conventions (what to test, file placement, harness usage) are in `.agents/rules/testing.md`. Read it before writing or reviewing tests.
 
 ## Workspace
@@ -28,7 +29,8 @@
 - Build: `pnpm build`
 - Lint: `pnpm lint`
 - Type check: `pnpm build` (the only `tsc` invocation is inside `build`)
-- Test: `pnpm test` (Vitest, run once; `pnpm test:watch` for watch mode, `pnpm coverage` for a v8 coverage report)
+- Test (frontend): `pnpm test` (Vitest, run once; `pnpm test:watch` for watch mode, `pnpm coverage` for a v8 coverage report)
+- Test (Rust): `pnpm test:rust`
 - Format: `pnpm format`
 - Check (lint+format): `pnpm check`
 

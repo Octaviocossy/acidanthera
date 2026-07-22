@@ -56,6 +56,8 @@ pub enum ChatStoreError {
     InvalidId,
     #[error("no chat exists with that id")]
     NotFound,
+    #[error("chat storage escapes the vault root")]
+    PathEscapesRoot,
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -72,8 +74,11 @@ impl Serialize for ChatStoreError {
 type ChatStoreResult<T> = Result<T, ChatStoreError>;
 
 /// `<vault_root>/.orbit/chats`.
+#[cfg(test)]
 fn chats_root(vault_root: &Path) -> PathBuf {
-    CHATS_DIR.iter().fold(vault_root.to_path_buf(), |acc, segment| acc.join(segment))
+    CHATS_DIR
+        .iter()
+        .fold(vault_root.to_path_buf(), |acc, segment| acc.join(segment))
 }
 
 /// A chat id is used verbatim as a file-name stem, so it must be a bare *name* — never a path.
@@ -88,12 +93,63 @@ fn is_safe_id(id: &str) -> bool {
         && !id.contains('\0')
 }
 
-/// Resolves the on-disk path for `id` under the vault's chats dir, rejecting an unsafe id.
-fn chat_path(vault_root: &Path, id: &str) -> ChatStoreResult<PathBuf> {
+/// Resolves the on-disk path for `id` under an already-validated chats dir, rejecting an unsafe id.
+fn chat_path(chats_root: &Path, id: &str) -> ChatStoreResult<PathBuf> {
     if !is_safe_id(id) {
         return Err(ChatStoreError::InvalidId);
     }
-    Ok(chats_root(vault_root).join(format!("{id}{CHAT_FILE_EXTENSION}")))
+    Ok(chats_root.join(format!("{id}{CHAT_FILE_EXTENSION}")))
+}
+
+fn storage_directory(
+    path: &Path,
+    vault_root: &Path,
+    create: bool,
+) -> ChatStoreResult<Option<PathBuf>> {
+    match fs::symlink_metadata(path) {
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound && !create => return Ok(None),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => fs::create_dir(path)?,
+        Err(err) => return Err(err.into()),
+        Ok(_) => {}
+    }
+
+    let metadata = fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() {
+        return Err(ChatStoreError::PathEscapesRoot);
+    }
+    if !metadata.is_dir() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotADirectory,
+            "chat storage is not a directory",
+        )
+        .into());
+    }
+
+    let path = path.canonicalize()?;
+    path.starts_with(vault_root)
+        .then_some(path)
+        .ok_or(ChatStoreError::PathEscapesRoot)
+        .map(Some)
+}
+
+/// Returns the real `<vault_root>/.orbit/chats` directory. The two storage components are checked
+/// independently so neither can redirect chat operations through a symlink.
+fn storage_root(vault_root: &Path, create: bool) -> ChatStoreResult<Option<PathBuf>> {
+    let vault_root = vault_root.canonicalize()?;
+    let Some(orbit) = storage_directory(&vault_root.join(CHATS_DIR[0]), &vault_root, create)?
+    else {
+        return Ok(None);
+    };
+    storage_directory(&orbit.join(CHATS_DIR[1]), &vault_root, create)
+}
+
+fn reject_symlink(path: &Path) -> ChatStoreResult<()> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => Err(ChatStoreError::PathEscapesRoot),
+        Ok(_) => Ok(()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 fn current_root(vault: &VaultState) -> ChatStoreResult<PathBuf> {
@@ -114,17 +170,26 @@ fn mtime_ms(path: &Path) -> u64 {
 /// Overwrites an existing chat with the same id (a re-save of the same conversation). Returns the
 /// path so the caller can reveal/reference it.
 fn save_chat_in(vault_root: &Path, id: &str, contents: &str) -> ChatStoreResult<PathBuf> {
-    let path = chat_path(vault_root, id)?;
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-    }
+    let Some(chats_root) = storage_root(vault_root, true)? else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "chat storage was not created",
+        )
+        .into());
+    };
+    let path = chat_path(&chats_root, id)?;
+    reject_symlink(&path)?;
     fs::write(&path, contents)?;
     Ok(path)
 }
 
 /// Reads a chat's raw markdown by id. A missing chat is a domain `NotFound`, not a raw io error.
 fn read_chat_in(vault_root: &Path, id: &str) -> ChatStoreResult<String> {
-    let path = chat_path(vault_root, id)?;
+    let Some(chats_root) = storage_root(vault_root, false)? else {
+        return Err(ChatStoreError::NotFound);
+    };
+    let path = chat_path(&chats_root, id)?;
+    reject_symlink(&path)?;
     match fs::read_to_string(&path) {
         Ok(contents) => Ok(contents),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Err(ChatStoreError::NotFound),
@@ -134,7 +199,11 @@ fn read_chat_in(vault_root: &Path, id: &str) -> ChatStoreResult<String> {
 
 /// Deletes a chat by id. A missing chat is a domain `NotFound`.
 fn delete_chat_in(vault_root: &Path, id: &str) -> ChatStoreResult<()> {
-    let path = chat_path(vault_root, id)?;
+    let Some(chats_root) = storage_root(vault_root, false)? else {
+        return Err(ChatStoreError::NotFound);
+    };
+    let path = chat_path(&chats_root, id)?;
+    reject_symlink(&path)?;
     match fs::remove_file(&path) {
         Ok(()) => Ok(()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Err(ChatStoreError::NotFound),
@@ -146,12 +215,10 @@ fn delete_chat_in(vault_root: &Path, id: &str) -> ChatStoreResult<()> {
 /// error). Only `*.chat.md` files are considered; each one's raw contents are returned so the TS
 /// side can parse title/model in a single IPC round-trip rather than `1 + N` reads.
 fn list_chats_in(vault_root: &Path) -> ChatStoreResult<Vec<ChatRecord>> {
-    let dir = chats_root(vault_root);
-    let read_dir = match fs::read_dir(&dir) {
-        Ok(read_dir) => read_dir,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(err) => return Err(err.into()),
+    let Some(dir) = storage_root(vault_root, false)? else {
+        return Ok(Vec::new());
     };
+    let read_dir = fs::read_dir(&dir)?;
 
     let mut records = Vec::new();
     for entry in read_dir {
@@ -160,11 +227,11 @@ fn list_chats_in(vault_root: &Path) -> ChatStoreResult<Vec<ChatRecord>> {
         let Some(id) = name.strip_suffix(CHAT_FILE_EXTENSION) else {
             continue;
         };
-        if id.is_empty() {
+        if !is_safe_id(id) {
             continue; // a bare `.chat.md` with no id stem — not a real chat
         }
         let path = entry.path();
-        if !path.is_file() {
+        if !entry.file_type()?.is_file() {
             continue; // ignore a directory that happens to end in `.chat.md`
         }
         let contents = fs::read_to_string(&path)?;
@@ -177,7 +244,11 @@ fn list_chats_in(vault_root: &Path) -> ChatStoreResult<Vec<ChatRecord>> {
     }
 
     // Newest conversation on top; tie-break by id so the order is deterministic.
-    records.sort_by(|a, b| b.updated_ms.cmp(&a.updated_ms).then_with(|| a.id.cmp(&b.id)));
+    records.sort_by(|a, b| {
+        b.updated_ms
+            .cmp(&a.updated_ms)
+            .then_with(|| a.id.cmp(&b.id))
+    });
     Ok(records)
 }
 
@@ -185,7 +256,11 @@ fn list_chats_in(vault_root: &Path) -> ChatStoreResult<Vec<ChatRecord>> {
 /// creating the directory on first save. Overwrites the existing file when the id already exists.
 /// Returns the written path.
 #[tauri::command]
-pub fn save_chat(id: String, contents: String, vault: State<'_, VaultState>) -> ChatStoreResult<String> {
+pub fn save_chat(
+    id: String,
+    contents: String,
+    vault: State<'_, VaultState>,
+) -> ChatStoreResult<String> {
     log::info!("save_chat: id={id} bytes={}", contents.len());
     (|| {
         let path = save_chat_in(&current_root(&vault)?, &id, &contents)?;
@@ -231,7 +306,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("orbit-chats-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp root");
-        dir
+        dir.canonicalize().expect("canonicalizes temp root")
     }
 
     #[test]
@@ -258,9 +333,15 @@ mod tests {
 
         let path = save_chat_in(&root, "hello", "---\nschema: 1\n---\n").expect("saves");
 
-        assert_eq!(path, root.join(".orbit").join("chats").join("hello.chat.md"));
+        assert_eq!(
+            path,
+            root.join(".orbit").join("chats").join("hello.chat.md")
+        );
         assert!(root.join(".orbit").join("chats").is_dir());
-        assert_eq!(fs::read_to_string(&path).expect("reads back"), "---\nschema: 1\n---\n");
+        assert_eq!(
+            fs::read_to_string(&path).expect("reads back"),
+            "---\nschema: 1\n---\n"
+        );
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -358,18 +439,192 @@ mod tests {
         let root = temp_root("unsafe-id");
 
         for bad in ["", "..", "nested/id", "..\\escape"] {
-            assert!(matches!(save_chat_in(&root, bad, "x"), Err(ChatStoreError::InvalidId)));
-            assert!(matches!(read_chat_in(&root, bad), Err(ChatStoreError::InvalidId)));
-            assert!(matches!(delete_chat_in(&root, bad), Err(ChatStoreError::InvalidId)));
+            assert!(matches!(
+                save_chat_in(&root, bad, "x"),
+                Err(ChatStoreError::InvalidId)
+            ));
+            assert!(matches!(
+                read_chat_in(&root, bad),
+                Err(ChatStoreError::InvalidId)
+            ));
+            assert!(matches!(
+                delete_chat_in(&root, bad),
+                Err(ChatStoreError::InvalidId)
+            ));
         }
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn save_chat_in_should_reject_a_chats_directory_symlinked_outside_the_vault() {
+        let root = temp_root("storage-symlink");
+        let outside = temp_root("storage-symlink-outside");
+        fs::create_dir(root.join(".orbit")).expect("creates orbit directory");
+        std::os::unix::fs::symlink(&outside, root.join(".orbit").join("chats"))
+            .expect("links chats directory");
+
+        let error = save_chat_in(&root, "chat", "contents").expect_err("rejects symlink");
+
+        assert!(matches!(error, ChatStoreError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_chat_in_should_leave_an_outside_leaf_symlink_target_unchanged() {
+        let root = temp_root("leaf-symlink");
+        let outside = temp_root("leaf-symlink-outside");
+        let outside_chat = outside.join("chat.chat.md");
+        fs::write(&outside_chat, "original").expect("writes outside chat");
+        let chats = chats_root(&root);
+        fs::create_dir_all(&chats).expect("creates chats directory");
+        std::os::unix::fs::symlink(&outside_chat, chats.join("chat.chat.md")).expect("links chat");
+
+        let error = save_chat_in(&root, "chat", "changed").expect_err("rejects symlink");
+
+        assert!(matches!(error, ChatStoreError::PathEscapesRoot));
+        assert_eq!(
+            fs::read_to_string(&outside_chat).expect("reads outside chat"),
+            "original"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_chat_in_should_reject_a_leaf_symlink_that_escapes_the_vault() {
+        let root = temp_root("read-leaf-symlink");
+        let outside = temp_root("read-leaf-symlink-outside");
+        let outside_chat = outside.join("chat.chat.md");
+        fs::write(&outside_chat, "secret").expect("writes outside chat");
+        let chats = chats_root(&root);
+        fs::create_dir_all(&chats).expect("creates chats directory");
+        std::os::unix::fs::symlink(&outside_chat, chats.join("chat.chat.md")).expect("links chat");
+
+        let error = read_chat_in(&root, "chat").expect_err("rejects symlink");
+
+        assert!(matches!(error, ChatStoreError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn list_chats_in_should_ignore_symlinked_chat_files() {
+        let root = temp_root("list-symlink");
+        let outside = temp_root("list-symlink-outside");
+        let chats = chats_root(&root);
+        fs::create_dir_all(&chats).expect("creates chats directory");
+        fs::write(outside.join("outside.chat.md"), "outside").expect("writes outside chat");
+        std::os::unix::fs::symlink(
+            outside.join("outside.chat.md"),
+            chats.join("linked.chat.md"),
+        )
+        .expect("links chat");
+
+        let records = list_chats_in(&root).expect("lists chats");
+
+        assert!(records.is_empty());
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[test]
+    fn list_chats_in_should_ignore_an_unsafe_id_found_on_disk() {
+        let root = temp_root("list-unsafe-id");
+        let chats = chats_root(&root);
+        fs::create_dir_all(&chats).expect("creates chats directory");
+        fs::write(chats.join("..chat.md"), "invalid").expect("writes invalid chat");
+
+        let records = list_chats_in(&root).expect("lists chats");
+
+        assert!(records.is_empty());
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn list_chats_in_should_ignore_a_directory_ending_in_chat_md() {
+        let root = temp_root("list-directory");
+        let chats = chats_root(&root);
+        fs::create_dir_all(chats.join("folder.chat.md")).expect("creates matching directory");
+
+        let records = list_chats_in(&root).expect("lists chats");
+
+        assert!(records.is_empty());
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn list_chats_in_should_break_equal_mtime_ties_by_id() {
+        let root = temp_root("list-ties");
+        let chats = chats_root(&root);
+        fs::create_dir_all(&chats).expect("creates chats directory");
+        let alpha = chats.join("alpha.chat.md");
+        let beta = chats.join("beta.chat.md");
+        fs::write(&alpha, "alpha").expect("writes alpha");
+        fs::write(&beta, "beta").expect("writes beta");
+        let time = std::time::SystemTime::now();
+        filetime_set(&alpha, time);
+        filetime_set(&beta, time);
+
+        let records = list_chats_in(&root).expect("lists chats");
+
+        assert_eq!(
+            records
+                .iter()
+                .map(|record| record.id.as_str())
+                .collect::<Vec<_>>(),
+            ["alpha", "beta"]
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn save_chat_in_should_return_io_when_orbit_is_a_regular_file() {
+        let root = temp_root("orbit-file");
+        fs::write(root.join(".orbit"), "not a directory").expect("writes orbit file");
+
+        let error = save_chat_in(&root, "chat", "contents").expect_err("rejects file");
+
+        assert!(matches!(error, ChatStoreError::Io(_)));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn chat_record_should_serialize_to_the_frontend_contract() {
+        let record = ChatRecord {
+            id: "chat-1".into(),
+            path: "/vault/.orbit/chats/chat-1.chat.md".into(),
+            updated_ms: 42,
+            contents: "# Chat".into(),
+        };
+
+        let value = serde_json::to_value(record).expect("serializes");
+
+        assert_eq!(
+            value,
+            serde_json::json!({ "id": "chat-1", "path": "/vault/.orbit/chats/chat-1.chat.md", "updatedMs": 42, "contents": "# Chat" })
+        );
+    }
+
+    #[test]
+    fn chat_store_error_should_serialize_as_a_plain_string() {
+        let value = serde_json::to_string(&ChatStoreError::PathEscapesRoot).expect("serializes");
+
+        assert_eq!(value, "\"chat storage escapes the vault root\"");
+    }
+
     /// Sets a file's mtime, so the newest-first list order can be asserted deterministically rather
     /// than relying on the two writes landing in different clock ticks.
     fn filetime_set(path: &Path, time: std::time::SystemTime) {
-        let file = fs::OpenOptions::new().write(true).open(path).expect("opens for mtime set");
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .open(path)
+            .expect("opens for mtime set");
         file.set_modified(time).expect("sets mtime");
     }
 }

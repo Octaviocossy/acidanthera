@@ -92,6 +92,23 @@ impl VaultState {
 fn guarded_path(root: &Path, target: &str) -> VaultResult<PathBuf> {
     let root = root.canonicalize()?;
     let target = PathBuf::from(target);
+    let file_name = target.file_name().ok_or(VaultError::InvalidPath)?;
+
+    match fs::symlink_metadata(&target) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            return Err(VaultError::PathEscapesRoot)
+        }
+        Ok(_) => {
+            let target = target.canonicalize().map_err(|_| VaultError::InvalidPath)?;
+            return target
+                .starts_with(&root)
+                .then_some(target)
+                .ok_or(VaultError::PathEscapesRoot);
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => return Err(err.into()),
+    }
+
     let parent = target
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -100,8 +117,26 @@ fn guarded_path(root: &Path, target: &str) -> VaultResult<PathBuf> {
     if !parent.starts_with(&root) {
         return Err(VaultError::PathEscapesRoot);
     }
-    let file_name = target.file_name().ok_or(VaultError::InvalidPath)?;
     Ok(parent.join(file_name))
+}
+
+/// Creates a missing vault directory and returns its canonical root. Existing non-directories are
+/// invalid vaults rather than raw filesystem errors.
+fn prepare_vault_root(path: &Path) -> VaultResult<PathBuf> {
+    if path.exists() && !path.is_dir() {
+        return Err(VaultError::InvalidPath);
+    }
+    fs::create_dir_all(path)?;
+    Ok(path.canonicalize()?)
+}
+
+fn read_note_in(root: &Path, target: &str) -> VaultResult<String> {
+    Ok(fs::read_to_string(guarded_path(root, target)?)?)
+}
+
+fn write_note_in(root: &Path, target: &str, contents: &str) -> VaultResult<()> {
+    fs::write(guarded_path(root, target)?, contents)?;
+    Ok(())
 }
 
 /// Appends `.md` unless `path` already carries that extension. `build_tree` only surfaces Markdown
@@ -155,7 +190,11 @@ const AGENT_CONTEXT_FILES: [(&str, &str); 2] = [
 /// file. `create_new` is atomic, so a vault that already carries its own agent context — hand-edited
 /// or belonging to another project — is never clobbered.
 fn scaffold_file(root: &Path, name: &str, contents: &str) -> VaultResult<bool> {
-    match fs::OpenOptions::new().write(true).create_new(true).open(root.join(name)) {
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(root.join(name))
+    {
         Ok(mut file) => {
             file.write_all(contents.as_bytes())?;
             Ok(true)
@@ -172,11 +211,13 @@ fn scaffold_file(root: &Path, name: &str, contents: &str) -> VaultResult<bool> {
 fn scaffold_agent_context(root: &Path) -> VaultResult<Vec<&'static str>> {
     AGENT_CONTEXT_FILES
         .iter()
-        .filter_map(|(name, contents)| match scaffold_file(root, name, contents) {
-            Ok(true) => Some(Ok(*name)),
-            Ok(false) => None,
-            Err(err) => Some(Err(err)),
-        })
+        .filter_map(
+            |(name, contents)| match scaffold_file(root, name, contents) {
+                Ok(true) => Some(Ok(*name)),
+                Ok(false) => None,
+                Err(err) => Some(Err(err)),
+            },
+        )
         .collect()
 }
 
@@ -185,7 +226,9 @@ fn scaffold_agent_context(root: &Path) -> VaultResult<Vec<&'static str>> {
 /// rather than the whole vault failing to load.
 fn scaffold_agent_context_or_warn(root: &Path) {
     match scaffold_agent_context(root) {
-        Ok(created) if !created.is_empty() => log::info!("scaffold_agent_context: created {}", created.join(", ")),
+        Ok(created) if !created.is_empty() => {
+            log::info!("scaffold_agent_context: created {}", created.join(", "))
+        }
         Ok(_) => {}
         Err(err) => log::warn!("scaffold_agent_context: skipped ({err})"),
     }
@@ -209,7 +252,11 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
         if name.starts_with('.') {
             continue;
         }
-        if is_root && AGENT_CONTEXT_FILES.iter().any(|(file_name, _)| *file_name == name) {
+        if is_root
+            && AGENT_CONTEXT_FILES
+                .iter()
+                .any(|(file_name, _)| *file_name == name)
+        {
             continue;
         }
 
@@ -223,7 +270,7 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
                 is_dir: true,
                 children: Some(build_tree_at(&path, false)?),
             });
-        } else if path.extension().is_some_and(|ext| ext == "md") {
+        } else if file_type.is_file() && path.extension().is_some_and(|ext| ext == "md") {
             let display_name = path
                 .file_stem()
                 .map(|s| s.to_string_lossy().into_owned())
@@ -293,14 +340,14 @@ pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultRe
 /// exist yet (the default-vault bootstrap, doc/v0-spec.md §3.1) — and starts the watcher over
 /// it. Returns the canonical path so the frontend can seed `useAppStore.vaultRoot`.
 #[tauri::command]
-pub fn open_vault(path: String, app: AppHandle, state: State<'_, VaultState>) -> VaultResult<String> {
+pub fn open_vault(
+    path: String,
+    app: AppHandle,
+    state: State<'_, VaultState>,
+) -> VaultResult<String> {
     log::info!("open_vault: path={path}");
     (|| {
-        fs::create_dir_all(&path)?;
-        let root = PathBuf::from(&path).canonicalize()?;
-        if !root.is_dir() {
-            return Err(VaultError::InvalidPath);
-        }
+        let root = prepare_vault_root(Path::new(&path))?;
         scaffold_agent_context_or_warn(&root);
         watch(&app, &state, root.clone())?;
         log::info!("open_vault: adopted vault root {}", root.display());
@@ -320,23 +367,14 @@ pub fn read_vault_tree(state: State<'_, VaultState>) -> VaultResult<Vec<VaultEnt
 #[tauri::command]
 pub fn read_note(path: String, state: State<'_, VaultState>) -> VaultResult<String> {
     log::info!("read_note: path={path}");
-    (|| {
-        let root = current_root(&state)?;
-        Ok(fs::read_to_string(guarded_path(&root, &path)?)?)
-    })()
-    .log_err("read_note")
+    (|| read_note_in(&current_root(&state)?, &path))().log_err("read_note")
 }
 
 /// Writes a note's contents. `path` must resolve inside the open vault root.
 #[tauri::command]
 pub fn write_note(path: String, contents: String, state: State<'_, VaultState>) -> VaultResult<()> {
     log::info!("write_note: path={path} bytes={}", contents.len());
-    (|| {
-        let root = current_root(&state)?;
-        fs::write(guarded_path(&root, &path)?, contents)?;
-        Ok(())
-    })()
-    .log_err("write_note")
+    (|| write_note_in(&current_root(&state)?, &path, &contents))().log_err("write_note")
 }
 
 /// Creates an empty note, appending `.md` when `path` lacks that extension. `path` must resolve
@@ -445,7 +483,8 @@ mod tests {
     fn guarded_path_should_reject_a_target_that_escapes_the_root() {
         let root = temp_root("guard-escape");
 
-        let error = guarded_path(&root, &path_str(&root.join("..").join("evil.md"))).expect_err("rejects");
+        let error =
+            guarded_path(&root, &path_str(&root.join("..").join("evil.md"))).expect_err("rejects");
 
         assert!(matches!(error, VaultError::PathEscapesRoot));
 
@@ -454,9 +493,18 @@ mod tests {
 
     #[test]
     fn with_md_extension_should_append_only_when_the_extension_is_missing() {
-        assert_eq!(with_md_extension(PathBuf::from("/vault/note")), PathBuf::from("/vault/note.md"));
-        assert_eq!(with_md_extension(PathBuf::from("/vault/note.md")), PathBuf::from("/vault/note.md"));
-        assert_eq!(with_md_extension(PathBuf::from("/vault/note.txt")), PathBuf::from("/vault/note.txt.md"));
+        assert_eq!(
+            with_md_extension(PathBuf::from("/vault/note")),
+            PathBuf::from("/vault/note.md")
+        );
+        assert_eq!(
+            with_md_extension(PathBuf::from("/vault/note.md")),
+            PathBuf::from("/vault/note.md")
+        );
+        assert_eq!(
+            with_md_extension(PathBuf::from("/vault/note.txt")),
+            PathBuf::from("/vault/note.txt.md")
+        );
     }
 
     #[test]
@@ -493,7 +541,10 @@ mod tests {
         let error = create_note_in(&root, &path_str(&root.join("keep.md"))).expect_err("rejects");
 
         assert!(matches!(error, VaultError::AlreadyExists));
-        assert_eq!(fs::read_to_string(root.join("keep.md")).expect("reads back"), "precious");
+        assert_eq!(
+            fs::read_to_string(root.join("keep.md")).expect("reads back"),
+            "precious"
+        );
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -506,7 +557,10 @@ mod tests {
         let error = create_note_in(&root, &path_str(&escapee)).expect_err("rejects");
 
         assert!(matches!(error, VaultError::PathEscapesRoot));
-        assert!(!escapee.exists(), "nothing may be written outside the vault root");
+        assert!(
+            !escapee.exists(),
+            "nothing may be written outside the vault root"
+        );
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
@@ -515,7 +569,8 @@ mod tests {
     fn create_directory_in_should_create_a_directory_visible_in_the_tree() {
         let root = temp_root("create-dir");
 
-        let created = create_directory_in(&root, &path_str(&root.join("archive"))).expect("creates dir");
+        let created =
+            create_directory_in(&root, &path_str(&root.join("archive"))).expect("creates dir");
 
         assert_eq!(created, root.join("archive"));
         assert!(created.is_dir());
@@ -533,7 +588,8 @@ mod tests {
         let root = temp_root("create-dir-collision");
         fs::create_dir(root.join("archive")).expect("creates dir");
 
-        let error = create_directory_in(&root, &path_str(&root.join("archive"))).expect_err("rejects");
+        let error =
+            create_directory_in(&root, &path_str(&root.join("archive"))).expect_err("rejects");
 
         assert!(matches!(error, VaultError::AlreadyExists));
 
@@ -544,17 +600,25 @@ mod tests {
     fn create_directory_in_should_reject_a_missing_parent_rather_than_creating_the_chain() {
         let root = temp_root("create-dir-nested");
 
-        let error = create_directory_in(&root, &path_str(&root.join("missing").join("child"))).expect_err("rejects");
+        let error = create_directory_in(&root, &path_str(&root.join("missing").join("child")))
+            .expect_err("rejects");
 
         assert!(matches!(error, VaultError::InvalidPath));
-        assert!(!root.join("missing").exists(), "the parent chain must not be materialized");
+        assert!(
+            !root.join("missing").exists(),
+            "the parent chain must not be materialized"
+        );
 
         fs::remove_dir_all(&root).expect("cleans up");
     }
 
     #[test]
     fn claude_context_template_should_import_the_agents_template() {
-        let claude = AGENT_CONTEXT_FILES.iter().find(|(name, _)| *name == "CLAUDE.md").expect("ships a CLAUDE.md template").1;
+        let claude = AGENT_CONTEXT_FILES
+            .iter()
+            .find(|(name, _)| *name == "CLAUDE.md")
+            .expect("ships a CLAUDE.md template")
+            .1;
 
         // One source of truth: CLAUDE.md must pull AGENTS.md in rather than restate it.
         assert!(claude.contains("@AGENTS.md"));
@@ -568,7 +632,10 @@ mod tests {
 
         assert_eq!(created, ["AGENTS.md", "CLAUDE.md"]);
         for (name, contents) in AGENT_CONTEXT_FILES {
-            assert_eq!(fs::read_to_string(root.join(name)).expect("reads back"), contents);
+            assert_eq!(
+                fs::read_to_string(root.join(name)).expect("reads back"),
+                contents
+            );
         }
 
         fs::remove_dir_all(&root).expect("cleans up");
@@ -593,12 +660,25 @@ mod tests {
     fn build_tree_should_only_hide_agent_context_files_at_the_root() {
         let root = temp_root("nested-agents-md");
         fs::create_dir(root.join("sub")).expect("creates dir");
-        fs::write(root.join("sub").join("AGENTS.md"), "not the vault's own agent context").expect("writes nested note");
+        fs::write(
+            root.join("sub").join("AGENTS.md"),
+            "not the vault's own agent context",
+        )
+        .expect("writes nested note");
 
         let entries = build_tree(&root).expect("builds tree");
 
-        let sub = entries.iter().find(|e| e.name == "sub").expect("keeps the subdirectory");
-        let sub_names: Vec<&str> = sub.children.as_ref().expect("has children").iter().map(|e| e.name.as_str()).collect();
+        let sub = entries
+            .iter()
+            .find(|e| e.name == "sub")
+            .expect("keeps the subdirectory");
+        let sub_names: Vec<&str> = sub
+            .children
+            .as_ref()
+            .expect("has children")
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect();
         assert_eq!(sub_names, ["AGENTS"]);
 
         fs::remove_dir_all(&root).expect("cleans up");
@@ -613,7 +693,10 @@ mod tests {
 
         // Each file is independent: the hand-written one survives, the missing one is filled in.
         assert_eq!(created, ["CLAUDE.md"]);
-        assert_eq!(fs::read_to_string(root.join("AGENTS.md")).expect("reads back"), "my own instructions");
+        assert_eq!(
+            fs::read_to_string(root.join("AGENTS.md")).expect("reads back"),
+            "my own instructions"
+        );
         assert!(root.join("CLAUDE.md").exists());
 
         fs::remove_dir_all(&root).expect("cleans up");
@@ -629,8 +712,188 @@ mod tests {
         let created = scaffold_agent_context(&root).expect("scaffolds again");
 
         assert!(created.is_empty());
-        assert_eq!(fs::read_to_string(root.join("AGENTS.md")).expect("reads back"), "edited by the user");
+        assert_eq!(
+            fs::read_to_string(root.join("AGENTS.md")).expect("reads back"),
+            "edited by the user"
+        );
 
         fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn prepare_vault_root_should_create_and_canonicalize_a_missing_directory() {
+        let parent = temp_root("prepare-root");
+        let root = parent.join("new-vault");
+
+        let prepared = prepare_vault_root(&root).expect("prepares root");
+
+        assert_eq!(prepared, root.canonicalize().expect("canonicalizes root"));
+        fs::remove_dir_all(&parent).expect("cleans up");
+    }
+
+    #[test]
+    fn prepare_vault_root_should_reject_an_existing_file() {
+        let root = temp_root("prepare-file");
+        let file = root.join("not-a-directory");
+        fs::write(&file, "not a vault").expect("writes file");
+
+        let error = prepare_vault_root(&file).expect_err("rejects file");
+
+        assert!(matches!(error, VaultError::InvalidPath));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn current_root_should_report_no_vault_open_for_default_state() {
+        let state = VaultState::default();
+
+        let error = current_root(&state).expect_err("reports missing root");
+
+        assert!(matches!(error, VaultError::NoVaultOpen));
+    }
+
+    #[test]
+    fn read_note_in_and_write_note_in_should_round_trip_contents_inside_the_root() {
+        let root = temp_root("read-write");
+        let note = root.join("note.md");
+
+        write_note_in(&root, &path_str(&note), "hello").expect("writes note");
+        let contents = read_note_in(&root, &path_str(&note)).expect("reads note");
+
+        assert_eq!(contents, "hello");
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn write_note_in_should_reject_a_target_outside_the_root() {
+        let root = temp_root("write-escape");
+        let target = root.join("..").join("outside.md");
+
+        let error = write_note_in(&root, &path_str(&target), "nope").expect_err("rejects escape");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn guarded_path_should_reject_a_parent_symlink_that_escapes_the_root() {
+        let root = temp_root("parent-symlink");
+        let outside = temp_root("parent-symlink-outside");
+        let link = root.join("linked");
+        std::os::unix::fs::symlink(&outside, &link).expect("creates symlink");
+
+        let error =
+            guarded_path(&root, &path_str(&link.join("note.md"))).expect_err("rejects escape");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_note_in_should_reject_a_leaf_symlink_that_escapes_the_root() {
+        let root = temp_root("read-leaf-symlink");
+        let outside = temp_root("read-leaf-symlink-outside");
+        let outside_note = outside.join("secret.md");
+        fs::write(&outside_note, "secret").expect("writes outside note");
+        let link = root.join("link.md");
+        std::os::unix::fs::symlink(&outside_note, &link).expect("creates symlink");
+
+        let error = read_note_in(&root, &path_str(&link)).expect_err("rejects symlink");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_note_in_should_leave_an_outside_leaf_symlink_target_unchanged() {
+        let root = temp_root("write-leaf-symlink");
+        let outside = temp_root("write-leaf-symlink-outside");
+        let outside_note = outside.join("secret.md");
+        fs::write(&outside_note, "secret").expect("writes outside note");
+        let link = root.join("link.md");
+        std::os::unix::fs::symlink(&outside_note, &link).expect("creates symlink");
+
+        let error = write_note_in(&root, &path_str(&link), "changed").expect_err("rejects symlink");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        assert_eq!(
+            fs::read_to_string(&outside_note).expect("reads outside note"),
+            "secret"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn build_tree_should_skip_symlinked_entries() {
+        let root = temp_root("tree-symlinks");
+        let outside = temp_root("tree-symlinks-outside");
+        let outside_note = outside.join("outside.md");
+        fs::write(&outside_note, "outside").expect("writes outside note");
+        fs::write(root.join("visible.md"), "visible").expect("writes visible note");
+        std::os::unix::fs::symlink(&outside_note, root.join("linked.md")).expect("links note");
+        std::os::unix::fs::symlink(&outside, root.join("linked-dir")).expect("links directory");
+
+        let entries = build_tree(&root).expect("builds tree");
+
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| entry.name.as_str())
+                .collect::<Vec<_>>(),
+            ["visible"]
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[test]
+    fn build_tree_should_sort_entries_case_insensitively_within_each_kind() {
+        let root = temp_root("tree-case-sort");
+        fs::create_dir(root.join("zebra")).expect("creates directory");
+        fs::create_dir(root.join("Alpha")).expect("creates directory");
+        fs::write(root.join("zeta.md"), "").expect("writes note");
+        fs::write(root.join("Beta.md"), "").expect("writes note");
+
+        let entries = build_tree(&root).expect("builds tree");
+
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| entry.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Alpha", "zebra", "Beta", "zeta"]
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn vault_entry_should_serialize_to_the_frontend_contract() {
+        let entry = VaultEntry {
+            name: "notes".into(),
+            path: "/vault/notes".into(),
+            is_dir: true,
+            children: Some(Vec::new()),
+        };
+
+        let value = serde_json::to_value(entry).expect("serializes");
+
+        assert_eq!(
+            value,
+            serde_json::json!({ "name": "notes", "path": "/vault/notes", "isDir": true, "children": [] })
+        );
+    }
+
+    #[test]
+    fn vault_error_should_serialize_as_a_plain_string() {
+        let value = serde_json::to_string(&VaultError::PathEscapesRoot).expect("serializes");
+
+        assert_eq!(value, "\"path escapes the vault root\"");
     }
 }
