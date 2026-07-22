@@ -1,6 +1,7 @@
 import { AiFab } from '@/components/ai/AiFab';
 import { ChatPanel } from '@/components/layout/ChatPanel';
 import { CommandBar } from '@/components/layout/CommandBar';
+import { FileFinder } from '@/components/layout/FileFinder';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
@@ -20,6 +21,7 @@ export function Layout() {
         <ChatPanel />
         <CommandBar />
         <AiFab />
+        <FileFinder />
         {/* Before ToastHost so toasts stay visible above the modal scrim. */}
         <SettingsDialog />
         <ToastHost />
