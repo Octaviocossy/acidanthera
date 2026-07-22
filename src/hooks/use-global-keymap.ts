@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { executeAppCommand } from '@/lib/app-command';
 import { isEditableTarget } from '@/lib/dom/is-editable-target';
 import { useAppStore } from '@/stores/app-store';
 
@@ -7,7 +8,7 @@ const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
 /**
  * The app-level global vim keymap (doc/v0-spec.md §3.4). Two prefixes:
  * - `Ctrl-w` then `h`/`l` — jump focus between regions; `b` — toggle the sidebar (#38);
- *   `c` — toggle the chat panel; `s` — toggle the settings dialog (#29).
+ *   `c` — toggle the chat panel; `s` — toggle the settings dialog (#29); `f` — find a file.
  *   Tmux/vim-style: a chord, not a modifier held with the second key.
  * - `:` — enter command mode; `Escape` — back to normal.
  * Registered on `window` in the bubble phase (not capture) so a future CodeMirror
@@ -52,6 +53,10 @@ export function useGlobalKeymap() {
           case 's':
             event.preventDefault();
             store.toggleSettings();
+            break;
+          case 'f':
+            event.preventDefault();
+            executeAppCommand('find-file');
             break;
           default:
             break;

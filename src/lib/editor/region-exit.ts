@@ -1,11 +1,12 @@
 import { Prec } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { executeAppCommand } from '@/lib/app-command';
 import { useAppStore } from '@/stores/app-store';
 
 const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
 
 /**
- * Reserves `Ctrl-w` + `h`/`l`/`b`/`c`/`s` inside the editor at top CM precedence, mirroring
+ * Reserves `Ctrl-w` + `h`/`l`/`b`/`c`/`s`/`f` inside the editor at top CM precedence, mirroring
  * `useGlobalKeymap`'s chord so the same gesture works whether focus is on the editor or
  * elsewhere (doc/v0-spec.md §3.4 "CodeMirror coexistence rule": inside the editor, CodeMirror
  * is in charge). Explicitly stops propagation so the window-level global keymap — registered
@@ -55,6 +56,11 @@ export function regionExit() {
               event.preventDefault();
               event.stopPropagation();
               store.toggleSettings();
+              return true;
+            case 'f':
+              event.preventDefault();
+              event.stopPropagation();
+              executeAppCommand('find-file');
               return true;
             default:
               return false;
