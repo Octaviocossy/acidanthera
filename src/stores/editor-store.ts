@@ -3,36 +3,131 @@ import { create } from 'zustand';
 /** The editor's own CodeMirror-vim mode — distinct from the app-level `GlobalMode` (doc/v0-spec.md §3.4). */
 export type EditorVimMode = 'normal' | 'insert' | 'visual' | 'replace';
 
-const DEFAULT_CONTENT = '# Untitled\n\nStart writing — press `i` to enter insert mode.\n';
-
-interface EditorState {
+export interface EditorBuffer {
+  id: string;
+  filePath: string;
+  title: string;
   content: string;
   dirty: boolean;
+  revision: number;
+  savedRevision: number;
   vimMode: EditorVimMode;
-  /** Bumped by `:w` / `Mod-s` inside the editor. The sidebar's save loop (#14) subscribes to
-   *  this to actually persist `content` to `filePath` via the filesystem backend (#12). */
-  saveIntent: number;
-  /** Path of the currently open note, or `null` for the unsaved scratch buffer (doc/v0-spec.md §5.3). */
-  filePath: string | null;
+}
 
-  setContent: (content: string) => void;
-  setVimMode: (mode: EditorVimMode) => void;
-  requestSave: () => void;
-  markSaved: () => void;
-  /** Loads a note read from disk into the editor — replaces the scratch buffer, clears `dirty`. */
+export interface EditorSaveRequest {
+  id: number;
+  bufferId: string;
+  filePath: string;
+  content: string;
+  revision: number;
+}
+
+let nextBufferId = 1;
+let nextSaveRequestId = 1;
+
+function fileTitle(filePath: string): string {
+  return filePath.split('/').pop() ?? filePath;
+}
+
+/** Captures a buffer's current revision before asynchronous filesystem work begins. */
+export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest {
+  return {
+    id: nextSaveRequestId++,
+    bufferId: buffer.id,
+    filePath: buffer.filePath,
+    content: buffer.content,
+    revision: buffer.revision,
+  };
+}
+
+export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | 'buffers'>): EditorBuffer | null {
+  return state.buffers.find((buffer) => buffer.id === state.activeBufferId) ?? null;
+}
+
+interface EditorState {
+  buffers: EditorBuffer[];
+  activeBufferId: string | null;
+  saveRequests: EditorSaveRequest[];
+
+  activateBuffer: (bufferId: string) => void;
+  updateBufferContent: (bufferId: string, content: string) => void;
+  setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
+  requestSave: (bufferId?: string) => void;
+  completeSaveRequest: (request: EditorSaveRequest) => void;
+  failSaveRequest: (requestId: number) => void;
+  closeBuffer: (bufferId: string) => void;
+  /** Opens a note read from disk, activating an existing buffer instead of overwriting it. */
   openFile: (filePath: string, content: string) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
-  content: DEFAULT_CONTENT,
-  dirty: false,
-  vimMode: 'normal',
-  saveIntent: 0,
-  filePath: null,
+  buffers: [],
+  activeBufferId: null,
+  saveRequests: [],
 
-  setContent: (content) => set({ content, dirty: true }),
-  setVimMode: (vimMode) => set({ vimMode }),
-  requestSave: () => set((state) => ({ saveIntent: state.saveIntent + 1 })),
-  markSaved: () => set({ dirty: false }),
-  openFile: (filePath, content) => set({ filePath, content, dirty: false }),
+  activateBuffer: (bufferId) => set((state) => (state.buffers.some((buffer) => buffer.id === bufferId) ? { activeBufferId: bufferId } : state)),
+
+  updateBufferContent: (bufferId, content) =>
+    set((state) => ({
+      buffers: state.buffers.map((buffer) => (buffer.id === bufferId ? { ...buffer, content, revision: buffer.revision + 1, dirty: true } : buffer)),
+    })),
+
+  setBufferVimMode: (bufferId, vimMode) =>
+    set((state) => ({
+      buffers: state.buffers.map((buffer) => (buffer.id === bufferId ? { ...buffer, vimMode } : buffer)),
+    })),
+
+  requestSave: (bufferId) =>
+    set((state) => {
+      const buffer = state.buffers.find((candidate) => candidate.id === (bufferId ?? state.activeBufferId));
+      if (buffer === undefined) return state;
+      const request = createEditorSaveRequest(buffer);
+      return { saveRequests: [...state.saveRequests, request] };
+    }),
+
+  completeSaveRequest: (request) =>
+    set((state) => ({
+      saveRequests: state.saveRequests.filter((candidate) => candidate.id !== request.id),
+      buffers: state.buffers.map((buffer) => {
+        if (buffer.id !== request.bufferId) return buffer;
+        const savedRevision = Math.max(buffer.savedRevision, request.revision);
+        return { ...buffer, savedRevision, dirty: buffer.revision !== savedRevision };
+      }),
+    })),
+
+  failSaveRequest: (requestId) => set((state) => ({ saveRequests: state.saveRequests.filter((request) => request.id !== requestId) })),
+
+  closeBuffer: (bufferId) =>
+    set((state) => {
+      const index = state.buffers.findIndex((buffer) => buffer.id === bufferId);
+      if (index === -1) return state;
+
+      const buffers = state.buffers.filter((buffer) => buffer.id !== bufferId);
+      if (buffers.length === 0) return { buffers, activeBufferId: null };
+
+      if (state.activeBufferId !== bufferId) return { buffers };
+      return { buffers, activeBufferId: buffers[Math.min(index, buffers.length - 1)].id };
+    }),
+
+  openFile: (filePath, content) =>
+    set((state) => {
+      const existing = state.buffers.find((buffer) => buffer.filePath === filePath);
+      if (existing !== undefined) return { activeBufferId: existing.id };
+
+      const fileBuffer: EditorBuffer = {
+        id: `buffer-${nextBufferId++}`,
+        filePath,
+        title: fileTitle(filePath),
+        content,
+        dirty: false,
+        revision: 0,
+        savedRevision: 0,
+        vimMode: 'normal',
+      };
+
+      return {
+        activeBufferId: fileBuffer.id,
+        buffers: [...state.buffers, fileBuffer],
+      };
+    }),
 }));

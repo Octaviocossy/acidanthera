@@ -6,25 +6,23 @@ function isEditorVimMode(mode: string): mode is EditorVimMode {
   return mode === 'normal' || mode === 'insert' || mode === 'visual' || mode === 'replace';
 }
 
-/**
- * Feeds `@replit/codemirror-vim`'s `vim-mode-change` event (its CodeMirror-5-style event
- * bus, accessed via `getCM(view)`) into `editor-store` so a mode indicator can render outside
- * CodeMirror itself (doc/v0-spec.md §5.1).
- */
-export const vimModeSync = ViewPlugin.fromClass(
-  class {
-    private readonly onModeChange = (modeInfo: { mode: string }) => {
-      useEditorStore.getState().setVimMode(isEditorVimMode(modeInfo.mode) ? modeInfo.mode : 'normal');
-    };
-    private readonly cm: ReturnType<typeof getCM>;
+/** Synchronizes one mounted CodeMirror view's Vim mode to its owning editor buffer. */
+export function vimModeSync(bufferId: string) {
+  return ViewPlugin.fromClass(
+    class {
+      private readonly onModeChange = (modeInfo: { mode: string }) => {
+        useEditorStore.getState().setBufferVimMode(bufferId, isEditorVimMode(modeInfo.mode) ? modeInfo.mode : 'normal');
+      };
+      private readonly cm: ReturnType<typeof getCM>;
 
-    constructor(view: EditorView) {
-      this.cm = getCM(view);
-      this.cm?.on('vim-mode-change', this.onModeChange);
-    }
+      constructor(view: EditorView) {
+        this.cm = getCM(view);
+        this.cm?.on('vim-mode-change', this.onModeChange);
+      }
 
-    destroy() {
-      this.cm?.off('vim-mode-change', this.onModeChange);
+      destroy() {
+        this.cm?.off('vim-mode-change', this.onModeChange);
+      }
     }
-  }
-);
+  );
+}

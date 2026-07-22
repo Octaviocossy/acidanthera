@@ -72,7 +72,11 @@ describe('createVaultEntry', () => {
     mockInvoke.mockReset();
     useSidebarStore.setState({ tree: [], expanded: new Set(), cursorPath: null, draft: { kind: 'note', parentPath: '/vault' } });
     useToastStore.setState({ toasts: [] });
-    useEditorStore.setState({ filePath: null, content: '', dirty: false });
+    useEditorStore.setState({
+      buffers: [],
+      activeBufferId: null,
+      saveRequests: [],
+    });
     useAppStore.setState({ activeRegion: 'sidebar' });
   });
 
@@ -102,7 +106,7 @@ describe('createVaultEntry', () => {
     expect(mockInvoke).toHaveBeenCalledWith('create_note', { path: '/vault/new.md' });
     expect(useSidebarStore.getState().draft).toBeNull();
     expect(useSidebarStore.getState().cursorPath).toBe('/vault/new.md');
-    expect(useEditorStore.getState().filePath).toBe('/vault/new.md');
+    expect(useEditorStore.getState().buffers).toContainEqual(expect.objectContaining({ filePath: '/vault/new.md' }));
     expect(useAppStore.getState().activeRegion).toBe('viewer');
   });
 
@@ -117,7 +121,7 @@ describe('createVaultEntry', () => {
     expect(mockInvoke).toHaveBeenCalledWith('create_directory', { path: '/vault/newdir' });
     expect(useSidebarStore.getState().draft).toBeNull();
     expect(useSidebarStore.getState().cursorPath).toBe('/vault/newdir');
-    expect(useEditorStore.getState().filePath).toBeNull();
+    expect(useEditorStore.getState().buffers).toEqual([]);
   });
 
   it('keeps the draft open and shows an error toast when creation fails (e.g. name collision)', async () => {

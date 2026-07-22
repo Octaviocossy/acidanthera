@@ -12,11 +12,14 @@ long as the keyboard focus isn't inside an editable field (e.g. the command bar 
 |------|--------|-------|
 | `Ctrl-w` then `h` | Move focus to the previous region | Region cycle: sidebar → viewer → chat → sidebar (wraps; `chat` only reachable if the chat panel is open) |
 | `Ctrl-w` then `l` | Move focus to the next region | Same cycle, opposite direction |
+| `Ctrl-w` then `b` | Toggle the sidebar open/closed | |
 | `Ctrl-w` then `c` | Toggle the chat panel open/closed | |
+| `Ctrl-w` then `s` | Toggle the settings dialog | |
+| `Ctrl-w` then `f` | Open the file finder | |
 | `:` | Enter command mode, opens the command bar | Only from normal mode |
 | `Escape` | Exit command mode, closes the command bar | Only from command mode |
 
-`Ctrl-w` arms a 1.5s window for the next key (`h`/`l`/`c`); any other key, or letting the
+`Ctrl-w` arms a 1.5s window for the next key (`h`/`l`/`b`/`c`/`s`/`f`); any other key, or letting the
 window expire, silently disarms it with no action taken.
 
 ## Sidebar (when focused)
@@ -35,7 +38,7 @@ target not editable).
 
 ### Region navigation
 
-`Ctrl-w h` / `Ctrl-w l` / `Ctrl-w c` work identically while the editor is focused — CodeMirror
+`Ctrl-w h` / `Ctrl-w l` / `Ctrl-w b` / `Ctrl-w c` / `Ctrl-w s` / `Ctrl-w f` work identically while the editor is focused — CodeMirror
 registers the same chord at top precedence and stops propagation so the window-level listener
 doesn't double-fire (the "CodeMirror coexistence rule," `doc/v0-spec.md` §3.4).
 
