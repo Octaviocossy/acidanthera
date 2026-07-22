@@ -77,7 +77,7 @@ export function FileFinder() {
           placeholder="Find a note..."
           spellCheck={false}
         />
-        <div id={resultListId} role="listbox" aria-label="Matching files" className="max-h-80 overflow-y-auto py-1">
+        <div id={resultListId} role="listbox" aria-label="Matching files" className="flex max-h-80 flex-col overflow-y-auto py-1">
           {results.map((candidate, index) => (
             <button
               key={candidate.path}
@@ -85,7 +85,8 @@ export function FileFinder() {
               type="button"
               role="option"
               aria-selected={index === cursor}
-              className={`cursor-pointer px-4 py-2 font-mono text-sm ${index === cursor ? 'bg-surface-2 text-text' : 'text-text-dim'}`}
+              className={`w-full min-w-0 cursor-pointer truncate px-4 py-2 text-left font-mono text-sm ${index === cursor ? 'bg-surface-2 text-text' : 'text-text-dim'}`}
+              title={candidate.relativePath}
               onMouseMove={() => moveCursor(index - cursor, results.length)}
               onClick={() => void select(index)}
             >
