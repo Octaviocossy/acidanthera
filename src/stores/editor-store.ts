@@ -45,6 +45,19 @@ function fileTitle(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
 }
 
+/** Captures a buffer's current revision before asynchronous filesystem work begins. */
+export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest | undefined {
+  if (buffer.filePath === null) return undefined;
+
+  return {
+    id: nextSaveRequestId++,
+    bufferId: buffer.id,
+    filePath: buffer.filePath,
+    content: buffer.content,
+    revision: buffer.revision,
+  };
+}
+
 export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | 'buffers'>): EditorBuffer {
   return state.buffers.find((buffer) => buffer.id === state.activeBufferId) ?? state.buffers[0];
 }
@@ -61,6 +74,7 @@ interface EditorState {
   requestSave: (bufferId?: string) => void;
   completeSaveRequest: (request: EditorSaveRequest) => void;
   failSaveRequest: (requestId: number) => void;
+  closeBuffer: (bufferId: string) => void;
   /** Opens a note read from disk, activating an existing buffer instead of overwriting it. */
   openFile: (filePath: string, content: string) => void;
 }
@@ -92,15 +106,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   requestSave: (bufferId) =>
     set((state) => {
       const buffer = state.buffers.find((candidate) => candidate.id === (bufferId ?? state.activeBufferId));
-      if (buffer === undefined || buffer.filePath === null) return state;
-
-      const request: EditorSaveRequest = {
-        id: nextSaveRequestId++,
-        bufferId: buffer.id,
-        filePath: buffer.filePath,
-        content: buffer.content,
-        revision: buffer.revision,
-      };
+      if (buffer === undefined) return state;
+      const request = createEditorSaveRequest(buffer);
+      if (request === undefined) return state;
       return { saveRequests: [...state.saveRequests, request] };
     }),
 
@@ -115,6 +123,21 @@ export const useEditorStore = create<EditorState>((set) => ({
     })),
 
   failSaveRequest: (requestId) => set((state) => ({ saveRequests: state.saveRequests.filter((request) => request.id !== requestId) })),
+
+  closeBuffer: (bufferId) =>
+    set((state) => {
+      const index = state.buffers.findIndex((buffer) => buffer.id === bufferId);
+      if (index === -1) return state;
+
+      const buffers = state.buffers.filter((buffer) => buffer.id !== bufferId);
+      if (buffers.length === 0) {
+        const scratch = createScratchBuffer();
+        return { buffers: [scratch], activeBufferId: scratch.id };
+      }
+
+      if (state.activeBufferId !== bufferId) return { buffers };
+      return { buffers, activeBufferId: buffers[Math.min(index, buffers.length - 1)].id };
+    }),
 
   openFile: (filePath, content) =>
     set((state) => {
