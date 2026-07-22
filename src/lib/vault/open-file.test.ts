@@ -8,19 +8,8 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 function resetEditor() {
   useEditorStore.setState({
-    buffers: [
-      {
-        id: 'scratch-test',
-        filePath: null,
-        title: 'Untitled',
-        content: '',
-        dirty: false,
-        revision: 0,
-        savedRevision: 0,
-        vimMode: 'normal',
-      },
-    ],
-    activeBufferId: 'scratch-test',
+    buffers: [],
+    activeBufferId: null,
     saveRequests: [],
   });
 }
@@ -36,9 +25,8 @@ describe('openVaultFile', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/note.md', '# Disk');
     const bufferId = useEditorStore.getState().activeBufferId;
+    if (bufferId === null) throw new Error('expected an active buffer');
     store.updateBufferContent(bufferId, '# Unsaved');
-    store.createScratchBuffer();
-
     await openVaultFile('/vault/note.md');
 
     expect(invoke).not.toHaveBeenCalled();

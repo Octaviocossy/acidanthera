@@ -5,7 +5,7 @@ export type EditorVimMode = 'normal' | 'insert' | 'visual' | 'replace';
 
 export interface EditorBuffer {
   id: string;
-  filePath: string | null;
+  filePath: string;
   title: string;
   content: string;
   dirty: boolean;
@@ -22,33 +22,15 @@ export interface EditorSaveRequest {
   revision: number;
 }
 
-const DEFAULT_CONTENT = '# Untitled\n\nStart writing — press `i` to enter insert mode.\n';
-
 let nextBufferId = 1;
 let nextSaveRequestId = 1;
-
-function createScratchBuffer(): EditorBuffer {
-  const id = `scratch-${nextBufferId++}`;
-  return {
-    id,
-    filePath: null,
-    title: 'Untitled',
-    content: DEFAULT_CONTENT,
-    dirty: false,
-    revision: 0,
-    savedRevision: 0,
-    vimMode: 'normal',
-  };
-}
 
 function fileTitle(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
 }
 
 /** Captures a buffer's current revision before asynchronous filesystem work begins. */
-export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest | undefined {
-  if (buffer.filePath === null) return undefined;
-
+export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest {
   return {
     id: nextSaveRequestId++,
     bufferId: buffer.id,
@@ -58,16 +40,15 @@ export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest
   };
 }
 
-export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | 'buffers'>): EditorBuffer {
-  return state.buffers.find((buffer) => buffer.id === state.activeBufferId) ?? state.buffers[0];
+export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | 'buffers'>): EditorBuffer | null {
+  return state.buffers.find((buffer) => buffer.id === state.activeBufferId) ?? null;
 }
 
 interface EditorState {
   buffers: EditorBuffer[];
-  activeBufferId: string;
+  activeBufferId: string | null;
   saveRequests: EditorSaveRequest[];
 
-  createScratchBuffer: () => void;
   activateBuffer: (bufferId: string) => void;
   updateBufferContent: (bufferId: string, content: string) => void;
   setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
@@ -79,17 +60,10 @@ interface EditorState {
   openFile: (filePath: string, content: string) => void;
 }
 
-const initialBuffer = createScratchBuffer();
-
 export const useEditorStore = create<EditorState>((set) => ({
-  buffers: [initialBuffer],
-  activeBufferId: initialBuffer.id,
+  buffers: [],
+  activeBufferId: null,
   saveRequests: [],
-
-  createScratchBuffer: () => {
-    const buffer = createScratchBuffer();
-    set((state) => ({ buffers: [...state.buffers, buffer], activeBufferId: buffer.id }));
-  },
 
   activateBuffer: (bufferId) => set((state) => (state.buffers.some((buffer) => buffer.id === bufferId) ? { activeBufferId: bufferId } : state)),
 
@@ -108,7 +82,6 @@ export const useEditorStore = create<EditorState>((set) => ({
       const buffer = state.buffers.find((candidate) => candidate.id === (bufferId ?? state.activeBufferId));
       if (buffer === undefined) return state;
       const request = createEditorSaveRequest(buffer);
-      if (request === undefined) return state;
       return { saveRequests: [...state.saveRequests, request] };
     }),
 
@@ -130,10 +103,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       if (index === -1) return state;
 
       const buffers = state.buffers.filter((buffer) => buffer.id !== bufferId);
-      if (buffers.length === 0) {
-        const scratch = createScratchBuffer();
-        return { buffers: [scratch], activeBufferId: scratch.id };
-      }
+      if (buffers.length === 0) return { buffers, activeBufferId: null };
 
       if (state.activeBufferId !== bufferId) return { buffers };
       return { buffers, activeBufferId: buffers[Math.min(index, buffers.length - 1)].id };
@@ -144,9 +114,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       const existing = state.buffers.find((buffer) => buffer.filePath === filePath);
       if (existing !== undefined) return { activeBufferId: existing.id };
 
-      const activeBuffer = activeEditorBuffer(state);
       const fileBuffer: EditorBuffer = {
-        id: activeBuffer.filePath === null && !activeBuffer.dirty ? activeBuffer.id : `buffer-${nextBufferId++}`,
+        id: `buffer-${nextBufferId++}`,
         filePath,
         title: fileTitle(filePath),
         content,
@@ -158,7 +127,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 
       return {
         activeBufferId: fileBuffer.id,
-        buffers: fileBuffer.id === activeBuffer.id ? state.buffers.map((buffer) => (buffer.id === activeBuffer.id ? fileBuffer : buffer)) : [...state.buffers, fileBuffer],
+        buffers: [...state.buffers, fileBuffer],
       };
     }),
 }));

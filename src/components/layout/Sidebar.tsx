@@ -33,7 +33,7 @@ export function Sidebar() {
   const beginDraft = useSidebarStore((state) => state.beginDraft);
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
 
-  const activeFilePath = useEditorStore((state) => activeEditorBuffer(state).filePath);
+  const activeFilePath = useEditorStore((state) => activeEditorBuffer(state)?.filePath);
 
   useEffect(() => {
     if (vaultRoot === null) return;

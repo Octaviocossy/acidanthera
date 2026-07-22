@@ -3,45 +3,36 @@ import { activeEditorBuffer, useEditorStore } from './editor-store';
 
 function resetStore() {
   useEditorStore.setState({
-    buffers: [
-      {
-        id: 'scratch-test',
-        filePath: null,
-        title: 'Untitled',
-        content: '',
-        dirty: false,
-        revision: 0,
-        savedRevision: 0,
-        vimMode: 'normal',
-      },
-    ],
-    activeBufferId: 'scratch-test',
+    buffers: [],
+    activeBufferId: null,
     saveRequests: [],
   });
+}
+
+function getActiveBufferId(): string {
+  const bufferId = useEditorStore.getState().activeBufferId;
+  if (bufferId === null) throw new Error('expected an active buffer');
+  return bufferId;
 }
 
 beforeEach(resetStore);
 
 describe('openFile', () => {
-  it('keeps a dirty scratch buffer while opening a saved file', () => {
+  it('opens a saved file from an empty editor', () => {
     const store = useEditorStore.getState();
-    store.updateBufferContent('scratch-test', 'unfinished');
     store.openFile('/vault/notes.md', '# Notes');
 
-    expect(useEditorStore.getState().buffers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'scratch-test', filePath: null, content: 'unfinished', dirty: true }),
-        expect.objectContaining({ filePath: '/vault/notes.md', content: '# Notes', dirty: false }),
-      ])
-    );
+    expect(useEditorStore.getState()).toMatchObject({
+      buffers: [expect.objectContaining({ filePath: '/vault/notes.md', content: '# Notes', dirty: false })],
+      activeBufferId: expect.any(String),
+    });
   });
 
   it('activates an already-open saved buffer without replacing unsaved content', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/notes.md', '# Notes');
-    const bufferId = useEditorStore.getState().activeBufferId;
+    const bufferId = getActiveBufferId();
     store.updateBufferContent(bufferId, '# Changed');
-    store.createScratchBuffer();
     store.openFile('/vault/notes.md', '# Stale disk version');
 
     expect(useEditorStore.getState().activeBufferId).toBe(bufferId);
@@ -53,7 +44,7 @@ describe('requestSave', () => {
   it('captures an immutable snapshot and retains later edits as dirty', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/notes.md', '# Notes');
-    const bufferId = useEditorStore.getState().activeBufferId;
+    const bufferId = getActiveBufferId();
     store.updateBufferContent(bufferId, '# First edit');
     store.requestSave();
     const [request] = useEditorStore.getState().saveRequests;
@@ -67,10 +58,10 @@ describe('requestSave', () => {
   it('queues requests in order for their individual buffers', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/one.md', 'one');
-    const one = useEditorStore.getState().activeBufferId;
+    const one = getActiveBufferId();
     store.requestSave(one);
     store.openFile('/vault/two.md', 'two');
-    const two = useEditorStore.getState().activeBufferId;
+    const two = getActiveBufferId();
     store.requestSave(two);
 
     expect(useEditorStore.getState().saveRequests.map((request) => request.filePath)).toEqual(['/vault/one.md', '/vault/two.md']);
@@ -81,9 +72,9 @@ describe('closeBuffer', () => {
   it('activates the next buffer when closing the active one', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/one.md', 'one');
-    const one = useEditorStore.getState().activeBufferId;
+    const one = getActiveBufferId();
     store.openFile('/vault/two.md', 'two');
-    const two = useEditorStore.getState().activeBufferId;
+    const two = getActiveBufferId();
     store.activateBuffer(one);
 
     store.closeBuffer(one);
@@ -92,9 +83,12 @@ describe('closeBuffer', () => {
     expect(useEditorStore.getState().buffers.map((buffer) => buffer.id)).not.toContain(one);
   });
 
-  it('replaces the final buffer with a clean scratch buffer', () => {
-    useEditorStore.getState().closeBuffer('scratch-test');
+  it('leaves the editor empty when closing the final buffer', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const bufferId = getActiveBufferId();
+    store.closeBuffer(bufferId);
 
-    expect(useEditorStore.getState().buffers).toEqual([expect.objectContaining({ filePath: null, dirty: false, title: 'Untitled' })]);
+    expect(useEditorStore.getState()).toMatchObject({ buffers: [], activeBufferId: null });
   });
 });

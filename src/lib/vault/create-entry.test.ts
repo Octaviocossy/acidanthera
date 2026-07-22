@@ -73,19 +73,8 @@ describe('createVaultEntry', () => {
     useSidebarStore.setState({ tree: [], expanded: new Set(), cursorPath: null, draft: { kind: 'note', parentPath: '/vault' } });
     useToastStore.setState({ toasts: [] });
     useEditorStore.setState({
-      buffers: [
-        {
-          id: 'scratch-test',
-          filePath: null,
-          title: 'Untitled',
-          content: '',
-          dirty: false,
-          revision: 0,
-          savedRevision: 0,
-          vimMode: 'normal',
-        },
-      ],
-      activeBufferId: 'scratch-test',
+      buffers: [],
+      activeBufferId: null,
       saveRequests: [],
     });
     useAppStore.setState({ activeRegion: 'sidebar' });
@@ -132,7 +121,7 @@ describe('createVaultEntry', () => {
     expect(mockInvoke).toHaveBeenCalledWith('create_directory', { path: '/vault/newdir' });
     expect(useSidebarStore.getState().draft).toBeNull();
     expect(useSidebarStore.getState().cursorPath).toBe('/vault/newdir');
-    expect(useEditorStore.getState().buffers).toContainEqual(expect.objectContaining({ filePath: null }));
+    expect(useEditorStore.getState().buffers).toEqual([]);
   });
 
   it('keeps the draft open and shows an error toast when creation fails (e.g. name collision)', async () => {
