@@ -11,7 +11,7 @@ import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import { vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
-import { useEditorStore } from '@/stores/editor-store';
+import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
 
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). Hideable via `sidebarOpen` (#38). */
@@ -33,7 +33,7 @@ export function Sidebar() {
   const beginDraft = useSidebarStore((state) => state.beginDraft);
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
 
-  const activeFilePath = useEditorStore((state) => state.filePath);
+  const activeFilePath = useEditorStore((state) => activeEditorBuffer(state).filePath);
 
   useEffect(() => {
     if (vaultRoot === null) return;
