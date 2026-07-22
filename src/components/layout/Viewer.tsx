@@ -9,6 +9,7 @@ import { saveKeymap } from '@/lib/editor/save';
 import { editorTheme } from '@/lib/editor/theme';
 import { vimModeSync } from '@/lib/editor/vim-mode-sync';
 import { wikilink } from '@/lib/editor/wikilink';
+import '@/lib/editor/yank';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';

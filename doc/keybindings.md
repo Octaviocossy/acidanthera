@@ -48,14 +48,25 @@ doesn't double-fire (the "CodeMirror coexistence rule," `doc/v0-spec.md` §3.4).
 
 Both trigger the same save action, which persists to disk via the save loop.
 
+### Copying
+
+| Keys | Action | Notes |
+|------|--------|-------|
+| `yy` | Copy the current line | Standard linewise Vim yank; copies to the Vim register and system clipboard. |
+| `y{motion}` | Copy the motion range | The first `y` remains an operator prefix, such as `yw` to copy a word. |
+| `V` then `y` | Copy selected lines | Visual Line yank; copies the selected lines to the Vim register and system clipboard. |
+
+Successful system clipboard writes show a `Yanked to clipboard` info toast. Failures show an
+error toast while preserving the Vim register, so an in-editor paste remains available.
+
 ### Vim mode
 
-Vim emulation is enabled by default (no toggle in v0). Beyond the `:w` ex-command above, orbit-111
-adds no custom vim mappings — standard `@replit/codemirror-vim` keys (insert `i`/`a`/`o`, visual
-`v`/`V`, replace `R`, `Esc`, motions, operators like `d`/`y`/`c`, other ex-commands, etc.) all work
-unmodified. See the [`@replit/codemirror-vim` project](https://github.com/replit/codemirror-vim)
-for the full vim key reference rather than this doc. The editor shows a live mode indicator badge
-(bottom-right) reflecting the current vim submode.
+Vim emulation is enabled by default (no toggle in v0). Beyond the `:w` ex-command and the clipboard
+yank behavior above, standard `@replit/codemirror-vim` keys (insert `i`/`a`/`o`, visual `v`/`V`,
+replace `R`, `Esc`, motions, operators like `d`/`c`, other ex-commands, etc.) work unmodified. See
+the [`@replit/codemirror-vim` project](https://github.com/replit/codemirror-vim) for the full vim
+key reference rather than this doc. The editor shows a live mode indicator badge (bottom-right)
+reflecting the current vim submode.
 
 ## Chat
 
@@ -71,5 +82,5 @@ Opened via `:` from normal mode (see App-level navigation above). In v0, both `E
 ---
 
 This doc reflects the current implementation. Source of truth: `src/hooks/use-global-keymap.ts`,
-`src/hooks/use-sidebar-keymap.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`.
-Update this file whenever a keybinding is added, changed, or removed.
+`src/hooks/use-sidebar-keymap.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
+`src/lib/editor/yank.ts`. Update this file whenever a keybinding is added, changed, or removed.

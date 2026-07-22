@@ -27,4 +27,5 @@ tauri-plugin-dialog = "2"
 thiserror = "2"
 log = "0.4"
 tauri-plugin-log = "2"
+tauri-plugin-clipboard-manager = "2"
 

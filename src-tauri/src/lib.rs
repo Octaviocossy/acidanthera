@@ -13,6 +13,7 @@ pub fn run() {
         .plugin(logging::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(VaultState::default())
         .manage(AgentProcessState::default())
         .setup(|_app| {

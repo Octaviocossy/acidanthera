@@ -3,7 +3,7 @@
 orbit-111 is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
-**snapshot as of 2026-07-10**. For architecture rationale, see `doc/v0-spec.md`; for what each
+**snapshot as of 2026-07-22**. For architecture rationale, see `doc/v0-spec.md`; for what each
 module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md`.
 
 ## At a glance
@@ -31,8 +31,9 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/{button,badge}.tsx` |
 | `clsx` + `tailwind-merge` | ^2.1.1 / ^3.6.0 | The `cn()` classname helper — **only** in `src/lib/utils.ts` |
 | `@radix-ui/react-slot` | ^1.3.0 | `asChild` slot pattern — **only** in `src/components/ui/button.tsx` |
-| `@fontsource/jetbrains-mono` | ^5.2.8 | Self-hosted mono font, imported in `src/styles/index.css` (weights 300–700) |
+| `@fontsource-variable/geist` / `@fontsource-variable/geist-mono` | ^5.2.x | Self-hosted sans and mono variable fonts, imported in `src/styles/index.css` |
 | `@tauri-apps/api` | ^2 | Frontend↔Rust bridge (`invoke`, event `listen`) — used **only** in `src/services/*` and `src/lib/agent/backends/*` |
+| `@tauri-apps/plugin-clipboard-manager` | ^2 | Native system clipboard writes (`src/services/clipboard.service.ts`) |
 | `@tauri-apps/plugin-opener` | ^2 | JS side of the opener plugin |
 
 ### Dev & build tooling
@@ -56,12 +57,12 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `components/{ai,layout,vault}/` | React + Tailwind + Zustand store selectors |
 | `hooks/` | React hooks composed over the `services/` layer |
 | `lib/agent/` | Plain TS event contract + backend registry; the concrete backends call `@tauri-apps/api` |
-| `lib/editor/` | CodeMirror 6 (`@codemirror/view` + `@codemirror/state` + `@codemirror/lang-markdown` + `@replit/codemirror-vim`) |
+| `lib/editor/` | CodeMirror 6 (`@codemirror/view` + `@codemirror/state` + `@codemirror/lang-markdown` + `@replit/codemirror-vim`); custom system clipboard yank |
 | `lib/vault/` + `lib/dom/` | Plain TS helpers, no external runtime deps |
 | `lib/utils.ts` | `clsx` + `tailwind-merge` → the `cn()` helper |
-| `services/` | `@tauri-apps/api` (`invoke` / `listen`) |
+| `services/` | `@tauri-apps/api` (`invoke` / `listen`) plus native plugin wrappers such as the system clipboard service |
 | `stores/` | Zustand |
-| `styles/` + `styles/tokens/` | Tailwind v4 (`@import "tailwindcss"`), `@fontsource/jetbrains-mono`, CSS-custom-property token layers |
+| `styles/` + `styles/tokens/` | Tailwind v4 (`@import "tailwindcss"`), Geist variable fonts, CSS-custom-property token layers |
 
 ## Backend — `src-tauri/src/`
 
@@ -74,6 +75,7 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `tauri-plugin-dialog` | 2 | Native folder picker (vault pick) |
 | `tauri-plugin-opener` | 2 | Open paths/URLs with the OS default handler |
 | `tauri-plugin-log` | 2 | File + stdout logging plugin (`src-tauri/src/logging.rs`) |
+| `tauri-plugin-clipboard-manager` | 2 | Native system clipboard writes, authorized by `clipboard-manager:allow-write-text` |
 | `serde` (derive) | 1 | Serialize/deserialize domain structs across the IPC boundary |
 | `serde_json` | 1 | JSON (settings file, agent stream parsing) |
 | `notify` | 7 | Filesystem watcher for the open vault (`src-tauri/src/vault.rs`) |
@@ -85,7 +87,7 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | File | Primary technologies |
 |------|------------------------|
 | `main.rs` | Thin binary entry; calls `orbit_111_lib::run()` |
-| `lib.rs` | `tauri::Builder` — registers the log/opener/dialog plugins, `manage`s `VaultState` + `AgentProcessState`, `invoke_handler`s all 12 commands |
+| `lib.rs` | `tauri::Builder` — registers the log/opener/dialog/clipboard plugins, `manage`s `VaultState` + `AgentProcessState`, and registers frontend commands |
 | `vault.rs` | `notify` watcher, `serde`, `std::fs`, Tauri `command`/`State`/`emit`; `VaultState`, `VaultError`, the guarded vault commands, `scaffold_agent_context` |
 | `agent.rs` | `std::process` child spawning, PATH resolution, Tauri `State`/`emit`; `AgentProcessState`, `agent_spawn`/`agent_send`/`agent_stop` |
 | `settings.rs` | `serde` + `serde_json` + `std::fs`, Tauri app-config-dir path; `Settings`, default vault |
