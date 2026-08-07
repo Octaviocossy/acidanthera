@@ -1,92 +1,79 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { executeAppCommand } from '@/lib/app-command';
-import { isEditableTarget } from '@/lib/dom/is-editable-target';
+import { type DispatcherCommand, type DispatcherLayer, useDispatcherLayer } from '@/lib/keymap/dispatcher';
+import { configService } from '@/services/config.service';
 import { useAppStore } from '@/stores/app-store';
+import { useKeymapStore } from '@/stores/keymap-store';
 
-const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
+const KEYMAPS_FILE_NAME = 'keymaps.toml';
 
 /**
- * The app-level global vim keymap (doc/v0-spec.md §3.4). Two prefixes:
- * - `Ctrl-w` then `h`/`l` — jump focus between regions; `b` — toggle the sidebar (#38);
- *   `c` — toggle the chat panel; `s` — toggle the settings dialog (#29); `f` — find a file.
- *   Tmux/vim-style: a chord, not a modifier held with the second key.
- * - `:` — enter command mode; `Escape` — back to normal.
- * Registered on `window` in the bubble phase (not capture) so a future CodeMirror
- * instance can `stopPropagation()` to keep its own top-precedence handling authoritative
- * (the "CodeMirror coexistence rule", doc/v0-spec.md §3.4).
+ * The app-level global vim keymap (doc/v0-spec.md §3.4). Contributes the `[global]` layer to the
+ * shared window dispatcher (`src/lib/keymap/dispatcher.ts`, epic #94 child #97) — its bindings
+ * come from `useKeymapStore`'s resolved `keymaps.toml`, so `Ctrl-w f` is only the *default* for
+ * `global.find-file`, not a hardcoded literal. Also owns loading `keymaps.toml` on mount and
+ * reloading it whenever the config-dir watcher reports it changed, since this hook mounts once at
+ * the app root (`App.tsx`).
+ *
+ * `:` still enters command mode and `Escape` still exits it as a small standalone listener —
+ * neither is a rebindable `AppCommandId` (mirroring how `:w` stays outside the command registry).
  */
 export function useGlobalKeymap() {
   useEffect(() => {
-    let awaitingCtrlW = false;
-    let prefixTimer: ReturnType<typeof setTimeout> | null = null;
+    useKeymapStore
+      .getState()
+      .load()
+      .catch(() => {});
 
-    const clearPrefix = () => {
-      awaitingCtrlW = false;
-      if (prefixTimer !== null) {
-        clearTimeout(prefixTimer);
-        prefixTimer = null;
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const store = useAppStore.getState();
-
-      if (awaitingCtrlW) {
-        clearPrefix();
-        switch (event.key) {
-          case 'h':
-            event.preventDefault();
-            store.focusPrevious();
-            break;
-          case 'l':
-            event.preventDefault();
-            store.focusNext();
-            break;
-          case 'b':
-            event.preventDefault();
-            store.toggleSidebar();
-            break;
-          case 'c':
-            event.preventDefault();
-            store.toggleChat();
-            break;
-          case 's':
-            event.preventDefault();
-            store.toggleSettings();
-            break;
-          case 'f':
-            event.preventDefault();
-            executeAppCommand('global.find-file');
-            break;
-          default:
-            break;
+    const unlistenPromise = configService
+      .onConfigChanged((paths) => {
+        if (paths.some((path) => path.endsWith(KEYMAPS_FILE_NAME))) {
+          useKeymapStore
+            .getState()
+            .load()
+            .catch(() => {});
         }
-        return;
-      }
+      })
+      .catch(() => undefined);
 
-      if (event.ctrlKey && event.key === 'w' && !isEditableTarget(event.target)) {
-        event.preventDefault();
-        awaitingCtrlW = true;
-        prefixTimer = setTimeout(clearPrefix, CTRL_W_PREFIX_TIMEOUT_MS);
-        return;
-      }
-
-      if (store.mode === 'normal' && event.key === ':' && !isEditableTarget(event.target)) {
-        event.preventDefault();
-        store.setMode('command');
-        return;
-      }
-
-      if (store.mode === 'command' && event.key === 'Escape') {
-        event.preventDefault();
-        store.setMode('normal');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      clearPrefix();
-      window.removeEventListener('keydown', handleKeyDown);
+      unlistenPromise.then((unlisten) => unlisten?.()).catch(() => {});
     };
   }, []);
+
+  useEffect(() => {
+    const handleCommandModeEscape = (event: KeyboardEvent) => {
+      if (useAppStore.getState().mode === 'command' && event.key === 'Escape') {
+        event.preventDefault();
+        useAppStore.getState().setMode('normal');
+      }
+    };
+    window.addEventListener('keydown', handleCommandModeEscape);
+    return () => window.removeEventListener('keydown', handleCommandModeEscape);
+  }, []);
+
+  const layerBindings = useKeymapStore((state) => state.resolved.layers.global);
+
+  const commands = useMemo<DispatcherCommand[]>(
+    () => [
+      { id: 'global.focus-previous', chords: layerBindings.get('global.focus-previous') ?? [], run: () => useAppStore.getState().focusPrevious() },
+      { id: 'global.focus-next', chords: layerBindings.get('global.focus-next') ?? [], run: () => useAppStore.getState().focusNext() },
+      { id: 'global.toggle-sidebar', chords: layerBindings.get('global.toggle-sidebar') ?? [], run: () => useAppStore.getState().toggleSidebar() },
+      { id: 'global.toggle-chat', chords: layerBindings.get('global.toggle-chat') ?? [], run: () => useAppStore.getState().toggleChat() },
+      { id: 'global.toggle-settings', chords: layerBindings.get('global.toggle-settings') ?? [], run: () => useAppStore.getState().toggleSettings() },
+      { id: 'global.find-file', chords: layerBindings.get('global.find-file') ?? [], run: () => executeAppCommand('global.find-file') },
+      {
+        id: 'global.command-mode',
+        chords: layerBindings.get('global.command-mode') ?? [],
+        run: () => {
+          if (useAppStore.getState().mode === 'normal') useAppStore.getState().setMode('command');
+        },
+      },
+    ],
+    [layerBindings]
+  );
+
+  const layer = useMemo<DispatcherLayer>(() => ({ name: 'global', commands, isActive: () => true }), [commands]);
+
+  useDispatcherLayer(layer);
 }

@@ -127,4 +127,19 @@ describe('matchesChordStep', () => {
     expect(matchesChordStep(step, keyEvent({ key: 'ArrowDown' }))).toBe(true);
     expect(matchesChordStep(step, keyEvent({ key: 'arrowdown' }))).toBe(false);
   });
+
+  it('matches a shift-modified letter against its uppercase KeyboardEvent.key', () => {
+    const [step] = parseChord('shift-a');
+
+    expect(matchesChordStep(step, keyEvent({ key: 'A', shiftKey: true }))).toBe(true);
+    // Held shift is required — the unshifted letter must not also satisfy a shift-a chord.
+    expect(matchesChordStep(step, keyEvent({ key: 'a', shiftKey: false }))).toBe(false);
+  });
+
+  it('does not match an unshifted letter chord against its shifted production', () => {
+    const [step] = parseChord('a');
+
+    expect(matchesChordStep(step, keyEvent({ key: 'a' }))).toBe(true);
+    expect(matchesChordStep(step, keyEvent({ key: 'A', shiftKey: true }))).toBe(false);
+  });
 });

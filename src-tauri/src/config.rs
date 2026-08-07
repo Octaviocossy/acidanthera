@@ -28,9 +28,53 @@ const CONFIG_FILES: [&str; 2] = ["settings.toml", "keymaps.toml"];
 /// this is just enough for the file to exist and parse.
 const DEFAULT_SETTINGS_TOML: &str = "# orbit-111 settings\n";
 
-/// First-run `keymaps.toml` seed. The keymap slice replaces this with the generated catalog
-/// (#95 step 8) — this foundation slice ships only the scaffolding mechanism.
-const DEFAULT_KEYMAPS_TOML: &str = "# orbit-111 keymaps\n";
+/// First-run `keymaps.toml` seed (#97 step 6): every resolvable command, commented out, grouped
+/// by layer, showing its current default — uncommenting a line and editing its chord array is
+/// the whole rebinding UX (spec ADR 0005: command-keyed, not chord-keyed). Must be kept in sync
+/// with `generateKeymapsToml()` in `src/lib/keymap/seed.ts`, which is the source of truth this
+/// constant was generated from.
+const DEFAULT_KEYMAPS_TOML: &str = r#"# orbit-111 keymaps
+#
+# Every line below is commented out and shows that command's current default. Uncomment a
+# line and edit its chord array to rebind it — a chord array is always replaced wholesale,
+# never merged with the default. Set a command's array to [] to unbind it entirely.
+#
+# `:w` (save) is not rebindable here — it's owned by the editor slice, not this catalog.
+
+# [global] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "global.find-file"       = ["ctrl-w f"]
+# "global.focus-next"      = ["ctrl-w l"]
+# "global.focus-previous"  = ["ctrl-w h"]
+# "global.toggle-sidebar"  = ["ctrl-w b"]
+# "global.toggle-chat"     = ["ctrl-w c"]
+# "global.toggle-settings" = ["ctrl-w s"]
+# "global.command-mode"    = [":"]
+
+# [sidebar] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "sidebar.cursor-down"   = ["j"]
+# "sidebar.cursor-up"     = ["k"]
+# "sidebar.open"          = ["l", "enter"]
+# "sidebar.collapse"      = ["h"]
+# "sidebar.new-note"      = ["a"]
+# "sidebar.new-directory" = ["shift-a"]
+
+# [chat.history] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "chat.history.cursor-down" = ["j"]
+# "chat.history.cursor-up"   = ["k"]
+# "chat.history.open"        = ["l", "enter"]
+
+# [modal] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "modal.confirm" = ["enter"]
+# "modal.cancel"  = ["escape"]
+"#;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {

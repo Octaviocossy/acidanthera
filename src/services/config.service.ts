@@ -1,8 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 /** File names accepted by the Rust config-file commands (`src-tauri/src/config.rs`). Any other
  *  name is rejected by the backend's allowlist. */
 export type ConfigFileName = 'settings.toml' | 'keymaps.toml';
+
+/** Emitted by the Rust config-dir `notify` watcher (`src-tauri/src/config.rs`) with the touched
+ *  file's absolute path(s), mirroring `vaultService`'s `vault-changed`. */
+const CONFIG_CHANGED_EVENT = 'config-changed';
 
 /** A syntax-error diagnostic surfaced when a config file fails to parse as TOML. `line` is the
  *  1-based line the parser attributed the error to, or `null` when it could not. */
@@ -29,4 +34,7 @@ export const configService = {
 
   /** Parses a config file as TOML, returning either its value or a line-numbered syntax diagnostic. */
   parseConfigFile: (name: ConfigFileName): Promise<ConfigParseResult> => invoke('parse_config_file', { name }),
+
+  /** Subscribes to `config-changed`, firing with the absolute path(s) touched by the change. */
+  onConfigChanged: (handler: (paths: string[]) => void): Promise<UnlistenFn> => listen<string[]>(CONFIG_CHANGED_EVENT, (event) => handler(event.payload)),
 };

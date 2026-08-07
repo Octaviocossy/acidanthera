@@ -1,48 +1,39 @@
-import { useEffect } from 'react';
-import { isEditableTarget } from '@/lib/dom/is-editable-target';
+import { useMemo } from 'react';
+import { type DispatcherCommand, type DispatcherLayer, useDispatcherLayer } from '@/lib/keymap/dispatcher';
 import { useAppStore } from '@/stores/app-store';
 import { useChatHistoryStore } from '@/stores/chat-history-store';
+import { useKeymapStore } from '@/stores/keymap-store';
 
 /**
- * Vim-style `j`/`k`/`l`/`Enter` navigation over the chat panel's History tab (#71). The exact
- * counterpart of `useSidebarKeymap`: a window-level `keydown` listener scoped to fire only while the
- * chat is the active region, the app is in normal mode, and the History tab is showing — so it never
- * steals keystrokes from the editor, the command line, or the live-chat input (`isEditableTarget`).
- *
- * - `j` / `k` — move the cursor down / up the saved-chat list.
- * - `l` / `Enter` — open the highlighted chat (loads it into the transcript, switches to the Chat tab).
+ * Vim-style `j`/`k`/`l`/`Enter` navigation over the chat panel's History tab (#71). Contributes
+ * the `[chat.history]` layer to the shared window dispatcher (`src/lib/keymap/dispatcher.ts`,
+ * epic #94 child #97) instead of running its own independent `keydown` listener — bindings come
+ * from `useKeymapStore`'s resolved `keymaps.toml`. Active only while the chat is the focused
+ * region, the app is in normal mode, and the History tab is showing.
  */
 export function useChatHistoryKeymap() {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const app = useAppStore.getState();
-      if (app.activeRegion !== 'chat' || app.mode !== 'normal') return;
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (isEditableTarget(event.target)) return;
+  const layerBindings = useKeymapStore((state) => state.resolved.layers['chat.history']);
 
-      const history = useChatHistoryStore.getState();
-      if (history.tab !== 'history') return;
+  const commands = useMemo<DispatcherCommand[]>(
+    () => [
+      { id: 'chat.history.cursor-down', chords: layerBindings.get('chat.history.cursor-down') ?? [], run: () => useChatHistoryStore.getState().moveCursor(1) },
+      { id: 'chat.history.cursor-up', chords: layerBindings.get('chat.history.cursor-up') ?? [], run: () => useChatHistoryStore.getState().moveCursor(-1) },
+      { id: 'chat.history.open', chords: layerBindings.get('chat.history.open') ?? [], run: () => useChatHistoryStore.getState().openCursor() },
+    ],
+    [layerBindings]
+  );
 
-      switch (event.key) {
-        case 'j':
-          event.preventDefault();
-          history.moveCursor(1);
-          break;
-        case 'k':
-          event.preventDefault();
-          history.moveCursor(-1);
-          break;
-        case 'l':
-        case 'Enter':
-          event.preventDefault();
-          history.openCursor();
-          break;
-        default:
-          break;
-      }
-    };
+  const layer = useMemo<DispatcherLayer>(
+    () => ({
+      name: 'chat.history',
+      commands,
+      isActive: () => {
+        const app = useAppStore.getState();
+        return app.activeRegion === 'chat' && app.mode === 'normal' && useChatHistoryStore.getState().tab === 'history';
+      },
+    }),
+    [commands]
+  );
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useDispatcherLayer(layer);
 }
