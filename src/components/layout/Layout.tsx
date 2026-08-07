@@ -5,6 +5,7 @@ import { FileFinder } from '@/components/layout/FileFinder';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
+import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
 import { ToastHost } from '@/components/layout/ToastHost';
 import { Viewer } from '@/components/layout/Viewer';
 
@@ -24,6 +25,7 @@ export function Layout() {
         <FileFinder />
         {/* Before ToastHost so toasts stay visible above the modal scrim. */}
         <SettingsDialog />
+        <SwitchVaultDialog />
         <ToastHost />
       </div>
       <StatusBar />
