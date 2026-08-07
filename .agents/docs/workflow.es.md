@@ -1,0 +1,215 @@
+# Guía del flujo de trabajo agéntico
+
+> Idioma: **Español** — [English](./workflow.en.md)
+
+Esta guía explica cómo *usar* el andamiaje (scaffold) en el día a día, una vez
+instalado en un proyecto. Para instrucciones de instalación y la estructura de
+archivos, consulta el `README.md` de la raíz. Para el contrato de comportamiento
+exacto de cualquier pieza individual, la fuente canónica siempre es el archivo al
+que este documento enlaza — esta guía explica cómo encajan las piezas entre sí, no
+es la última palabra sobre ninguna de ellas.
+
+## Filosofía
+
+Un único conjunto de reglas, consumido de forma idéntica por dos agentes.
+`AGENTS.md` es el punto de entrada canónico (OpenCode lo lee directamente);
+`CLAUDE.md` incluye los mismos archivos de reglas mediante `@path` para que Claude
+Code nunca diverja de lo que ve OpenCode. Todo lo que está bajo `.agents/` — reglas,
+comandos, planes, scripts — es agnóstico del agente; nada en este andamiaje es
+exclusivo de Claude ni de OpenCode.
+
+El conjunto de herramientas es de dependencia cero por diseño: POSIX `sh` +
+Markdown. No hay nada que instalar con `npm` antes de que el flujo de trabajo
+funcione.
+
+## Ciclo principal: interrogar → planificar → implementar → verificar → entregar
+
+La forma del día a día del andamiaje, se usen o no issues de GitHub:
+
+1. **Interrogar (grill).** Cuando el diseño aún no está definido, ejecuta
+   `/grill "<tema>"` antes de planificar nada. Modela el trabajo como un árbol de
+   decisiones y pregunta toda la **frontera** — cada decisión cuyos prerrequisitos ya
+   están resueltos — como una única ronda numerada, con una respuesta recomendada por
+   pregunta, y luego se detiene y te espera. Encontrar *hechos* es tarea del agente
+   (despacha subagentes en lugar de preguntarte algo que podría consultar); las
+   *decisiones* son tuyas. Mientras pregunta, afina `.agents/ubiquitous-language.md` en
+   el momento y ofrece un ADR para cualquier decisión que sea difícil de revertir *y*
+   sorprendente *y* fruto de una disyuntiva real. Cuando la frontera queda vacía escribe
+   una especificación definida en
+   `.agents/specs/[aaaa-mm-dd]-[descripción-corta-en-kebab-case].md` y te indica qué
+   ejecutar después: `/planning` para trabajo local, `/create-issue` para un solo issue,
+   o `/spec-breakdown <ruta-de-la-spec>` para algo lo bastante grande como para
+   dividirse. El protocolo completo está en `.agents/rules/design-interrogation.md`.
+   Omite este paso cuando el diseño ya sea evidente.
+2. **Planificar.** Para cualquier tarea no trivial, produce un archivo de plan antes
+   de escribir código. Pide al agente que planifique (entrar en modo plan lo activa
+   automáticamente) o ejecuta `/planning "<descripción>"`. El plan se guarda en
+   `.agents/plans/[aaaa-mm-dd]-[descripción-corta-en-kebab-case].md` siguiendo la
+   estructura de `.agents/rules/plan-creation.md` — Objetivo (Goal), Contexto
+   (Context), Archivos Afectados (Affected Files), una Implementación Paso a Paso
+   numerada con suficiente detalle para que un modelo menos capaz la ejecute sin
+   adivinar, Decisiones de Arquitectura, Criterios de Validación, Preguntas
+   Abiertas. El estado inicial es `draft`.
+3. **Revisar.** El plan se presenta antes de empezar cualquier implementación.
+   Apruébalo, o devuélvelo con cambios — el estado pasa a `approved` cuando lo
+   hagas.
+4. **Implementar.** El agente ejecuta la Implementación Paso a Paso del plan en
+   orden, marcando el estado como `in-progress`, y luego `completed` una vez que
+   todos los Criterios de Validación se cumplen. Cualquier código de dominio tocado
+   en el camino debe primero verificarse contra
+   `.agents/ubiquitous-language.md` (ver más abajo).
+5. **Verificar.** Ejecuta lo que definan las `## Commands` de tu proyecto en
+   `AGENTS.md` para lint/build/test. Si estás modificando el andamiaje mismo en
+   lugar de un proyecto que lo adoptó, `sh .agents/scripts/verify-scaffold.sh` es la
+   puerta de aceptación — ver más abajo.
+6. **Entregar.** Haz commit, y si el trabajo se rastrea como un issue de GitHub,
+   ejecuta `/ship-note` para publicar lo que realmente ocurrió como comentario (ver
+   el flujo de issues de GitHub más abajo). `/ship-note` nunca cierra el issue —
+   es un punto de control humano deliberado.
+
+## Mantener honesto el vocabulario de dominio
+
+`.agents/ubiquitous-language.md` es la fuente única de verdad para los nombres
+canónicos de entidades, tipos, estados e invariantes. `.agents/rules/domain-glossary.md`
+es la regla de cumplimiento: antes de tocar cualquier archivo que viva en una ruta
+de dominio canónica, o que nombre/exporte/importe/cambie un concepto del glosario,
+lee primero el glosario. Si introduces o cambias vocabulario canónico, añádelo al
+glosario, actualiza `Last updated` a la fecha ISO actual, y agrega una fila al
+Changelog — nunca renombres silenciosamente un concepto en el código sin actualizar
+su definición.
+
+Esa regla tiene dos modos. El **pasivo**, descrito arriba, aplica siempre que tocas
+código de dominio. El **activo** se ejecuta durante una sesión de `/grill`: los
+términos que entran en conflicto con el glosario se cuestionan en el momento, las
+palabras difusas se afinan hasta un término canónico, las relaciones se someten a
+casos límite inventados, y las afirmaciones sobre cómo funciona algo se contrastan
+contra el código real. Los términos resueltos se escriben de inmediato en lugar de
+acumularse para el final. Las decisiones que sobreviven a la tarea que las originó van
+a un ADR en `.agents/adr/` — ver `.agents/rules/adr.md` para la prueba de tres partes
+que evita que ese directorio se llene de decisiones rutinarias.
+
+## Pruebas (testing)
+
+`.agents/rules/testing.md` define qué probar (lógica pura primero, luego módulos
+con estado, luego unidades interactivas/UI, luego código de frontera) y cómo
+(verificar comportamiento observable, hacer mock solo en fronteras reales de E/S,
+fixtures determinísticos, un comportamiento verificable por prueba)
+independientemente del stack. Cuando tu proyecto adopte un runner, completa los
+marcadores específicos del runner en ese archivo y en `AGENTS.md` ›
+`## Testing` / `## Commands` › `Test:` — mantén ambos en concordancia en lugar de
+dejar que diverjan silenciosamente.
+
+## Comandos de barra (slash commands)
+
+Cada comando se define una sola vez como una especificación agnóstica del agente en
+`.agents/commands/<nombre>.md`, con un wrapper delgado por agente en
+`.claude/commands/` y `.opencode/commands/` que solo difiere en el frontmatter
+(`.agents/rules/command-creation.md`). Se invoca de forma idéntica como
+`/<nombre>` en cualquiera de los dos agentes.
+
+| Comando | Úsalo para |
+|---|---|
+| `/grill` | Definir un diseño mediante interrogación antes de escribir ningún artefacto. |
+| `/planning` | Producir un plan de implementación revisable antes de escribir código. |
+| `/commit-message` | Generar un mensaje de Conventional Commits a partir del diff actual. |
+| `/custom-init` | Instalar este andamiaje en un proyecto destino (ver más abajo). |
+| `/create-issue` | Convertir una descripción de requerimiento en un issue de GitHub con un plan completo en el cuerpo. |
+| `/update-issue` | Corregir el cuerpo/título de un issue cuando la primera generación fue inexacta. |
+| `/execute-issue` | Ejecutar el issue vinculado a la rama actual, en dos fases: confirmar, luego implementar. |
+| `/comment-issue` | Añadir un comentario al hilo del issue de la rama actual sin tocar su estado. |
+| `/ship-note` | Publicar un comentario que describe lo que realmente se entregó, una vez terminado el trabajo. |
+| `/spec-breakdown` | Descomponer una especificación grande en un issue epic + issues hijos con un grafo de dependencias. |
+| `/execute-epic` | Ejecutar los hijos de un epic ola por ola en worktrees paralelos, y luego abrir un solo PR. |
+| `/spec` | Todo en uno: `/spec-breakdown` seguido de `/execute-epic`, encadenados. |
+| `/handoff` | Pasar esta conversación a un agente en segundo plano que retoma el trabajo de inmediato. |
+
+## El flujo de trabajo de issues de GitHub
+
+Los comandos que dependen de issues (`/execute-issue`, `/update-issue`,
+`/comment-issue`, `/ship-note`) resuelven "¿en qué issue estoy trabajando?" a partir
+de la rama actual, usando la precedencia definida en
+`.agents/rules/issue-resolution.md`: primero un segmento numérico inicial en el
+nombre de la rama, luego el `Closes #N` de un PR vinculado, luego una coincidencia
+aproximada por título, y solo entonces preguntándote directamente. Se conectan a
+GitHub a través del servidor GitHub MCP registrado en `.mcp.json` /
+`opencode.json`, que requiere un `GITHUB_TOKEN` en `.env` (ver la sección "GitHub
+MCP server" del README de la raíz).
+
+Un flujo típico de un solo issue:
+
+```
+/create-issue "add CSV export to the reports page"   # crea el issue + el plan
+git checkout -b 42-csv-export                          # el nombre de rama lleva el número de issue
+/execute-issue                                          # Fase 1 confirmar, Fase 2 implementar
+/ship-note                                               # registra lo ocurrido, el issue queda abierto
+```
+
+## Orquestación paralela: epics e hijos
+
+Para especificaciones demasiado grandes para una sola rama,
+`.agents/rules/parallel-orchestration.md` define un modelo **epic/hijo**: un issue
+epic contiene una lista de tareas hijas y un bloque de grafo de dependencias
+` ```waves `; cada hijo es un issue normal con plan completo, prefijado con
+`> Epic: #<n>` y `> Depends on: #…`. Los hijos ramifican desde una **rama de
+integración del epic** real y duradera (`epic/<n>-<slug>`) — nunca directamente
+desde `main` — y `.agents/scripts/run-parallel-issues.sh` ejecuta un worktree de
+git + un agente headless por cada hijo, fusionando automáticamente cada éxito de
+vuelta a la rama del epic tan pronto como se hace push. Las olas avanzan
+automáticamente; no hay punto de control de fusión manual entre ellas. `main` solo
+recibe el trabajo una vez, mediante un único PR `epic → main` abierto después de
+que todos los hijos estén integrados.
+
+```
+/spec ruta/a/especificacion-grande.md    # spec-breakdown, revisión, luego execute-epic — encadenados
+```
+
+o ejecuta las dos fases tú mismo con `/spec-breakdown` seguido de `/execute-epic`
+cuando quieras revisar la descomposición antes de que empiece cualquier ejecución.
+
+Configuración única antes del primer `/execute-epic`: copia
+`.agents/parallel.config.example` → `.agents/parallel.config` y establece
+`AGENT_EXEC_CMD` (por defecto `claude -p --dangerously-skip-permissions`; los
+adaptadores de Codex y OpenCode están documentados en el mismo archivo). Completa
+`## Commands` › `Build:` / `Test:` en `AGENTS.md` para que los agentes hijos tengan
+verificaciones de aceptación reales que ejecutar.
+
+Los límites de seguridad están en el mismo archivo de reglas: `MAX_CHILDREN=12`,
+`PARALLEL_MAX_CONCURRENCY=3`, `AGENT_TIMEOUT=1800s`. El runner nunca obtiene
+`GITHUB_TOKEN` — los agentes hijos headless no tienen acceso a GitHub por diseño;
+todas las llamadas a la API de GitHub las realiza la sesión propia del agente
+orquestador a través de MCP.
+
+## Instalar este andamiaje en otro lugar
+
+`/custom-init [directorio-destino]` ejecuta el copiador basado en manifiesto
+(`.agents/scripts/init-scaffold.sh`), que lee `.agents/scaffold.manifest` — una
+lista plana de archivos y directorios recursivos — y copia cada entrada al destino,
+omitiendo (nunca sobrescribiendo) lo que ya exista ahí. Siempre es seguro volver a
+ejecutarlo. Para agregar algo nuevo a lo que recibe cada proyecto que lo adopte,
+añade una línea al manifiesto en lugar de incrustar una plantilla en otro lugar; el
+manifiesto y el script copiador son la única fuente de verdad sobre qué se
+instala.
+
+## Verificar el andamiaje mismo
+
+Si estás trabajando en el código fuente propio de este andamiaje (y no en un
+proyecto que lo adoptó), `sh .agents/scripts/verify-scaffold.sh` es la puerta de
+aceptación de dependencia cero. Verifica: que existan los archivos raíz/de
+gobernanza requeridos; que cada especificación de comando tenga tanto un wrapper de
+Claude como uno de OpenCode; que cada wrapper declare un campo `description:`; que
+cada script bajo `.agents/scripts/` compile limpiamente con `sh -n` y sea
+ejecutable; que cada entrada de `.agents/scaffold.manifest` resuelva a una ruta
+real; y que no haya artefactos específicos de stack (`src/`, `src-tauri/`,
+`package.json`) rastreados. El código de salida es el número de verificaciones
+fallidas — `0` significa limpio.
+
+## Después de adoptar el andamiaje en un proyecto real
+
+Completa los marcadores que este andamiaje trae con `_not yet documented_`:
+`AGENTS.md` › `## Workspace`, `## Commands`, `## Verification Quirks`, `## Skills`,
+`## Code Structure`; la fecha `Last updated` y la ruta canónica de código de
+dominio de `.agents/ubiquitous-language.md`; y las rutas canónicas de dominio en
+`.agents/rules/domain-glossary.md`. Nada del flujo de trabajo anterior cambia una
+vez que lo hagas — es el mismo ciclo planificar → implementar → verificar →
+entregar, ahora apuntando a los comandos reales de lint/build/test de tu stack en
+lugar de marcadores.
