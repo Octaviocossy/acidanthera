@@ -1,5 +1,22 @@
 # AGENTS.md
 
+## Design Interrogation
+- Before planning anything whose design is not already settled, run `/grill`. Full protocol in
+  `.agents/rules/design-interrogation.md`.
+- It models the work as a **design tree** and asks the whole **frontier** — every decision whose
+  prerequisites are settled — in one numbered round, each question carrying a recommended
+  answer, then stops and waits. Facts are the agent's job (dispatch sub-agents); decisions are
+  the user's. Done when the frontier is empty.
+- Terminology is sharpened **during** the session against `.agents/ubiquitous-language.md` — see
+  the Active mode section of `.agents/rules/domain-glossary.md`.
+- Output: a settled **design spec** at `.agents/specs/[yyyy-mm-dd]-[short-kebab-description].md`,
+  plus any ADRs raised in `.agents/adr/` (`.agents/rules/adr.md`).
+- The spec then routes to `/planning` (local), `/create-issue` (one issue), or
+  `/spec-breakdown <spec path>` (3–8 slices). `/spec-breakdown` already accepts a spec file path,
+  so no special handoff is needed.
+- Never run a design interrogation inside a headless parallel-runner child — there is no human
+  to answer.
+
 ## Plan Workflow
 - When asked to plan or when entering plan mode, follow `.agents/rules/plan-creation.md`.
 - Persist plans in `.agents/plans/[yyyy-mm-dd]-[short-kebab-description].md`.
@@ -11,6 +28,8 @@
 - Full enforcement rules are in `.agents/rules/domain-glossary.md`. Follow without exception.
 - Read `.agents/ubiquitous-language.md` before writing or reviewing any code that touches domain entities, type names, or data contracts.
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
+- Decisions that outlive the task that produced them belong in an ADR under `.agents/adr/`, not in
+  the glossary or a plan file. Format and the three-part offer test are in `.agents/rules/adr.md`.
 
 ## Testing
 - Frontend test runner: Vitest, configured in `vite.config.ts` (`test` block) — no separate `vitest.config.ts`.
@@ -38,17 +57,33 @@
 _None documented yet._
 
 ## Skills
-<!-- TODO: document where skills live and any workspace-wide skills already in .agents/skills/ -->
-- Workspace-wide skills: `.agents/skills/`
+- A **skill** is a procedure the agent loads on its own when the situation matches its
+  `description` — as opposed to a slash command, which the user starts. Full conventions in
+  `.agents/rules/skill-creation.md`.
+- Canonical body: `.agents/skills/<name>/SKILL.md`, surfaced to Claude Code by a relative
+  symlink at `.claude/skills/<name>`. OpenCode reads `.agents/skills/` natively; Claude Code
+  reads only `.claude/skills/` — hence the symlink. Reasoning in
+  `.agents/adr/0001-skills-canonical-in-agents-skills.md`.
 - App-specific skills: `apps/<app>/.agents/skills/`
 - Package-specific skills: `packages/<pkg>/.agents/skills/`
 - Prefer the narrowest ownership boundary that still matches real usage.
+- Available: `resolving-merge-conflicts` — fires on an in-progress git merge/rebase conflict.
+  Finds the intent behind each side, resolves every hunk without inventing behavior, runs the
+  project's checks, and finishes the merge. Vendored from `mattpocock/skills`.
+- Available: `rust-best-practices` — fires when writing, reviewing, or refactoring Rust in
+  `src-tauri/`: ownership and borrowing choices, `Result` error handling, performance. Based on
+  Apollo GraphQL's handbook.
+- Available: `tauri-v2` — fires on Tauri v2 work: `tauri.conf.json`, `#[tauri::command]`, IPC
+  (`invoke`, `emit`, channels), capabilities/permissions, build and distribution.
+- Available: `vercel-composition-patterns` — fires on React component-architecture work:
+  boolean-prop proliferation, compound components, context providers, React 19 API changes.
 
 ## Slash Commands
 - Cross-agent slash commands (Claude Code + OpenCode) follow `.agents/rules/command-creation.md`.
 - Canonical specs live in `.agents/commands/<name>.md`; thin wrappers in `.claude/commands/` and `.opencode/commands/` reference them with identical bodies (only frontmatter differs).
 - Invoke in either agent with `/<name>`.
 - Available: `commit-message` — generate a Conventional-Commits message from the current diff.
+- Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens the glossary inline, and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
 - Available: `planning` — create a thorough implementation plan and persist it in `.agents/plans/`.
 - Available: `custom-init` — bootstrap the full cross-agent governance scaffold in the current project.
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.
@@ -59,6 +94,7 @@ _None documented yet._
 - Available: `spec-breakdown` — decompose a large spec into an epic issue + N child issues with a dependency graph.
 - Available: `execute-epic` — execute an epic's child issues in parallel, auto-merging each wave into the epic integration branch, then open one epic PR.
 - Available: `spec` — one-shot: break a spec into an epic + children, then execute them in parallel.
+- Available: `handoff` — hand this conversation off to a fresh background agent (`claude --bg`) seeded with a summary as its prompt; one detached continuation in this working tree, sandboxed from GitHub unless `with-github`. Claude Code only — OpenCode has no background mode and prints the summary instead.
 
 ## GitHub MCP server
 - The GitHub issue commands (`create-issue`, `update-issue`, `execute-issue`,
