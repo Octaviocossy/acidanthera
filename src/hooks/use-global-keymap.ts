@@ -56,7 +56,7 @@ export function useGlobalKeymap() {
             break;
           case 'f':
             event.preventDefault();
-            executeAppCommand('find-file');
+            executeAppCommand('global.find-file');
             break;
           default:
             break;

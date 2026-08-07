@@ -1,10 +1,13 @@
 mod agent;
 mod chats;
+mod config;
 mod logging;
 mod settings;
 mod vault;
 
 use agent::AgentProcessState;
+use config::ConfigWatcherState;
+use tauri::Manager;
 use vault::VaultState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,8 +19,12 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(VaultState::default())
         .manage(AgentProcessState::default())
-        .setup(|_app| {
+        .manage(ConfigWatcherState::default())
+        .setup(|app| {
             log::info!("orbit-111 backend started");
+            let handle = app.handle().clone();
+            let config_watcher_state = app.state::<ConfigWatcherState>();
+            config::init(&handle, &config_watcher_state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -37,6 +44,9 @@ pub fn run() {
             agent::agent_spawn,
             agent::agent_send,
             agent::agent_stop,
+            config::read_config_file,
+            config::write_config_file,
+            config::parse_config_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

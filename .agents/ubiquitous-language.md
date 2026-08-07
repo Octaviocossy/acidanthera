@@ -3,7 +3,7 @@
 > Single source of truth for current domain and technical terminology.
 > Read this before changing canonical types, states, processes, or data contracts.
 >
-> **Last updated:** 2026-07-22
+> **Last updated:** 2026-08-07
 > **Canonical code:** `src/` (TypeScript), `src-tauri/src/` (Rust)
 
 ---
@@ -83,6 +83,17 @@
 | Chat persistence store | `chats.rs` / `chatsService` | chat store, history store | Format-agnostic storage of chat-file bytes under the open vault's `.orbit/chats/` directory. |
 | Chat record | `ChatRecord` (`src-tauri/src/chats.rs`) | chat entry, chat summary | Saved-chat listing record containing id, path, update time, and raw chat-file contents. |
 | Chat history store | `useChatHistoryStore` / `ChatTab` | chat store, history store | View state for browsing saved chats: selected tab, records, loading state, and cursor. It parses a selected record and loads it into the chat store. |
+
+## Config files and command registry
+
+| Term | Canonical type | Aliases to avoid | Notes |
+|------|----------------|------------------|-------|
+| Config file | `ConfigFileName` (`src/services/config.service.ts`, `src-tauri/src/config.rs`) | preferences file, settings file (as a filename) | One of the two allowlisted TOML files (`settings.toml`, `keymaps.toml`) in the platform app-config dir. Distinct from `Settings` (JSON, `settings.rs`), which the config-file settings.toml is not yet wired to. |
+| Config-dir watcher | `ConfigWatcherState` / `config-changed` (`src-tauri/src/config.rs`) | vault watcher | Separate `notify` watcher scoped to the two allowlisted config file names, non-recursive. Kept out of `VaultState`'s watcher slot so a config save never disturbs vault watching. |
+| Config parse result | `ConfigParseResult` / `ConfigParseDiagnostic` (`src-tauri/src/config.rs`, mirrored in `src/services/config.service.ts`) | validation error | Rust owns TOML *syntax*: a parsed value or a diagnostic naming the line a syntax error starts on. TypeScript owns *meaning* — semantic validation of the parsed value is not part of this contract. |
+| Config store | `useConfigStore` (`src/stores/config-store.ts`) | settings store | Raw text in, parsed value + diagnostics out, keyed by `ConfigFileName`. Has no wired consumers yet — later slices (settings, keymap catalog) read from it. |
+| App command | `AppCommandId` / `AppCommandDescriptor` / `APP_COMMANDS` (`src/lib/app-command.ts`) | keybinding, action | Fully-qualified dotted id (e.g. `global.find-file`, `sidebar.cursor-down`) for an action dispatched outside a focused text input. The registry is a declarative catalog for future keymap-conflict checking; most ids are still invoked directly against their owning store, not through `executeAppCommand`. In-input handlers (chat submit, file-finder accept, entry-draft commit, command bar) are out of scope. |
+| Chord | `Chord` / `ChordKey` / `parseChord` (`src/lib/keymap/chord.ts`) | keybinding string | A parsed CodeMirror-notation key sequence (e.g. `"ctrl-w f"`). The single parser shared by the window keymap (`useGlobalKeymap`) and the CodeMirror layer (`regionExit`); `mod-` resolves to Cmd on macOS or Ctrl elsewhere at match time, and named keys normalize to their exact `KeyboardEvent.key` form (`Escape`, not `escape`). |
 
 ## Settings and feedback
 
@@ -181,3 +192,4 @@
 | 2026-07-22 | Added `VaultFileCandidate`, `collectVaultFiles`/`rankVaultFiles`, `useFileFinderStore`, and the `FileFinder` dialog/combobox/listbox overlay with a StatusBar entry point | Floating fuzzy file finder (#83, epic #81): recursively search the current vault tree and open a ranked note through `openVaultFile` without adding filesystem I/O or a `FocusRegion` |
 | 2026-07-22 | Removed scratch/`Untitled` buffers; made `activeBufferId` nullable; added `Viewer`'s branded zero-buffer state and nullable-safe editor consumers | Branded empty editor state (#87): startup and final-close show `ORBIT` with the `Ctrl-w f to open a note` hint instead of a synthetic note |
 | 2026-07-22 | Reorganized the glossary into current domain sections, corrected source-aligned definitions and invariants, and clarified glossary governance | Keep canonical terminology concise and separate from historical records |
+| 2026-08-07 | Added `src-tauri/src/config.rs` (`ConfigFileName` allowlist, `read_config_file`/`write_config_file`/`parse_config_file`, `ConfigWatcherState`/`config-changed`, first-run scaffolding), `configService`, `useConfigStore`, `src/lib/keymap/chord.ts` (`Chord`/`parseChord`/`matchesChordStep`/`canonicalChordString`); expanded `AppCommandId` from a single `find-file` member to a dotted-id registry (`APP_COMMANDS`) covering every global/sidebar/chat-history/editor/modal action name; added `toml`/`toml_edit` (Rust) and `@codemirror/legacy-modes`/`@codemirror/language` (TS) dependencies | Config backend + command registry foundation (#95, epic #94): the sole-writer foundation slice every sibling slice (editable settings/keymaps UI) builds on — deliberately no user-visible behavior change |
