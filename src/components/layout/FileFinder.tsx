@@ -1,6 +1,9 @@
 import { useDeferredValue, useEffect, useId, useRef } from 'react';
-import { collectVaultFiles, rankVaultFiles } from '@/lib/vault/file-search';
+import { Badge } from '@/components/ui/badge';
+import { openConfigFile } from '@/lib/config/open-config-file';
+import { collectConfigCandidates, collectVaultFiles, rankVaultFiles } from '@/lib/vault/file-search';
 import { openVaultFile } from '@/lib/vault/open-file';
+import type { ConfigFileName } from '@/services/config.service';
 import { useAppStore } from '@/stores/app-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
@@ -20,7 +23,7 @@ export function FileFinder() {
   const inputRef = useRef<HTMLInputElement>(null);
   const resultListId = useId();
   const deferredQuery = useDeferredValue(query);
-  const candidates = vaultRoot === null ? [] : collectVaultFiles(tree, vaultRoot);
+  const candidates = [...(vaultRoot === null ? [] : collectVaultFiles(tree, vaultRoot)), ...collectConfigCandidates()];
   const results = rankVaultFiles(candidates, deferredQuery);
 
   useEffect(() => {
@@ -33,7 +36,11 @@ export function FileFinder() {
     const candidate = results[index];
     if (candidate === undefined) return;
     try {
-      await openVaultFile(candidate.path);
+      if (candidate.source === 'config') {
+        await openConfigFile(candidate.path as ConfigFileName);
+      } else {
+        await openVaultFile(candidate.path);
+      }
       hide();
     } catch (error) {
       showToast(error instanceof Error ? `Could not open ${candidate.name}: ${error.message}` : `Could not open ${candidate.name}.`, 'error');
@@ -85,12 +92,13 @@ export function FileFinder() {
               type="button"
               role="option"
               aria-selected={index === cursor}
-              className={`w-full min-w-0 cursor-pointer truncate px-4 py-2 text-left font-mono text-sm ${index === cursor ? 'bg-surface-2 text-text' : 'text-text-dim'}`}
+              className={`flex w-full min-w-0 cursor-pointer items-center gap-2 truncate px-4 py-2 text-left font-mono text-sm ${index === cursor ? 'bg-surface-2 text-text' : 'text-text-dim'}`}
               title={candidate.relativePath}
               onMouseMove={() => moveCursor(index - cursor, results.length)}
               onClick={() => void select(index)}
             >
-              {candidate.relativePath}
+              <span className="min-w-0 truncate">{candidate.relativePath}</span>
+              {candidate.source === 'config' && <Badge tone="muted">config</Badge>}
             </button>
           ))}
           {results.length === 0 && <div className="px-4 py-5 font-sans text-sm text-text-dim">No matching notes.</div>}

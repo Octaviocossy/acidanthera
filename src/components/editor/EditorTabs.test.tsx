@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditorTabs } from './EditorTabs';
 
 const buffers = [
-  { id: 'one', filePath: '/vault/one.md', title: 'one.md', content: '', dirty: false, revision: 0, savedRevision: 0, vimMode: 'normal' as const },
-  { id: 'two', filePath: '/vault/two.md', title: 'two.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal' as const },
+  { id: 'one', filePath: '/vault/one.md', title: 'one.md', content: '', dirty: false, revision: 0, savedRevision: 0, vimMode: 'normal' as const, source: 'vault' as const },
+  { id: 'two', filePath: '/vault/two.md', title: 'two.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal' as const, source: 'vault' as const },
 ];
 
 describe('EditorTabs', () => {

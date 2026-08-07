@@ -29,7 +29,9 @@ function emitConfigChanged(paths: string[]) {
 
 const { useConfigWatcher } = await import('./use-config-watcher');
 const { useAppStore } = await import('@/stores/app-store');
+const { useEditorStore } = await import('@/stores/editor-store');
 const { useSettingsStore } = await import('@/stores/settings-store');
+const { useToastStore } = await import('@/stores/toast-store');
 
 const READ_SETTINGS_RESULT = {
   settings: { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' },
@@ -49,6 +51,8 @@ describe('useConfigWatcher', () => {
     listeners.clear();
     useAppStore.setState({ vaultRoot: '/vault' });
     useSettingsStore.setState({ settings: null, diagnostics: [], lastWrittenSnapshot: null });
+    useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
+    useToastStore.setState({ toasts: [] });
     vi.useFakeTimers();
   });
 
@@ -79,5 +83,61 @@ describe('useConfigWatcher', () => {
     await vi.advanceTimersByTimeAsync(150);
 
     expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it('warns and leaves a dirty config buffer untouched when its file changes on disk', async () => {
+    useEditorStore.setState({
+      buffers: [
+        {
+          id: 'buf-1',
+          filePath: 'settings.toml',
+          title: 'settings.toml',
+          content: 'edited = true',
+          dirty: true,
+          revision: 2,
+          savedRevision: 1,
+          vimMode: 'normal',
+          source: 'config',
+        },
+      ],
+      activeBufferId: 'buf-1',
+      saveRequests: [],
+    });
+
+    render(<ConfigWatcher />);
+    await vi.waitFor(() => expect(listenMock).toHaveBeenCalled());
+
+    emitConfigChanged(['/config/settings.toml']);
+
+    expect(useEditorStore.getState().buffers[0]).toMatchObject({ content: 'edited = true', dirty: true });
+    expect(useToastStore.getState().toasts).toContainEqual(expect.objectContaining({ message: 'settings.toml changed on disk — your unsaved edits were kept', tone: 'error' }));
+  });
+
+  it('does not warn when the changed config file has no dirty buffer open', async () => {
+    useEditorStore.setState({
+      buffers: [
+        {
+          id: 'buf-1',
+          filePath: 'settings.toml',
+          title: 'settings.toml',
+          content: 'theme = "dark"',
+          dirty: false,
+          revision: 0,
+          savedRevision: 0,
+          vimMode: 'normal',
+          source: 'config',
+        },
+      ],
+      activeBufferId: 'buf-1',
+      saveRequests: [],
+    });
+
+    render(<ConfigWatcher />);
+    await vi.waitFor(() => expect(listenMock).toHaveBeenCalled());
+
+    emitConfigChanged(['/config/settings.toml']);
+
+    expect(useEditorStore.getState().buffers[0]).toMatchObject({ content: 'theme = "dark"', dirty: false });
+    expect(useToastStore.getState().toasts).toHaveLength(0);
   });
 });
