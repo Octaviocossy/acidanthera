@@ -92,15 +92,20 @@ Repeat until no progress:
    or conflicted → report which children are blocked and why, then break the loop.
 3. If the frontier is empty **and** no pending children remain → the epic is fully
    integrated → go to step 9.
-4. Invoke the runner **once** for the frontier, passing `--epic`:
+4. **Fetch and stage each frontier child's issue body** — the runner has no GitHub
+   access. For every child in this frontier, call `mcp__github__issue_read`
+   (`method: "get"`) and write its raw `body` to `.worktrees/.bodies/<issue>.md`
+   (`mkdir -p .worktrees/.bodies` first). Do this for **every** wave, not just the
+   first — skipping it leaves the headless agent guessing scope from the title alone.
+5. Invoke the runner **once** for the frontier, passing `--epic`:
    ```sh
    sh .agents/scripts/run-parallel-issues.sh --epic <EPIC_BRANCH> \
      "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
    ```
    Wait for it to finish.
-5. Read `.worktrees/.merged` (integrated), `.worktrees/.mergefail` (conflict — branch
+6. Read `.worktrees/.merged` (integrated), `.worktrees/.mergefail` (conflict — branch
    pushed but not integrated), `.worktrees/.failed` (agent/worktree failure).
-6. **For each merged child:** post a ship-note comment to the child issue
+7. **For each merged child:** post a ship-note comment to the child issue
    (`mcp__github__add_issue_comment`, mirroring `/ship-note`: Summary, Files changed
    from `.worktrees/<branch>.log`, Validation, and the `#<child> → <EPIC_BRANCH>`
    integration reference); **close the child issue** (`mcp__github__issue_write`,
@@ -108,11 +113,11 @@ Repeat until no progress:
    already deleted its branch; then tick the epic task-list item
    (`mcp__github__issue_write`, `method: "update"`, `- [ ] #<child>` → `- [x] #<child>`,
    preserving the rest of the body). Mark the child **done** in local state.
-7. **For each mergefail/failed child:** post a failure comment
+8. **For each mergefail/failed child:** post a failure comment
    (`mcp__github__add_issue_comment`) noting the cause (agent exit, or a merge conflict
    with `<EPIC_BRANCH>`) and that `.worktrees/<branch>.log` is retained. **Do not** tick
    the task-list. Its dependents stay blocked.
-8. **For each `.mergefail` child, offer guided recovery.** The runner retains the child's
+9. **For each `.mergefail` child, offer guided recovery.** The runner retains the child's
    worktree at `.worktrees/<branch>/` and its log. Ask the user whether to resolve now.
    On yes: `git -C .worktrees/<branch> fetch origin <EPIC_BRANCH>` then
    `git -C .worktrees/<branch> merge origin/<EPIC_BRANCH>` — this reproduces the same
@@ -120,8 +125,8 @@ Repeat until no progress:
    `resolving-merge-conflicts` skill takes over from there. Present the resolved diff for
    review before pushing the child branch, then re-run `/execute-epic` so the runner
    integrates it. **Never** push to `<EPIC_BRANCH>`. On no, leave the child blocked.
-9. If this iteration merged **zero** children, break (no-progress guard) to avoid
-   looping forever. Bound the loop to at most the number of waves.
+10. If this iteration merged **zero** children, break (no-progress guard) to avoid
+    looping forever. Bound the loop to at most the number of waves.
 
 ### 9 — Open the single epic PR and post the final summary
 

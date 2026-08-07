@@ -3,7 +3,7 @@
 > Single source of truth for current domain and technical terminology.
 > Read this before changing canonical types, states, processes, or data contracts.
 >
-> **Last updated:** 2026-07-22
+> **Last updated:** 2026-08-07
 > **Canonical code:** `src/` (TypeScript), `src-tauri/src/` (Rust)
 
 ---
@@ -93,6 +93,23 @@
 | Default vault | `~/Documents/orbit-brain` | — | Default path adopted on first boot when no persisted vault path exists. |
 | Toast feedback | `Toast` / `useToastStore` | notification, snackbar, alert | Transient info or error feedback for asynchronous user-visible outcomes. |
 
+## Configuration and keymaps
+
+> **Settled, not yet implemented.** This vocabulary was fixed by the design interrogation recorded
+> in `.agents/specs/2026-08-07-user-editable-config-files.md` and is canonical for that work. Unlike
+> every other section here, it does not yet describe shipped behavior — remove this note when the
+> epic lands.
+
+| Term | Canonical type | Aliases to avoid | Notes |
+|------|----------------|------------------|-------|
+| Config file | `settings.toml`, `keymaps.toml` | "settings file" for both, "dotfile", "rc file" | The two user-editable TOML files in the app config dir. They are the source of truth for their contents; the Settings dialog is an editor of one of them, not its owner. |
+| Config buffer | `EditorBuffer` with `source: 'config'` | "settings tab" | An editor buffer backed by a config file rather than a vault note. Its `source` decides save routing, language selection, and wikilink suppression. |
+| Command registry | `AppCommandId` / `executeAppCommand` (`src/lib/app-command.ts`) | "keymap", "command palette" | The full set of bindable actions and their dispatch. Distinct from a keymap, which maps chords onto it. |
+| Command id | e.g. `global.find-file`, `sidebar.cursor-down` | bare action names | Fully-qualified dotted identifier, kebab within segments. Globally unique, so an id is unambiguous on its own in a toast or error. |
+| Chord | e.g. `"ctrl-w f"`, `"mod-s"` | "shortcut", "hotkey", "keybinding" as a type name | A key sequence in CodeMirror hyphenated notation; `mod-` is Cmd on macOS and Ctrl elsewhere, spaces separate the keys of a sequence. A chord is the input; a binding is the pairing of a chord with a command id. |
+| Keymap layer | `[global]`, `[sidebar]`, `[chat.history]`, `[modal]`, `[editor.normal]`, `[editor.visual]` | "scope", "context", "mode" | One dispatch scope, corresponding to a boundary that already exists in the code. Layers resolve in precedence order, not concurrently. |
+| Keymap resolution | merge of user overrides over code defaults | "keymap loading" | Per command, the user's chord list **replaces** that command's defaults wholesale; it is never merged chord-by-chord. `[]` unbinds. |
+
 ## Cross-cutting presentation vocabulary
 
 | Term | Canonical type | Aliases to avoid | Notes |
@@ -105,7 +122,7 @@
 
 1. Focus regions remain reachable only while their corresponding region is visible.
 2. Global mode and editor Vim mode remain separate state machines.
-3. Both keyboard layers dispatch shared app commands rather than duplicating command behavior.
+3. Keyboard layers dispatch shared app commands rather than duplicating command behavior. **Currently only half-held:** `src/lib/editor/region-exit.ts` duplicates the global chord switch inline, and only `find-file` routes through `executeAppCommand`.
 4. Vault filesystem operations remain contained within the canonical vault root and reject symlink escapes.
 5. Vault creation refreshes through the watcher; callers do not mutate the cached tree directly.
 6. Opening an already-buffered note activates it without replacing dirty in-memory content.
@@ -117,6 +134,9 @@
 12. `useChatStore`, chat persistence, and chat-history view state remain distinct concepts.
 13. Chat-file parsing and serialization own the format while persistence owns storage.
 14. Resume prompts are used only when backend session memory cannot be relied upon.
+15. A config file's on-disk change never replaces a dirty buffer's content; the change applies to the running app while the buffer keeps user text. (Extends invariant 6 to config buffers.)
+16. Keymap resolution replaces a command's chords wholesale; chord lists are never merged entry-by-entry, and an empty list unbinds.
+17. Keymap layers resolve in a single dispatcher, `editor > active region > global`, first match wins with no fallthrough.
 
 ---
 
@@ -180,4 +200,5 @@
 | 2026-07-22 | Added `EditorTabs` and `CloseBufferDialog`, plus `closeBuffer` and direct immutable close-save snapshots; `Viewer` now renders accessible buffer tabs and confirms dirty close paths | Editor tabs and dirty-close lifecycle (#84, epic #81): clean buffers close immediately; dirty saved buffers offer Save/Discard/Cancel and close only after the captured revision writes successfully, while dirty scratch buffers offer Discard/Cancel |
 | 2026-07-22 | Added `VaultFileCandidate`, `collectVaultFiles`/`rankVaultFiles`, `useFileFinderStore`, and the `FileFinder` dialog/combobox/listbox overlay with a StatusBar entry point | Floating fuzzy file finder (#83, epic #81): recursively search the current vault tree and open a ranked note through `openVaultFile` without adding filesystem I/O or a `FocusRegion` |
 | 2026-07-22 | Removed scratch/`Untitled` buffers; made `activeBufferId` nullable; added `Viewer`'s branded zero-buffer state and nullable-safe editor consumers | Branded empty editor state (#87): startup and final-close show `ORBIT` with the `Ctrl-w f to open a note` hint instead of a synthetic note |
+| 2026-08-07 | Added the Configuration and keymaps section (*config file*, *config buffer*, *command registry*, *command id*, *chord*, *keymap layer*, *keymap resolution*) and invariants 15–17; corrected invariant 3, which was stated as held but is only half-true (`region-exit.ts` duplicates the global chord switch inline; only `find-file` routes through `executeAppCommand`) | Design interrogation for user-editable config files — `.agents/specs/2026-08-07-user-editable-config-files.md`, ADRs 0003–0005. Terminology is settled ahead of implementation; the section carries a marker until the epic lands |
 | 2026-07-22 | Reorganized the glossary into current domain sections, corrected source-aligned definitions and invariants, and clarified glossary governance | Keep canonical terminology concise and separate from historical records |

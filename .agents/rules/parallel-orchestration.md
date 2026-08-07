@@ -166,6 +166,18 @@ one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
 - `<branch>` — git branch name (no spaces, e.g. `12-keystroke-capture`).
 - `<title>` — human title (may contain spaces and `:`); split is on the **first two colons only**.
 
+**Issue body hand-off (required):** the runner has no GitHub access, so it cannot fetch
+an issue's body itself. Before invoking it for a wave, the orchestrating agent — which
+does have GitHub access — must call `mcp__github__issue_read` (`method: "get"`) for
+**every child issue in that wave** and write each raw `body` to
+`.worktrees/.bodies/<issue>.md` (`mkdir -p .worktrees/.bodies` first; the runner also
+creates it, but writing before invocation is what makes the content available). The
+runner embeds that file's contents verbatim into the child's prompt as authoritative
+when no matching `.agents/plans/` file exists. Skipping this step leaves the child
+agent to guess scope from the title alone — this caused a real divergence in practice
+(a foundation slice rebuilt from inference instead of its actual acceptance criteria)
+and must not be skipped for any wave, not just the first.
+
 **Output:**
 
 - Pushes a branch per successful child (commit + push). Never pushes a broken/empty branch.
