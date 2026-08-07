@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { getModel } from '@/lib/agent/model-catalog';
 import { switchVault } from '@/lib/vault/switch-vault';
-import { configService } from '@/services/config.service';
+import { type ConfigFileName, configService } from '@/services/config.service';
 import { type SettingsDiagnostic, type SettingsReadResult, settingsService } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
 import { useChatStore } from '@/stores/chat-store';
+import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useToastStore } from '@/stores/toast-store';
 
 const SETTINGS_FILE_NAME = 'settings.toml';
+const CONFIG_FILE_NAMES: ConfigFileName[] = ['settings.toml', 'keymaps.toml'];
 /** Coalesces the burst of `notify` events one `fs::write` produces, and the Remove+Create pair
  *  an external editor's save-by-rename emits, into a single reload. */
 const DEBOUNCE_MS = 150;
@@ -61,12 +63,29 @@ async function reloadSettings() {
 }
 
 /**
+ * A disk change never clobbers a dirty config buffer (#100, spec decision 12 — extends
+ * invariant 6 rather than adding a second rule: nothing here ever touches the buffer's `content`,
+ * only `useSettingsStore`/`useKeymapStore` reload). This purely warns the user their pending
+ * edit and the on-disk file have diverged, so a later `:w` is a conscious overwrite rather than a
+ * surprise.
+ */
+function warnDirtyConfigBuffers(paths: string[]) {
+  for (const name of CONFIG_FILE_NAMES) {
+    if (!paths.some((path) => path.endsWith(name))) continue;
+    const dirtyBuffer = useEditorStore.getState().buffers.find((buffer) => buffer.source === 'config' && buffer.filePath === name && buffer.dirty);
+    if (dirtyBuffer !== undefined) useToastStore.getState().showToast(`${name} changed on disk — your unsaved edits were kept`, 'error');
+  }
+}
+
+/**
  * Subscribes to `config-changed` for `settings.toml` and reloads it live (#98, spec decision 6):
  * an in-app dialog save and an external editor's save behave identically. Debounced so the burst
  * of events one write produces collapses into a single reload; `applyReloadedSettings`
  * recognizes the app's own writes echoing back through the watcher and no-ops them (Known Risk
  * #2). A changed `vaultPath` routes through `switchVault` instead of a plain apply, since
- * re-opening the vault is destructive (spec decision 21). Mounted once in `App.tsx`, mirroring
+ * re-opening the vault is destructive (spec decision 21). Also runs `warnDirtyConfigBuffers` on
+ * every event (undebounced, and for either config file) so a dirty config buffer's user is
+ * warned the instant its file diverges on disk (#100). Mounted once in `App.tsx`, mirroring
  * `useGlobalKeymap`'s `keymaps.toml` subscription.
  */
 export function useConfigWatcher() {
@@ -75,6 +94,8 @@ export function useConfigWatcher() {
   useEffect(() => {
     const unlistenPromise = configService
       .onConfigChanged((paths) => {
+        warnDirtyConfigBuffers(paths);
+
         if (!paths.some((path) => path.endsWith(SETTINGS_FILE_NAME))) return;
 
         if (timerRef.current !== null) window.clearTimeout(timerRef.current);

@@ -7,6 +7,7 @@ import { applyEditorKeymap } from '@/lib/editor/apply-vim-keymap';
 import { editorKeymapExtension, trackEditorView } from '@/lib/editor/keymap-compartment';
 import { regionExit } from '@/lib/editor/region-exit';
 import { editorTheme } from '@/lib/editor/theme';
+import { tomlLanguage } from '@/lib/editor/toml-language';
 import { vimModeSync } from '@/lib/editor/vim-mode-sync';
 import { wikilink } from '@/lib/editor/wikilink';
 import { cn } from '@/lib/utils';
@@ -36,13 +37,14 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
       regionExit(),
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
-      markdown(),
+      buffer.source === 'config' ? tomlLanguage : markdown(),
       vimModeSync(buffer.id),
-      ...wikilink,
+      // Wikilinks are a Markdown-note concept and meaningless in TOML.
+      ...(buffer.source === 'config' ? [] : wikilink),
       EditorView.lineWrapping,
       editorTheme(theme === 'dark'),
     ],
-    [buffer.id, theme]
+    [buffer.id, buffer.source, theme]
   );
 
   useEffect(() => {

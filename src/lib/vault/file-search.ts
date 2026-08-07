@@ -1,10 +1,13 @@
+import { CONFIG_ENTRIES } from '@/lib/config/config-entries';
 import type { VaultEntry } from '@/services/vault.service';
 
-/** A searchable Markdown note from the current vault tree. */
+/** A searchable file, either a Markdown note from the current vault tree or a config file
+ *  (#100). `source` routes finder selection instead of re-deriving it from `path`. */
 export interface VaultFileCandidate {
   path: string;
   relativePath: string;
   name: string;
+  source: 'vault' | 'config';
 }
 
 /** Collects note files recursively without regard to the sidebar's expanded directories. */
@@ -19,11 +22,19 @@ export function collectVaultFiles(tree: readonly VaultEntry[], vaultRoot: string
     }
 
     if (entry.path.startsWith(`${root}/`)) {
-      candidates.push({ path: entry.path, relativePath: entry.path.slice(root.length + 1), name: entry.name });
+      candidates.push({ path: entry.path, relativePath: entry.path.slice(root.length + 1), name: entry.name, source: 'vault' });
     }
   }
 
   return candidates;
+}
+
+/** The two config files, unioned into the finder's candidate list alongside vault notes. They
+ *  bypass {@link collectVaultFiles}'s vault-root prefix filter entirely — they live outside the
+ *  vault (ADR 0004) — and get a synthetic `config/`-prefixed path so they read as distinct from
+ *  a real vault note at a glance. */
+export function collectConfigCandidates(): VaultFileCandidate[] {
+  return CONFIG_ENTRIES.map((entry) => ({ path: entry.name, relativePath: `config/${entry.name}`, name: entry.label, source: 'config' as const }));
 }
 
 function score(candidate: VaultFileCandidate, query: string): number | null {

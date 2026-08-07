@@ -38,6 +38,20 @@ describe('openFile', () => {
     expect(useEditorStore.getState().activeBufferId).toBe(bufferId);
     expect(activeEditorBuffer(useEditorStore.getState())).toMatchObject({ content: '# Changed', dirty: true });
   });
+
+  it('defaults a new buffer to the vault source', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes.md', '# Notes');
+
+    expect(activeEditorBuffer(useEditorStore.getState())).toMatchObject({ source: 'vault' });
+  });
+
+  it('opens a config buffer with the config source, tagged on the buffer', () => {
+    const store = useEditorStore.getState();
+    store.openFile('settings.toml', 'theme = "dark"', 'config');
+
+    expect(activeEditorBuffer(useEditorStore.getState())).toMatchObject({ filePath: 'settings.toml', source: 'config' });
+  });
 });
 
 describe('requestSave', () => {
@@ -51,7 +65,7 @@ describe('requestSave', () => {
     store.updateBufferContent(bufferId, '# Later edit');
     store.completeSaveRequest(request);
 
-    expect(request).toMatchObject({ bufferId, filePath: '/vault/notes.md', content: '# First edit', revision: 1 });
+    expect(request).toMatchObject({ bufferId, filePath: '/vault/notes.md', content: '# First edit', revision: 1, source: 'vault' });
     expect(activeEditorBuffer(useEditorStore.getState())).toMatchObject({ content: '# Later edit', dirty: true, savedRevision: 1, revision: 2 });
   });
 
