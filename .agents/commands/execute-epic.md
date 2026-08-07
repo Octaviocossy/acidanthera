@@ -112,7 +112,15 @@ Repeat until no progress:
    (`mcp__github__add_issue_comment`) noting the cause (agent exit, or a merge conflict
    with `<EPIC_BRANCH>`) and that `.worktrees/<branch>.log` is retained. **Do not** tick
    the task-list. Its dependents stay blocked.
-8. If this iteration merged **zero** children, break (no-progress guard) to avoid
+8. **For each `.mergefail` child, offer guided recovery.** The runner retains the child's
+   worktree at `.worktrees/<branch>/` and its log. Ask the user whether to resolve now.
+   On yes: `git -C .worktrees/<branch> fetch origin <EPIC_BRANCH>` then
+   `git -C .worktrees/<branch> merge origin/<EPIC_BRANCH>` — this reproduces the same
+   conflict in the **child's** direction, where resolving it is safe. The
+   `resolving-merge-conflicts` skill takes over from there. Present the resolved diff for
+   review before pushing the child branch, then re-run `/execute-epic` so the runner
+   integrates it. **Never** push to `<EPIC_BRANCH>`. On no, leave the child blocked.
+9. If this iteration merged **zero** children, break (no-progress guard) to avoid
    looping forever. Bound the loop to at most the number of waves.
 
 ### 9 — Open the single epic PR and post the final summary
@@ -148,6 +156,10 @@ Repeat until no progress:
 - Re-running is idempotent — done children are detected from the epic branch; only
   pending children in the current frontier run.
 - Never push or commit directly; the runner handles that.
+- The agent never writes to the epic branch. A merge conflict is resolved in the **child
+  branch's** direction (merge `<EPIC_BRANCH>` into the child, per the
+  `resolving-merge-conflicts` skill) and re-integrated by the runner on the next run — the
+  runner stays the epic branch's single writer.
 - `dry-run` stops after printing the plan (step 7); no runner call, no GitHub writes.
 - One `epic → main` PR at completion — no per-child PRs. Per-child traceability comes
   from ship-note comments and epic task-list ticking.

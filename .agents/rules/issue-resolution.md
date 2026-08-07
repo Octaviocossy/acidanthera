@@ -37,7 +37,7 @@ Stop at the first that yields a verified, existing **issue** (not a PR):
 
 - **Child branches:** `<issue#>-<kebab-title>` (e.g. `12-keystroke-capture`). The leading
   numeric segment resolves these via precedence #1 above — no special handling required.
-- **Epic branch:** `epic/<epic#>-<slug>` (e.g. `epic/55-orbit-111-v0`) — the epic
+- **Epic branch:** `epic/<epic#>-<slug>` (e.g. `epic/55-checkout-redesign`) — the epic
   **integration branch** the parallel runner writes to (`parallel-orchestration.md`).
   The leading numeric segment (after the `epic/` prefix) resolves it via precedence #1
   above, same as a child branch — deterministic, not a fuzzy title match. This note is

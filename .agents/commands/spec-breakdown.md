@@ -19,6 +19,14 @@ If `$ARGUMENTS` is a path that exists in the working tree, read it. Otherwise tr
 `$ARGUMENTS` as the spec text itself. If `$ARGUMENTS` is empty, ask the user to
 supply a spec file path or description and stop until they do.
 
+**Settled design specs.** If the path is under `.agents/specs/` and its header says
+`Status: **settled**`, it is the output of a `/grill` session
+(`.agents/rules/design-interrogation.md`). Treat its `## Settled Decisions` and
+`## Explicitly Out of Scope` sections as **authoritative** — do not re-litigate a decision
+already recorded there, and do not slice work the spec explicitly excluded. Carry the relevant
+decisions and their rationale into each child issue's `## Architecture Decisions`, and copy any
+entries under `## ADRs Raised` into the epic body so the epic references them.
+
 ### 2 — Parse owner/repo
 
 Extract `owner` and `repo` from the injected remote URL. Supports both HTTPS

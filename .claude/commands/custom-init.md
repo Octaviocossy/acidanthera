@@ -1,14 +1,10 @@
 ---
-description: Bootstrap the cross-agent governance scaffold in the current project
-argument-hint: "(no arguments needed)"
-allowed-tools: Bash(ls:*), Bash(find:*)
+description: Bootstrap the cross-agent governance scaffold in a target project directory
+argument-hint: "[target-dir] (optional, defaults to the current directory)"
+allowed-tools: Bash(sh .agents/scripts/init-scaffold.sh:*)
 disable-model-invocation: true
 ---
 
-Current directory:
-!`ls -la`
-
-Existing governance files:
-!`find . -maxdepth 4 \( -name "CLAUDE.md" -o -name "AGENTS.md" -o -name ".agents" -o -name ".claude" -o -name ".opencode" \) 2>/dev/null | sort`
+Target directory (optional): $ARGUMENTS
 
 @.agents/commands/custom-init.md
