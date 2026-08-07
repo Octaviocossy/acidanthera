@@ -12,6 +12,13 @@
 # issue by following .agents/commands/execute-issue.md, then (only on success) commit +
 # push. No GitHub API here. Config from .agents/parallel.config or env.
 #
+# Issue body: this script has no GitHub access, so it cannot fetch #<issue>'s body
+# itself. If the orchestrating agent (which does have GitHub access) writes the body to
+# $WORKTREES_DIR/.bodies/<issue>.md before invoking this script, that content is
+# embedded verbatim in the child's prompt as authoritative. Without it, the child agent
+# has only the title and must guess scope from the codebase — do this for every issue
+# unless a matching .agents/plans/ file (checked by the agent itself) already covers it.
+#
 # --epic <branch>  optional; when present, children cut from and auto-merge into this
 #                   branch after their own push succeeds (serialized via a `.merge.lock`
 #                   mkdir lock + a dedicated __epic__ worktree — this script is the
@@ -69,7 +76,7 @@ if [ "$#" -gt "$MAX_CHILDREN" ]; then
   exit 3
 fi
 
-mkdir -p "$WORKTREES_DIR"
+mkdir -p "$WORKTREES_DIR" "$WORKTREES_DIR/.bodies"
 
 _cli_bin=$(printf '%s\n' "$AGENT_EXEC_CMD" | awk '{print $1}')
 if ! command -v "$_cli_bin" >/dev/null 2>&1; then
@@ -137,6 +144,12 @@ process_issue() {
     echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
 
+  _body_file="$WORKTREES_DIR/.bodies/$_issue.md"
+  _body_block=""
+  if [ -f "$_body_file" ]; then
+    _body_block=$(printf '\n--- Issue #%s body (fetched by the orchestrating agent; you have no GitHub access) ---\n%s\n--- end issue body ---\n' "$_issue" "$(cat "$_body_file")")
+  fi
+
   _prompt=$(cat <<EOF
 You are a headless coding agent working inside a git worktree for ONE GitHub issue.
 
@@ -145,7 +158,10 @@ Issue: #$_issue — $_title
 Follow the procedure in .agents/commands/execute-issue.md (Phase 2 — Execution only;
 there is NO human to confirm, treat Phase 1 as pre-approved). Use the linked plan file
 in .agents/plans/ whose header contains "> Issue: #$_issue" as the primary source of
-truth; if none exists, implement the issue body as described in #$_issue.
+truth if one exists. Otherwise, the issue body below (fetched for you by the
+orchestrating agent, since you have no GitHub access) is authoritative — implement it
+exactly, including its Affected Files and Step-by-Step Implementation sections.
+$_body_block
 
 Honor AGENTS.md and the relevant .agents/rules/* files. Edit the working tree ONLY.
 Do NOT run git commit, git push, or open a pull request — the runner does that.
