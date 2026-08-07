@@ -23,6 +23,10 @@ pub fn run() {
         .setup(|app| {
             log::info!("orbit-111 backend started");
             let handle = app.handle().clone();
+            // Must run before `config::init`'s first-run scaffold: settings migration only
+            // triggers while `settings.toml` is still absent, and `config::init` would otherwise
+            // win that race and scaffold an empty placeholder first.
+            settings::init(&handle);
             let config_watcher_state = app.state::<ConfigWatcherState>();
             config::init(&handle, &config_watcher_state);
             Ok(())
