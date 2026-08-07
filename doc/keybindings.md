@@ -3,36 +3,66 @@
 orbit-111 is vim-first and keyboard-first — see `doc/v0-spec.md` §3.4 for the design rationale
 behind the two-level vim system (app-level focus chords vs. the editor's own CodeMirror vim mode).
 
+Every binding below except the editor's own CodeMirror-vim keys, `:w`, and system-clipboard yank
+is **user-rebindable** in `~/.config/orbit-111/keymaps.toml` (path varies by OS — see your
+platform's Tauri app-config dir). The file ships fully commented out, one line per command,
+showing its current default; uncomment a line and edit its chord array to rebind it, or set the
+array to `[]` to unbind the command entirely. A chord array is always replaced wholesale, never
+merged with the default — see the file's own header comment for the full contract. Source of
+truth for defaults: `src/lib/keymap/defaults.ts`.
+
+## The dispatcher
+
+A single shared window-level dispatcher (`src/lib/keymap/dispatcher.ts`) resolves every keydown
+below — there is no longer one independent `keydown` listener per region. It walks layers in a
+fixed precedence order, **first match wins, with no fallthrough**: the editor (CodeMirror, which
+wins by DOM event-propagation order before the dispatcher ever runs), then the active region
+(sidebar or the chat's History tab), then global. A chord sequence like `Ctrl-w` `f` arms a 1.5s
+pending window for its next step; any non-continuing key, the window expiring, or the owning
+layer going inactive mid-sequence all silently disarm it with no action taken.
+
 ## App-level navigation (works everywhere)
 
-These fire from a `window`-level listener and work regardless of which region has focus, as
-long as the keyboard focus isn't inside an editable field (e.g. the command bar or chat input).
+Global-layer bindings work regardless of which region has focus, as long as the keyboard focus
+isn't inside an editable field (e.g. the command bar or chat input).
 
-| Keys | Action | Notes |
-|------|--------|-------|
-| `Ctrl-w` then `h` | Move focus to the previous region | Region cycle: sidebar → viewer → chat → sidebar (wraps; `chat` only reachable if the chat panel is open) |
-| `Ctrl-w` then `l` | Move focus to the next region | Same cycle, opposite direction |
-| `Ctrl-w` then `b` | Toggle the sidebar open/closed | |
-| `Ctrl-w` then `c` | Toggle the chat panel open/closed | |
-| `Ctrl-w` then `s` | Toggle the settings dialog | |
-| `Ctrl-w` then `f` | Open the file finder | |
-| `:` | Enter command mode, opens the command bar | Only from normal mode |
-| `Escape` | Exit command mode, closes the command bar | Only from command mode |
-
-`Ctrl-w` arms a 1.5s window for the next key (`h`/`l`/`b`/`c`/`s`/`f`); any other key, or letting the
-window expire, silently disarms it with no action taken.
+| Keys | Command id | Action | Notes |
+|------|------------|--------|-------|
+| `Ctrl-w` then `h` | `global.focus-previous` | Move focus to the previous region | Region cycle: sidebar → viewer → chat → sidebar (wraps; `chat` only reachable if the chat panel is open) |
+| `Ctrl-w` then `l` | `global.focus-next` | Move focus to the next region | Same cycle, opposite direction |
+| `Ctrl-w` then `b` | `global.toggle-sidebar` | Toggle the sidebar open/closed | |
+| `Ctrl-w` then `c` | `global.toggle-chat` | Toggle the chat panel open/closed | |
+| `Ctrl-w` then `s` | `global.toggle-settings` | Toggle the settings dialog | |
+| `Ctrl-w` then `f` | `global.find-file` | Open the file finder | |
+| `:` | `global.command-mode` | Enter command mode, opens the command bar | Only from normal mode |
+| `Escape` | — | Exit command mode, closes the command bar | Only from command mode; not a rebindable command, like `:w` |
 
 ## Sidebar (when focused)
 
 Active only while the sidebar region has focus and the app is in normal mode (no modifier keys,
 target not editable).
 
+| Keys | Command id | Action | Notes |
+|------|------------|--------|-------|
+| `j` | `sidebar.cursor-down` | Move cursor to the next row | Clamped at the last row |
+| `k` | `sidebar.cursor-up` | Move cursor to the previous row | Clamped at the first row |
+| `l` / `Enter` | `sidebar.open` | Open cursor row | Directory: toggle expand. File: open it and move focus to the editor |
+| `h` | `sidebar.collapse` | Collapse cursor row | Only if the cursor is on an expanded directory; no-op on files or already-collapsed directories |
+| `a` | `sidebar.new-note` | Start naming a new note | Placed as a sibling of the cursor row, or a child if the cursor is on a directory |
+| `A` (`Shift-a`) | `sidebar.new-directory` | Start naming a new folder | Same placement rule as `a` |
+
+## File finder
+
+Opened via `Ctrl-w f` (`global.find-file`) — a Spotlight-like overlay for opening a note by fuzzy
+name. These keys are handled by the finder's own input, not the shared dispatcher, and are not
+rebindable via `keymaps.toml`.
+
 | Keys | Action | Notes |
 |------|--------|-------|
-| `j` | Move cursor to the next row | Clamped at the last row |
-| `k` | Move cursor to the previous row | Clamped at the first row |
-| `l` / `Enter` | Open cursor row | Directory: toggle expand. File: open it and move focus to the editor |
-| `h` | Collapse cursor row | Only if the cursor is on an expanded directory; no-op on files or already-collapsed directories |
+| `ArrowDown` | Move the result cursor down | |
+| `ArrowUp` | Move the result cursor up | |
+| `Enter` | Open the highlighted result | Closes the finder |
+| `Escape` | Close the finder without opening anything | |
 
 ## Editor
 
@@ -73,9 +103,22 @@ reflecting the current vim submode.
 
 ## Chat
 
-`Enter` in the chat input submits the message (no-op if empty or while a turn is in progress).
-There's no vim-style navigation within the chat region yet — use the app-level chords above to
-move focus to and from it.
+The chat panel has two tabs: the live transcript (`Chat`) and a keyboard-navigable list of saved
+conversations (`History`, #71).
+
+`Enter` in the chat input submits the message (no-op if empty or while a turn is in progress) —
+this is in-input handling, not a dispatcher command.
+
+### History tab (when focused)
+
+Active only while the chat region has focus, the app is in normal mode, and the History tab is
+showing.
+
+| Keys | Command id | Action | Notes |
+|------|------------|--------|-------|
+| `j` | `chat.history.cursor-down` | Move cursor to the next saved chat | Clamped at the last row |
+| `k` | `chat.history.cursor-up` | Move cursor to the previous saved chat | Clamped at the first row |
+| `l` / `Enter` | `chat.history.open` | Open the highlighted chat | Loads it into the transcript and switches to the Chat tab |
 
 ## Command bar
 
@@ -84,6 +127,9 @@ Opened via `:` from normal mode (see App-level navigation above). In v0, both `E
 
 ---
 
-This doc reflects the current implementation. Source of truth: `src/hooks/use-global-keymap.ts`,
-`src/hooks/use-sidebar-keymap.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
-`src/lib/editor/yank.ts`. Update this file whenever a keybinding is added, changed, or removed.
+This doc reflects the current implementation. Source of truth: `src/lib/keymap/defaults.ts` (the
+default chord for every rebindable command), `src/lib/keymap/dispatcher.ts` (precedence and
+sequence matching), `src/hooks/use-global-keymap.ts`, `src/hooks/use-sidebar-keymap.ts`,
+`src/hooks/use-chat-history-keymap.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
+`src/lib/editor/yank.ts`, `src/components/layout/FileFinder.tsx`. Update this file whenever a
+keybinding is added, changed, or removed.

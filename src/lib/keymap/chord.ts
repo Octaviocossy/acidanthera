@@ -136,6 +136,18 @@ function eventModifiers(event: Pick<KeyboardEvent, 'ctrlKey' | 'altKey' | 'shift
   return modifiers;
 }
 
+/** True for single-character base keys (`"a"`, `"j"`, `":"`) as opposed to named keys
+ *  (`"Escape"`, `"ArrowDown"`). A shifted letter's `KeyboardEvent.key` is its uppercase form
+ *  (`"A"`, not `"a"`) — comparing those case-sensitively against a lowercased chord key would
+ *  make a `"shift-a"` chord unmatchable, so single characters compare case-insensitively and let
+ *  the modifier-set comparison below be the sole arbiter of whether shift was actually held. */
+function baseKeysMatch(eventKey: string, stepKey: string): boolean {
+  if (eventKey.length === 1 && stepKey.length === 1) {
+    return eventKey.toLowerCase() === stepKey.toLowerCase();
+  }
+  return eventKey === stepKey;
+}
+
 /** Whether `event` matches a single chord step: same normalized key, and exactly the same
  *  resolved modifier set (no more, no fewer). Callers manage sequence state themselves — this
  *  matches one step at a time, mirroring how `useGlobalKeymap`/`regionExit` track `Ctrl-w` prefixes. */
@@ -144,6 +156,6 @@ export function matchesChordStep(
   event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey'>,
   platform: ChordPlatform = detectPlatform()
 ): boolean {
-  if (event.key !== step.key) return false;
+  if (!baseKeysMatch(event.key, step.key)) return false;
   return setsEqual(resolveModifiers(step.modifiers, platform), eventModifiers(event));
 }
