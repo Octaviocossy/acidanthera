@@ -9,8 +9,8 @@ beforeEach(() => {
 });
 
 describe('executeAppCommand', () => {
-  it('opens the file finder for find-file', () => {
-    executeAppCommand('find-file');
+  it('opens the file finder for global.find-file', () => {
+    executeAppCommand('global.find-file');
 
     expect(useFileFinderStore.getState().open).toBe(true);
   });

@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
+import { Fragment, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
+import { openConfigFile } from '@/lib/config/open-config-file';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
+import { CONFIG_SECTION_PATH, flattenSidebarRows } from '@/lib/vault/sidebar-rows';
 import { vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
@@ -55,40 +57,91 @@ export function Sidebar() {
   // `useSidebarKeymap` stays registered too, but is inert — a hidden sidebar is never `activeRegion`.
   if (!sidebarOpen) return null;
 
-  const rows = flattenVisibleTree(tree, expanded);
+  const vaultRows = flattenVisibleTree(tree, expanded);
+  const sidebarRows = flattenSidebarRows(tree, expanded);
 
-  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. */
+  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. Inert on
+   *  a config row (#100): it has no vault-tree parent for `resolveDraftParent` to fall back to. */
   const startDraft = (kind: EntryDraftKind) => {
-    const parentPath = resolveDraftParent(rows, cursorPath, vaultRoot);
+    const cursorRow = sidebarRows.find((row) => row.path === cursorPath);
+    if (cursorRow !== undefined && cursorRow.source !== 'vault') return;
+
+    const parentPath = resolveDraftParent(vaultRows, cursorPath, vaultRoot);
     if (parentPath === null) return;
     focusRegion('sidebar');
     beginDraft(kind, parentPath);
   };
 
-  const treeRows = rows.map(({ entry, depth }) => (
-    <FileTreeItem
-      key={entry.path}
-      label={entry.name}
-      kind={entry.isDir ? 'dir' : 'file'}
-      depth={depth}
-      active={entry.path === activeFilePath}
-      cursor={entry.path === cursorPath}
-      collapsed={entry.isDir && !expanded.has(entry.path)}
-      onClick={() => {
-        focusRegion('sidebar');
-        setCursor(entry.path);
-        if (entry.isDir) {
-          toggleExpanded(entry.path);
-        } else {
-          openVaultFile(entry.path);
-        }
-      }}
-    />
-  ));
+  const rowElements = sidebarRows.map((row) => {
+    if (row.source === 'vault') {
+      const { entry, depth } = row;
+      return (
+        <FileTreeItem
+          key={row.path}
+          label={entry.name}
+          kind={entry.isDir ? 'dir' : 'file'}
+          depth={depth}
+          active={entry.path === activeFilePath}
+          cursor={entry.path === cursorPath}
+          collapsed={entry.isDir && !expanded.has(entry.path)}
+          onClick={() => {
+            focusRegion('sidebar');
+            setCursor(entry.path);
+            if (entry.isDir) {
+              toggleExpanded(entry.path);
+            } else {
+              openVaultFile(entry.path);
+            }
+          }}
+        />
+      );
+    }
+
+    if (row.source === 'config-section') {
+      return (
+        <Fragment key={row.path}>
+          <div className="my-1 border-t border-border-hairline" aria-hidden="true" />
+          <FileTreeItem
+            label="Config"
+            kind="dir"
+            depth={0}
+            cursor={row.path === cursorPath}
+            collapsed={!expanded.has(CONFIG_SECTION_PATH)}
+            onClick={() => {
+              focusRegion('sidebar');
+              setCursor(row.path);
+              toggleExpanded(CONFIG_SECTION_PATH);
+            }}
+          />
+        </Fragment>
+      );
+    }
+
+    const { entry, depth } = row;
+    return (
+      <FileTreeItem
+        key={row.path}
+        label={entry.label}
+        kind="file"
+        depth={depth}
+        active={entry.name === activeFilePath}
+        cursor={row.path === cursorPath}
+        onClick={() => {
+          focusRegion('sidebar');
+          setCursor(row.path);
+          void openConfigFile(entry.name);
+        }}
+      />
+    );
+  });
 
   if (draft !== null) {
-    const { index, depth } = draftPlacement(rows, draft);
-    treeRows.splice(index, 0, <EntryDraftRow key="entry-draft" kind={draft.kind} depth={depth} onCommit={(name) => void createVaultEntry(draft, name)} onCancel={cancelDraft} />);
+    const { index, depth } = draftPlacement(vaultRows, draft);
+    rowElements.splice(
+      index,
+      0,
+      <EntryDraftRow key="entry-draft" kind={draft.kind} depth={depth} onCommit={(name) => void createVaultEntry(draft, name)} onCancel={cancelDraft} />
+    );
   }
 
   return (
@@ -117,7 +170,7 @@ export function Sidebar() {
         </div>
       ) : (
         <div role="tree" aria-label="Notes" className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
-          {treeRows}
+          {rowElements}
         </div>
       )}
     </aside>

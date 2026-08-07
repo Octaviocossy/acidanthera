@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { listModels } from '@/lib/agent/model-catalog';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
-import type { ThemeName } from '@/services/settings.service';
+import type { SettingsDiagnostic, ThemeName } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
 import { useChatStore } from '@/stores/chat-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -32,9 +32,12 @@ export function SettingsDialog() {
   const open = useAppStore((state) => state.settingsOpen);
   const closeSettings = useAppStore((state) => state.closeSettings);
   const settings = useSettingsStore((state) => state.settings);
+  const diagnostics = useSettingsStore((state) => state.diagnostics);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
   const setModel = useChatStore((state) => state.setModel);
+
+  const syntaxError = diagnostics.find((diagnostic): diagnostic is Extract<SettingsDiagnostic, { kind: 'syntax' }> => diagnostic.kind === 'syntax');
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [fontDraft, setFontDraft] = useState('');
@@ -101,7 +104,18 @@ export function SettingsDialog() {
           </Button>
         </div>
 
-        {settings !== null && (
+        {settings !== null && syntaxError && (
+          <div className="flex flex-col gap-2 rounded-sm border border-border-active px-4 py-4">
+            <span className="font-mono text-text-dim text-xs uppercase tracking-caps">settings.toml has a syntax error</span>
+            <span className="font-sans text-sm text-text">
+              {syntaxError.line !== null ? `Line ${syntaxError.line}: ` : ''}
+              {syntaxError.message}
+            </span>
+            <span className="font-sans text-text-faint text-xs">Fix the file on disk, then reopen this dialog. Settings can't be changed until it parses.</span>
+          </div>
+        )}
+
+        {settings !== null && !syntaxError && (
           <div className="flex flex-col gap-4 px-4 py-4">
             <SettingsRow label="Model">
               <div className="flex flex-wrap justify-end gap-1">

@@ -2,7 +2,17 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CloseBufferDialog } from './CloseBufferDialog';
 
-const savedBuffer = { id: 'one', filePath: '/vault/one.md', title: 'one.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal' as const };
+const savedBuffer = {
+  id: 'one',
+  filePath: '/vault/one.md',
+  title: 'one.md',
+  content: '',
+  dirty: true,
+  revision: 1,
+  savedRevision: 0,
+  vimMode: 'normal' as const,
+  source: 'vault' as const,
+};
 describe('CloseBufferDialog', () => {
   afterEach(cleanup);
 

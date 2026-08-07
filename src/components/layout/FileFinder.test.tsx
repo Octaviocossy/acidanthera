@@ -7,13 +7,16 @@ import { useSidebarStore } from '@/stores/sidebar-store';
 import { FileFinder } from './FileFinder';
 
 const { openVaultFile } = vi.hoisted(() => ({ openVaultFile: vi.fn() }));
+const { openConfigFile } = vi.hoisted(() => ({ openConfigFile: vi.fn() }));
 const longRelativePath = 'notes/projects/very-long-project-name/meeting-notes/architecture-decisions.md';
 vi.mock('@/lib/vault/open-file', () => ({ openVaultFile }));
+vi.mock('@/lib/config/open-config-file', () => ({ openConfigFile }));
 
 afterEach(cleanup);
 
 beforeEach(() => {
   openVaultFile.mockReset();
+  openConfigFile.mockReset();
   useAppStore.setState({ vaultRoot: '/vault' });
   useSidebarStore.setState({
     tree: [
@@ -90,6 +93,28 @@ describe('FileFinder', () => {
     await user.keyboard('{Enter}');
 
     expect(openVaultFile).toHaveBeenCalledWith('/vault/notes/ideas.md');
+    expect(useFileFinderStore.getState().open).toBe(false);
+  });
+
+  it('lists config files alongside vault notes, visually marked', () => {
+    useFileFinderStore.getState().show();
+    render(<FileFinder />);
+
+    const option = screen.getByRole('option', { name: 'config/settings.tomlconfig' });
+    expect(option).toBeInTheDocument();
+  });
+
+  it('opens a selected config file through openConfigFile, not openVaultFile', async () => {
+    const user = userEvent.setup();
+    openConfigFile.mockResolvedValue(undefined);
+    useFileFinderStore.getState().show();
+    render(<FileFinder />);
+
+    await user.type(screen.getByRole('combobox'), 'settings.toml');
+    await user.keyboard('{Enter}');
+
+    expect(openConfigFile).toHaveBeenCalledWith('settings.toml');
+    expect(openVaultFile).not.toHaveBeenCalled();
     expect(useFileFinderStore.getState().open).toBe(false);
   });
 });

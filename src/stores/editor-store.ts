@@ -3,6 +3,12 @@ import { create } from 'zustand';
 /** The editor's own CodeMirror-vim mode — distinct from the app-level `GlobalMode` (doc/v0-spec.md §3.4). */
 export type EditorVimMode = 'normal' | 'insert' | 'visual' | 'replace';
 
+/** Where a buffer's `filePath` resolves to and how it saves — a vault note through
+ *  `vaultService.writeNote`, or a config file (`settings.toml` / `keymaps.toml`) through the
+ *  config commands (#100). One field answers save routing, language selection, and wikilink
+ *  suppression, so no call site re-derives it from the path. */
+export type EditorBufferSource = 'vault' | 'config';
+
 export interface EditorBuffer {
   id: string;
   filePath: string;
@@ -12,6 +18,7 @@ export interface EditorBuffer {
   revision: number;
   savedRevision: number;
   vimMode: EditorVimMode;
+  source: EditorBufferSource;
 }
 
 export interface EditorSaveRequest {
@@ -20,6 +27,7 @@ export interface EditorSaveRequest {
   filePath: string;
   content: string;
   revision: number;
+  source: EditorBufferSource;
 }
 
 let nextBufferId = 1;
@@ -37,6 +45,7 @@ export function createEditorSaveRequest(buffer: EditorBuffer): EditorSaveRequest
     filePath: buffer.filePath,
     content: buffer.content,
     revision: buffer.revision,
+    source: buffer.source,
   };
 }
 
@@ -56,8 +65,8 @@ interface EditorState {
   completeSaveRequest: (request: EditorSaveRequest) => void;
   failSaveRequest: (requestId: number) => void;
   closeBuffer: (bufferId: string) => void;
-  /** Opens a note read from disk, activating an existing buffer instead of overwriting it. */
-  openFile: (filePath: string, content: string) => void;
+  /** Opens a file read from disk, activating an existing buffer of the same source instead of overwriting it. */
+  openFile: (filePath: string, content: string, source?: EditorBufferSource) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -109,9 +118,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       return { buffers, activeBufferId: buffers[Math.min(index, buffers.length - 1)].id };
     }),
 
-  openFile: (filePath, content) =>
+  openFile: (filePath, content, source = 'vault') =>
     set((state) => {
-      const existing = state.buffers.find((buffer) => buffer.filePath === filePath);
+      const existing = state.buffers.find((buffer) => buffer.filePath === filePath && buffer.source === source);
       if (existing !== undefined) return { activeBufferId: existing.id };
 
       const fileBuffer: EditorBuffer = {
@@ -123,6 +132,7 @@ export const useEditorStore = create<EditorState>((set) => ({
         revision: 0,
         savedRevision: 0,
         vimMode: 'normal',
+        source,
       };
 
       return {
