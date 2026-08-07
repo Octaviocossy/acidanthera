@@ -60,7 +60,7 @@ export function regionExit() {
             case 'f':
               event.preventDefault();
               event.stopPropagation();
-              executeAppCommand('find-file');
+              executeAppCommand('global.find-file');
               return true;
             default:
               return false;
