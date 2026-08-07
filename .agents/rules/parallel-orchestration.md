@@ -76,7 +76,7 @@ merged.
   The leading numeric segment is resolved by precedence #1 in `issue-resolution.md`, so
   all issue-aware commands (`/execute-issue`, `/ship-note`, etc.) work on child branches.
 - **Epic:** the integration branch is `epic/<epic#>-<slug>` (e.g.
-  `epic/55-orbit-111-v0`). The leading numeric segment (after the `epic/` prefix)
+  `epic/55-checkout-redesign`). The leading numeric segment (after the `epic/` prefix)
   resolves via precedence #1 in `issue-resolution.md`, same as a child branch —
   deterministic, not a fuzzy title match.
 
@@ -188,7 +188,7 @@ one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
 ```sh
 sh .agents/scripts/run-parallel-issues.sh "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
 # or, with an epic integration branch:
-sh .agents/scripts/run-parallel-issues.sh --epic epic/55-orbit-111-v0 "<issue>:<branch>:<title>" ...
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-checkout-redesign "<issue>:<branch>:<title>" ...
 ```
 
 ---

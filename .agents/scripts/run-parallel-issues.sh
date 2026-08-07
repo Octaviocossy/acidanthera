@@ -178,7 +178,6 @@ EOF
   git -C "$_wt" add -A >>"$_logf" 2>&1
   git -C "$_wt" commit -m "feat(#$_issue): $_title" \
       -m "Implements #$_issue via /execute-epic parallel runner." \
-      -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>" \
       >>"$_logf" 2>&1
   if [ "$?" -ne 0 ]; then
     log "[#$_issue] FAILED: git commit failed (see $_logf)."

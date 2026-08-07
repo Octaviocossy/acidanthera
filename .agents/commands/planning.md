@@ -14,6 +14,12 @@ This command produces a plan file that:
 When invoked with a task description:
 
 1. **Inspect context** — read the relevant source files, rules, and existing plans to understand the current state. Do not skip this step even for seemingly simple tasks.
+   - **Check `.agents/specs/` first.** If a settled design spec exists for this work (header
+     `Status: **settled**`, written by `/grill` — see `.agents/rules/design-interrogation.md`),
+     read it and source the plan's `## Context` and `## Architecture Decisions` from its
+     `## Settled Decisions` table rather than re-deriving them. Honor its
+     `## Explicitly Out of Scope`. With a settled spec in hand, `## Open Questions` should come
+     out as "None." — anything still open there is a sign the interrogation was cut short.
 2. **Draft the plan** — produce a complete plan following `.agents/rules/plan-creation.md` exactly. Be exhaustive: another model will execute this with zero prior context.
 3. **Save the plan** — write it to `.agents/plans/[yyyy-mm-dd]-[short-kebab-description].md` with status `draft`.
 4. **Present for review** — respond with the file path and a concise summary. Do not implement until the user explicitly approves.
