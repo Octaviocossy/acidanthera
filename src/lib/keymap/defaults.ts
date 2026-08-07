@@ -49,3 +49,26 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
 export function commandIdsForLayer(layer: KeymapLayer): AppCommandId[] {
   return APP_COMMANDS.filter((command) => command.layer === layer).map((command) => command.id);
 }
+
+/**
+ * `editor.*` commands resolvable through orbit's own editor extensions (epic #94, child #99) —
+ * kept separate from {@link KEYMAP_LAYERS}'s window-dispatcher layers because these are consumed
+ * by CodeMirror's own keymap facet and `@replit/codemirror-vim`'s key-mapping API, not the shared
+ * window dispatcher ({@link KeymapLayer} explicitly excludes `'editor'`). `editor.next-tab` /
+ * `editor.previous-tab` / `editor.close-tab` stay out of this catalog — they're declared in
+ * `AppCommandId` but not yet wired to a live dispatch of any kind.
+ */
+export type EditorCommandId = 'editor.save' | 'editor.system-yank';
+
+export const EDITOR_COMMAND_IDS: readonly EditorCommandId[] = ['editor.save', 'editor.system-yank'];
+
+/**
+ * Default chord(s) for each {@link EditorCommandId}, same notation as {@link DEFAULT_KEYMAP}.
+ * `editor.save` is fed directly into CodeMirror's own key-string syntax (`save.ts`);
+ * `editor.system-yank` is translated into Vim key notation (`yank.ts`). The `:w` ex-command is a
+ * separate, permanently registered Vim mapping (spec decision 23) and isn't part of this catalog.
+ */
+export const DEFAULT_EDITOR_KEYMAP: Record<EditorCommandId, string[]> = {
+  'editor.save': ['mod-s'],
+  'editor.system-yank': ['y'],
+};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Chord, canonicalChordString } from './chord';
+import { type Chord, canonicalChordString, parseChord } from './chord';
 import { resolveKeymap } from './resolve';
 
 function chordStrings(chords: Chord[]): string[] {
@@ -88,5 +88,34 @@ describe('resolveKeymap', () => {
 
     expect(chordStrings(resolved.layers.modal.get('modal.cancel') ?? [])).toEqual(['ctrl-g']);
     expect(resolved.diagnostics).toEqual([]);
+  });
+
+  it('resolves editor.* commands to their defaults when there is no override', () => {
+    const resolved = resolveKeymap(null);
+
+    // "mod" resolves platform-specifically (ctrl on non-mac, meta on mac) — see chord.ts.
+    expect(chordStrings(resolved.editor['editor.save'])).toEqual([canonicalChordString(parseChord('mod-s'))]);
+    expect(chordStrings(resolved.editor['editor.system-yank'])).toEqual(['y']);
+    expect(resolved.diagnostics).toEqual([]);
+  });
+
+  it('rebinds an editor.* command wholesale from an override', () => {
+    const resolved = resolveKeymap({ 'editor.system-yank': ['z'] });
+
+    expect(chordStrings(resolved.editor['editor.system-yank'])).toEqual(['z']);
+    expect(resolved.diagnostics).toEqual([]);
+  });
+
+  it('drops a non-array override for an editor.* command with a diagnostic and keeps its default', () => {
+    const resolved = resolveKeymap({ 'editor.save': 'mod-s' as unknown as string[] });
+
+    expect(chordStrings(resolved.editor['editor.save'])).toEqual([canonicalChordString(parseChord('mod-s'))]);
+    expect(resolved.diagnostics.some((d) => d.message.includes('editor.save'))).toBe(true);
+  });
+
+  it('still refuses to rebind an unwired editor.* command', () => {
+    const resolved = resolveKeymap({ 'editor.next-tab': ['ctrl-tab'] });
+
+    expect(resolved.diagnostics.some((d) => d.message.includes('editor.next-tab') && d.message.includes("isn't rebindable"))).toBe(true);
   });
 });

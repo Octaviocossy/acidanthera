@@ -1,6 +1,6 @@
 import { APP_COMMANDS, type AppCommandId, type AppCommandLayer } from '@/lib/app-command';
 import { type Chord, canonicalChordString, parseChord } from './chord';
-import { commandIdsForLayer, DEFAULT_KEYMAP, KEYMAP_LAYERS, type KeymapLayer } from './defaults';
+import { commandIdsForLayer, DEFAULT_EDITOR_KEYMAP, DEFAULT_KEYMAP, EDITOR_COMMAND_IDS, type EditorCommandId, KEYMAP_LAYERS, type KeymapLayer } from './defaults';
 
 const COMMAND_LAYER = new Map<AppCommandId, AppCommandLayer>(APP_COMMANDS.map((command) => [command.id, command.layer]));
 const KNOWN_COMMAND_IDS = new Set<string>(APP_COMMANDS.map((command) => command.id));
@@ -21,6 +21,11 @@ export type LayerBindings = ReadonlyMap<AppCommandId, Chord[]>;
 
 export interface ResolvedKeymap {
   layers: Record<KeymapLayer, LayerBindings>;
+  /** `editor.*` bindings (child #99) — one flat command -> chords map, not a {@link LayerBindings}
+   *  trie-safe set, since `editor.save` and `editor.system-yank` are consumed independently by
+   *  CodeMirror's keymap facet and `@replit/codemirror-vim`'s key-mapping API respectively, never
+   *  through the shared window dispatcher. */
+  editor: Record<EditorCommandId, Chord[]>;
   diagnostics: KeymapDiagnostic[];
 }
 
@@ -30,6 +35,12 @@ function isStringArray(value: unknown): value is string[] {
 
 function defaultChordSources(commandId: AppCommandId): string[] {
   return DEFAULT_KEYMAP[commandId] ?? [];
+}
+
+const EDITOR_COMMAND_ID_SET = new Set<string>(EDITOR_COMMAND_IDS);
+
+function isEditorCommandId(value: string): value is EditorCommandId {
+  return EDITOR_COMMAND_ID_SET.has(value);
 }
 
 function parseChordList(commandId: AppCommandId, raw: readonly string[], diagnostics: KeymapDiagnostic[]): Chord[] {
@@ -143,6 +154,7 @@ function applyModalLockoutGuard(layers: Record<KeymapLayer, LayerBindings>, diag
 export function resolveKeymap(overrides: Record<string, unknown> | null | undefined): ResolvedKeymap {
   const diagnostics: KeymapDiagnostic[] = [];
   const rawByCommand = new Map<AppCommandId, string[]>();
+  const rawByEditorCommand = new Map<EditorCommandId, string[]>(EDITOR_COMMAND_IDS.map((commandId) => [commandId, DEFAULT_EDITOR_KEYMAP[commandId]]));
 
   for (const layer of KEYMAP_LAYERS) {
     for (const commandId of commandIdsForLayer(layer)) {
@@ -151,6 +163,14 @@ export function resolveKeymap(overrides: Record<string, unknown> | null | undefi
   }
 
   for (const [commandId, value] of Object.entries(overrides ?? {})) {
+    if (isEditorCommandId(commandId)) {
+      if (!isStringArray(value)) {
+        diagnostics.push({ message: `"${commandId}": expected an array of chord strings — ignored, kept its default.` });
+        continue;
+      }
+      rawByEditorCommand.set(commandId, value);
+      continue;
+    }
     if (!KNOWN_COMMAND_IDS.has(commandId)) {
       diagnostics.push({ message: `Unknown command id "${commandId}" in keymaps.toml — ignored.` });
       continue;
@@ -179,5 +199,10 @@ export function resolveKeymap(overrides: Record<string, unknown> | null | undefi
 
   applyModalLockoutGuard(layers, diagnostics);
 
-  return { layers, diagnostics };
+  const editor = {} as Record<EditorCommandId, Chord[]>;
+  for (const commandId of EDITOR_COMMAND_IDS) {
+    editor[commandId] = parseChordList(commandId, rawByEditorCommand.get(commandId) ?? [], diagnostics);
+  }
+
+  return { layers, editor, diagnostics };
 }
