@@ -27,6 +27,8 @@ export type AppCommandId =
   | 'chat.history.cursor-down'
   | 'chat.history.cursor-up'
   | 'chat.history.open'
+  | 'editor.save'
+  | 'editor.system-yank'
   | 'editor.next-tab'
   | 'editor.previous-tab'
   | 'editor.close-tab'
@@ -63,6 +65,8 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'chat.history.cursor-down', label: 'Move cursor down', layer: 'chat.history' },
   { id: 'chat.history.cursor-up', label: 'Move cursor up', layer: 'chat.history' },
   { id: 'chat.history.open', label: 'Open chat', layer: 'chat.history' },
+  { id: 'editor.save', label: 'Save note', layer: 'editor' },
+  { id: 'editor.system-yank', label: 'System clipboard yank', layer: 'editor' },
   { id: 'editor.next-tab', label: 'Next tab', layer: 'editor' },
   { id: 'editor.previous-tab', label: 'Previous tab', layer: 'editor' },
   { id: 'editor.close-tab', label: 'Close tab', layer: 'editor' },

@@ -1,9 +1,10 @@
 import { EditorView } from '@codemirror/view';
 import { getCM, Vim, vim } from '@replit/codemirror-vim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveKeymap } from '@/lib/keymap/resolve';
 import { clipboardService } from '@/services/clipboard.service';
 import { useToastStore } from '@/stores/toast-store';
-import './yank';
+import { apply } from './yank';
 
 vi.mock('@/services/clipboard.service', () => ({
   clipboardService: {
@@ -12,6 +13,8 @@ vi.mock('@/services/clipboard.service', () => ({
 }));
 
 const writeText = vi.mocked(clipboardService.writeText);
+
+apply(resolveKeymap(null));
 
 function createEditor(doc = 'alpha beta\ngamma\ndelta\n') {
   const parent = document.createElement('div');
@@ -123,5 +126,63 @@ describe('system yank', () => {
       message: 'Yank failed: clipboard unavailable',
       tone: 'error',
     });
+  });
+});
+
+describe('system yank — apply()', () => {
+  let editor: ReturnType<typeof createEditor> | undefined;
+
+  beforeEach(() => {
+    writeText.mockReset();
+    writeText.mockResolvedValue();
+    useToastStore.setState({ toasts: [] });
+    Vim.getRegisterController().unnamedRegister.clear();
+  });
+
+  afterEach(() => {
+    editor?.view.destroy();
+    editor?.parent.remove();
+    editor = undefined;
+    // Restore the default binding so later tests (and other files reusing the shared Vim
+    // singleton within this run) see 'y' mapped to systemYank again.
+    apply(resolveKeymap(null));
+  });
+
+  it('is idempotent: reapplying the same resolved keymap does not rebind or duplicate the clipboard write', async () => {
+    apply(resolveKeymap(null));
+    apply(resolveKeymap(null));
+    editor = createEditor();
+
+    press(editor.cm, 'y', 'y');
+    await Promise.resolve();
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebinds editor.system-yank to another chord, and y round-trips back to vim default yank', async () => {
+    apply(resolveKeymap({ 'editor.system-yank': ['z'] }));
+    editor = createEditor();
+
+    press(editor.cm, 'y', 'y');
+    await Promise.resolve();
+    expect(writeText).not.toHaveBeenCalled();
+    expect(Vim.getRegisterController().unnamedRegister.toString()).toBe('alpha beta\n');
+
+    writeText.mockClear();
+    Vim.getRegisterController().unnamedRegister.clear();
+
+    press(editor.cm, 'z', 'z');
+    await Promise.resolve();
+    expect(writeText).toHaveBeenCalledWith('alpha beta\n');
+    expect(Vim.getRegisterController().unnamedRegister.toString()).toBe('alpha beta\n');
+
+    // Vim.unmap round trip: reverting the override restores 'y' -> systemYank and drops 'z'.
+    apply(resolveKeymap(null));
+    writeText.mockClear();
+    Vim.getRegisterController().unnamedRegister.clear();
+
+    press(editor.cm, 'y', 'y');
+    await Promise.resolve();
+    expect(writeText).toHaveBeenCalledWith('alpha beta\n');
   });
 });
