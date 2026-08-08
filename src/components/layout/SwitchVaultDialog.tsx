@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
+import { SectionLabel } from '@/components/ui/section-label';
 import { useVaultSwitchPrompt } from '@/lib/vault/switch-vault';
 
 /**
@@ -16,21 +17,28 @@ export function SwitchVaultDialog() {
   if (pending === null) return null;
 
   return (
-    <div role="presentation" className="absolute inset-0 z-20 flex items-center justify-center bg-bg/70">
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="w-[420px] rounded-lg border border-border-hairline bg-surface p-4">
-        <h2 id={titleId} className="font-mono text-sm text-text">
-          Switch vault?
+    <div role="presentation" className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--scrim)]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="w-[420px] rounded-modal border border-border-strong bg-surface p-4 shadow-[var(--shadow-overlay-dark)]"
+      >
+        <h2 id={titleId}>
+          <SectionLabel>Switch vault?</SectionLabel>
         </h2>
-        <p className="mt-2 font-sans text-sm text-text-dim">
-          <span className="break-all font-mono text-text">{pending.newPath}</span> was set in settings.toml, but open buffers have unsaved changes. Save or discard them to
-          continue.
+        <p className="mt-2 font-sans text-ui text-text-body">
+          <span className="break-all font-mono text-meta text-text-primary">{pending.newPath}</span> was set in settings.toml, but open buffers have unsaved changes. Save or
+          discard them to continue.
         </p>
-        <p className="mt-2 font-sans text-text-faint text-xs">Cancel leaves the vault open and this path un-applied — settings.toml keeps the new value on disk until you retry.</p>
+        <p className="mt-2 font-sans text-caption text-text-secondary">
+          Cancel leaves the vault open and this path un-applied — settings.toml keeps the new value on disk until you retry.
+        </p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => pending.resolve('cancel')}>
             Cancel
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => pending.resolve('discard')}>
+          <Button variant="secondary" size="sm" onClick={() => pending.resolve('discard')}>
             Discard all
           </Button>
           <Button variant="secondary" size="sm" onClick={() => pending.resolve('save')}>
