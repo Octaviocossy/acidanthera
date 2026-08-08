@@ -56,9 +56,6 @@
   --text-dim: var(--text-secondary);
   --text-faint: var(--text-muted);
   --border-active: var(--border-strong);
-  --accent-signal: var(--accent);
-  /* Retired green stays neutral so a done ToolChip does not falsely claim AI agency. */
-  --accent-metric: var(--text-secondary);
   --fab-accent: var(--accent);
   --fab-accent-dim: var(--accent-soft);
   --radius-full: var(--radius-pill);

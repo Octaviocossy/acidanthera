@@ -27,7 +27,7 @@ function ChatItemRow({ item }: { item: ChatItem }) {
       // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
       return <ChatMessage role="agent" text={item.text} />;
     case 'error':
-      return <div className="mx-4 my-3 rounded-sm border border-border-active px-3 py-2 font-mono text-sm text-text">{item.message}</div>;
+      return <div className="mx-4 my-3 rounded-card border border-border-strong px-3 py-2 font-sans text-ui text-text-secondary">{item.message}</div>;
     case 'tool_call':
       return (
         <div className="px-4 py-2">
@@ -46,8 +46,8 @@ function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: stri
       aria-selected={active}
       onClick={() => onSelect(tab)}
       className={cn(
-        'border-b-2 pb-0.5 font-mono text-xs uppercase tracking-caps transition-colors duration-[var(--dur)] ease-orbit',
-        active ? 'border-border-active text-text' : 'border-transparent text-text-dim hover:text-text'
+        'border-b pb-0.5 font-mono text-label uppercase tracking-label transition-colors duration-[var(--dur)] ease-orbit',
+        active ? 'border-border-strong text-text-primary' : 'border-transparent text-text-muted hover:text-text-primary'
       )}
     >
       {label}
@@ -90,16 +90,16 @@ export function ChatPanel() {
   };
 
   return (
-    <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-bg', isActive ? 'border-border-active' : 'border-border-hairline')} aria-label="AI chat">
+    <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-panel', isActive ? 'border-border-strong' : 'border-hairline')} aria-label="AI chat">
       {/* Header strip (#71): the two tabs + a New chat control, left-aligned so the top-right FAB
           (floating over this band) never overlaps them. The band reserves the FAB's footprint
           (`--rail-fab` + inset). New chat starts a fresh thread (the prior one is auto-saved). */}
-      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center gap-4 border-b border-border-hairline px-3">
+      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center gap-4 border-b border-hairline px-3">
         <div role="tablist" aria-label="Chat panel" className="flex items-center gap-3">
           <TabButton tab="chat" label="Chat" active={tab === 'chat'} onSelect={selectTab} />
           <TabButton tab="history" label="History" active={tab === 'history'} onSelect={selectTab} />
         </div>
-        <Button variant="ghost" size="sm" className="uppercase tracking-caps" onClick={handleNewChat}>
+        <Button variant="ghost" size="sm" className="font-mono uppercase tracking-label" onClick={handleNewChat}>
           New chat
         </Button>
       </div>
@@ -107,7 +107,7 @@ export function ChatPanel() {
       {tab === 'chat' ? (
         <>
           <div ref={listRef} role="tabpanel" aria-label="Chat" className="min-h-0 flex-1 overflow-y-auto">
-            <div className="divide-y divide-border-hairline">
+            <div className="py-2">
               {items.map((item) => (
                 <ChatItemRow key={item.id} item={item} />
               ))}
