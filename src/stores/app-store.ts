@@ -23,6 +23,13 @@ function reachableRegions({ sidebarOpen, chatOpen }: Pick<AppState, 'sidebarOpen
 
 interface AppState {
   activeRegion: FocusRegion;
+  /**
+   * Monotonic "put real DOM focus in the editor" request, consumed by `BufferEditor`'s focus
+   * effect. Distinct from `activeRegion` because an open that changes no other state — re-opening
+   * the already-active buffer from the file finder — must still re-claim DOM focus from the overlay
+   * that just unmounted and took it to `<body>`.
+   */
+  editorFocusRequest: number;
   mode: GlobalMode;
   /** Whether the sidebar region is shown (#38). Unlike `settingsOpen` this gates a `FocusRegion`. */
   sidebarOpen: boolean;
@@ -36,6 +43,8 @@ interface AppState {
   focusRegion: (region: FocusRegion) => void;
   focusNext: () => void;
   focusPrevious: () => void;
+  focusEditor: () => void;
+  requestEditorFocus: () => void;
   setMode: (mode: GlobalMode) => void;
   openSidebar: () => void;
   closeSidebar: () => void;
@@ -51,6 +60,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeRegion: 'viewer',
+  editorFocusRequest: 0,
   mode: 'normal',
   sidebarOpen: true,
   chatOpen: false,
@@ -75,6 +85,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const index = regions.indexOf(state.activeRegion);
     set({ activeRegion: regions[(index - 1 + regions.length) % regions.length] });
   },
+
+  /** Focuses the viewer region *and* asks the mounted editor for real DOM focus. One `set`, so it
+   *  is one render. `'viewer'` is unconditionally reachable (see `reachableRegions`), so unlike
+   *  `focusRegion` this needs no guard. */
+  focusEditor: () => set((state) => ({ activeRegion: 'viewer', editorFocusRequest: state.editorFocusRequest + 1 })),
+
+  /** Asks the mounted editor for real DOM focus *without* moving the focused region — the editor
+   *  claims it only if the viewer is already active. Used when an overlay is dismissed rather than
+   *  used (e.g. Escape out of the file finder), which must not drag focus out of another region. */
+  requestEditorFocus: () => set((state) => ({ editorFocusRequest: state.editorFocusRequest + 1 })),
 
   setMode: (mode) => set({ mode }),
 

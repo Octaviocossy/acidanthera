@@ -42,4 +42,18 @@ describe('useGlobalKeymap', () => {
 
     expect(useFileFinderStore.getState().open).toBe(false);
   });
+
+  it('does not arm the file finder prefix from a contenteditable target', () => {
+    // CodeMirror's content DOM. Now that the editor actually holds DOM focus, this is the common
+    // case, not a corner one — the window dispatcher must leave the editor's keys to CodeMirror.
+    render(<GlobalKeymap />);
+    const content = document.createElement('div');
+    content.setAttribute('contenteditable', 'true');
+    document.body.append(content);
+
+    content.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ctrlKey: true, key: 'w' }));
+    press('f');
+
+    expect(useFileFinderStore.getState().open).toBe(false);
+  });
 });

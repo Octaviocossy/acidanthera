@@ -32,6 +32,15 @@ export function FileFinder() {
 
   if (!open) return null;
 
+  /** Closes the finder without opening anything, handing DOM focus back to the editor so the
+   *  keyboard isn't left on `<body>` once this overlay's input unmounts. Deliberately the nonce-only
+   *  `requestEditorFocus`, never `focusEditor` — Escaping the finder from the sidebar must not drag
+   *  the focused region into the viewer, and `BufferEditor` claims focus only if it is already there. */
+  const dismiss = () => {
+    hide();
+    useAppStore.getState().requestEditorFocus();
+  };
+
   const select = async (index: number) => {
     const candidate = results[index];
     if (candidate === undefined) return;
@@ -49,7 +58,7 @@ export function FileFinder() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; the dialog receives keyboard input.
-    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center bg-bg/70 pt-[12vh]" onMouseDown={hide}>
+    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center bg-bg/70 pt-[12vh]" onMouseDown={dismiss}>
       <div
         role="dialog"
         aria-modal="true"
@@ -68,7 +77,7 @@ export function FileFinder() {
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault();
-              hide();
+              dismiss();
             } else if (event.key === 'ArrowDown') {
               event.preventDefault();
               moveCursor(1, results.length);

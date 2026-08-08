@@ -17,7 +17,7 @@ function resetEditor() {
 beforeEach(() => {
   vi.mocked(invoke).mockReset();
   resetEditor();
-  useAppStore.setState({ activeRegion: 'sidebar' });
+  useAppStore.setState({ activeRegion: 'sidebar', editorFocusRequest: 0 });
 });
 
 describe('openConfigFile', () => {
@@ -33,6 +33,7 @@ describe('openConfigFile', () => {
     expect(useEditorStore.getState().activeBufferId).toBe(bufferId);
     expect(useEditorStore.getState().buffers.find((buffer) => buffer.id === bufferId)).toMatchObject({ content: 'theme = "light"', dirty: true });
     expect(useAppStore.getState().activeRegion).toBe('viewer');
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
   });
 
   it('reads and opens a config file not already buffered, tagged with the config source', async () => {
@@ -42,6 +43,8 @@ describe('openConfigFile', () => {
 
     expect(invoke).toHaveBeenCalledWith('read_config_file', { name: 'settings.toml' });
     expect(useEditorStore.getState().buffers).toContainEqual(expect.objectContaining({ filePath: 'settings.toml', content: 'theme = "dark"', source: 'config' }));
+    expect(useAppStore.getState().activeRegion).toBe('viewer');
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
   });
 
   it("does not activate a vault buffer that happens to share the config file's name", async () => {

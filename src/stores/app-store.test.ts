@@ -47,6 +47,33 @@ describe('focusNext / focusPrevious', () => {
   });
 });
 
+describe('focusEditor / requestEditorFocus', () => {
+  it('focuses the viewer region and raises a focus request', () => {
+    useAppStore.getState().focusRegion('sidebar');
+    useAppStore.getState().focusEditor();
+
+    expect(useAppStore.getState().activeRegion).toBe('viewer');
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
+  });
+
+  it('raises a fresh request even when the viewer is already the active region', () => {
+    // The whole reason the request is a counter: re-opening the buffer that is already active
+    // changes no other state, yet the file finder's input has just unmounted with DOM focus.
+    useAppStore.getState().focusEditor();
+    useAppStore.getState().focusEditor();
+
+    expect(useAppStore.getState().editorFocusRequest).toBe(2);
+  });
+
+  it('requestEditorFocus raises a request without moving the focused region', () => {
+    useAppStore.getState().focusRegion('sidebar');
+    useAppStore.getState().requestEditorFocus();
+
+    expect(useAppStore.getState().activeRegion).toBe('sidebar');
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
+  });
+});
+
 describe('setMode', () => {
   it('sets the global mode', () => {
     useAppStore.getState().setMode('command');

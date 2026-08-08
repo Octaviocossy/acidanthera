@@ -17,7 +17,7 @@ function resetEditor() {
 beforeEach(() => {
   vi.mocked(invoke).mockReset();
   resetEditor();
-  useAppStore.setState({ activeRegion: 'sidebar' });
+  useAppStore.setState({ activeRegion: 'sidebar', editorFocusRequest: 0 });
 });
 
 describe('openVaultFile', () => {
@@ -33,6 +33,9 @@ describe('openVaultFile', () => {
     expect(useEditorStore.getState().activeBufferId).toBe(bufferId);
     expect(useEditorStore.getState().buffers.find((buffer) => buffer.id === bufferId)).toMatchObject({ content: '# Unsaved', dirty: true });
     expect(useAppStore.getState().activeRegion).toBe('viewer');
+    // Re-opening an already-buffered note changes no editor state, so the DOM-focus request is the
+    // only signal that reaches the editor — this is the file-finder case.
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
   });
 
   it('reads and opens a file not already buffered', async () => {
@@ -42,5 +45,7 @@ describe('openVaultFile', () => {
 
     expect(invoke).toHaveBeenCalledWith('read_note', { path: '/vault/note.md' });
     expect(useEditorStore.getState().buffers).toContainEqual(expect.objectContaining({ filePath: '/vault/note.md', content: '# Disk' }));
+    expect(useAppStore.getState().activeRegion).toBe('viewer');
+    expect(useAppStore.getState().editorFocusRequest).toBe(1);
   });
 });
