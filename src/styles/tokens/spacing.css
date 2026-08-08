@@ -33,9 +33,4 @@
   --shadow-window-light: 0 12px 40px rgba(38, 37, 30, 0.12);
   --shadow-popover-light: 0 8px 24px rgba(38, 37, 30, 0.25);
   --shadow-input-light: 0 2px 8px rgba(38, 37, 30, 0.05);
-
-  /* Factory aliases - temporary, until the cleanup slice removes old utilities. */
-  --radius-sm: var(--radius-btn);
-  --radius-md: var(--radius-card);
-  --radius-lg: var(--radius-panel);
 }

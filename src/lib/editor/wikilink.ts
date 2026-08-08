@@ -39,16 +39,15 @@ const wikilinkPlugin = ViewPlugin.fromClass(
   }
 );
 
-// Chromatic-free per the design system (`.agents/ubiquitous-language.md` "Wikilinks stay
-// monochrome") — dim by default, bone on hover, never the signal/metric accents.
+// Chromatic-free per the design system — subdued by default, bright on hover, never accented.
 const wikilinkStyle = EditorView.baseTheme({
   '.cm-wikilink': {
-    color: 'var(--text-dim)',
+    color: 'var(--text-secondary)',
     textDecoration: 'none',
     cursor: 'pointer',
   },
   '.cm-wikilink:hover': {
-    color: 'var(--text)',
+    color: 'var(--text-primary)',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
   },

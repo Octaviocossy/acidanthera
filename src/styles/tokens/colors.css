@@ -45,20 +45,6 @@
   --surface-card: var(--bg-elevated);
   --surface-input: var(--bg-elevated);
   --text-on-accent: var(--accent-on);
-
-  /* Factory aliases - TEMPORARY. Deleted by the cleanup slice (ADR 0006, invariant 22).
-     New and modified code reads the Orbit names above; these exist only so untouched
-     components keep rendering while the migration runs slice by slice. */
-  --bg: var(--bg-canvas);
-  --surface: var(--bg-panel);
-  --surface-2: var(--bg-elevated);
-  --text: var(--text-primary);
-  --text-dim: var(--text-secondary);
-  --text-faint: var(--text-muted);
-  --border-active: var(--border-strong);
-  --fab-accent: var(--accent);
-  --fab-accent-dim: var(--accent-soft);
-  --radius-full: var(--radius-pill);
 }
 
 /* Light theme (Cursor-parchment). Never cool grays; shadows are warm. */

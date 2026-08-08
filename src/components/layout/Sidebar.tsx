@@ -104,7 +104,7 @@ export function Sidebar() {
     if (row.source === 'config-section') {
       return (
         <Fragment key={row.path}>
-          <div className="my-1 border-t border-border-hairline" aria-hidden="true" />
+          <div className="my-1 border-t border-hairline" aria-hidden="true" />
           <FileTreeItem
             label={<SectionLabel>Config</SectionLabel>}
             kind="dir"
