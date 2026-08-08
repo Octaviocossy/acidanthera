@@ -20,13 +20,13 @@ export function ToastHost() {
           type="button"
           onClick={() => dismissToast(toast.id)}
           className={cn(
-            'pointer-events-auto flex items-center gap-2 rounded-md border bg-surface px-3 py-1.5 font-mono text-sm text-text',
+            'pointer-events-auto flex items-center gap-2 rounded-card border bg-elevated px-3 py-1.5 font-sans text-ui text-text-primary',
             'animate-[toast-in_var(--dur)_var(--ease)] transition-opacity duration-[var(--dur)] ease-orbit',
-            toast.tone === 'error' ? 'border-border-active' : 'border-border-hairline',
+            toast.tone === 'error' ? 'border-border-strong' : 'border-border',
             toast.leaving && 'opacity-0'
           )}
         >
-          {toast.tone === 'error' && <span className="text-text-dim text-xs uppercase tracking-caps">error</span>}
+          {toast.tone === 'error' && <span className="font-mono text-meta uppercase tracking-label text-text-muted">error</span>}
           {toast.message}
         </button>
       ))}

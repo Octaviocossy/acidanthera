@@ -22,8 +22,8 @@ export function CommandBar() {
   if (mode !== 'command') return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 flex h-7 items-center gap-1 border-t border-border-hairline bg-surface px-3">
-      <span className="font-mono text-text-dim">:</span>
+    <div className="absolute inset-x-0 bottom-0 flex h-7 items-center gap-1 border-t border-hairline bg-surface px-3 font-mono text-body text-text-primary">
+      <span className="text-text-muted">:</span>
       <input
         ref={inputRef}
         value={value}
@@ -34,7 +34,7 @@ export function CommandBar() {
             setMode('normal');
           }
         }}
-        className="flex-1 bg-transparent font-mono text-sm text-text outline-none"
+        className="flex-1 bg-transparent font-mono text-body text-text-primary outline-none"
         spellCheck={false}
         aria-label="Command line"
       />
