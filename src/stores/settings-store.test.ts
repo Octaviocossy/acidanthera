@@ -5,7 +5,7 @@ import { useSettingsStore } from './settings-store';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
-const BASE_SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' };
+const BASE_SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault' };
 const initialState = useSettingsStore.getState();
 
 beforeEach(() => {
@@ -39,7 +39,7 @@ describe('applyReloadedSettings', () => {
   it('keeps the last-good settings on a syntax error, updating only diagnostics', () => {
     useSettingsStore.setState({ settings: BASE_SETTINGS, diagnostics: [], lastWrittenSnapshot: null });
     const reloaded: SettingsReadResult = {
-      settings: { model: 'gpt-5.4-mini', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' },
+      settings: { model: 'gpt-5.4-mini', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault' },
       diagnostics: [{ kind: 'syntax', message: 'unexpected token', line: 4 }],
     };
 
