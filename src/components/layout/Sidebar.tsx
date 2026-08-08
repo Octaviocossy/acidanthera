@@ -153,10 +153,10 @@ export function Sidebar() {
         <span className="font-mono text-text-dim text-xs uppercase tracking-caps">Vault</span>
         {vaultRoot !== null && (
           <div className="flex items-center gap-0.5">
-            <Button variant="quiet" size="sm" className="h-5 w-5 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
               <NewNoteGlyph />
             </Button>
-            <Button variant="quiet" size="sm" className="h-5 w-5 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
               <NewFolderGlyph />
             </Button>
           </div>

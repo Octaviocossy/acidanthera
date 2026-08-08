@@ -99,7 +99,7 @@ export function SettingsDialog() {
       >
         <div className="flex items-center justify-between border-b border-border-hairline px-4 py-2">
           <span className="font-mono text-text-faint text-xs uppercase tracking-caps">Settings</span>
-          <Button variant="quiet" size="sm" kbd onClick={closeSettings} aria-label="Close settings">
+          <Button variant="ghost" size="sm" asKbd onClick={closeSettings} aria-label="Close settings">
             esc
           </Button>
         </div>

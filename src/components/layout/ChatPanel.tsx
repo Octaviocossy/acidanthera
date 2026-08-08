@@ -99,7 +99,7 @@ export function ChatPanel() {
           <TabButton tab="chat" label="Chat" active={tab === 'chat'} onSelect={selectTab} />
           <TabButton tab="history" label="History" active={tab === 'history'} onSelect={selectTab} />
         </div>
-        <Button variant="quiet" size="sm" className="uppercase tracking-caps" onClick={handleNewChat}>
+        <Button variant="ghost" size="sm" className="uppercase tracking-caps" onClick={handleNewChat}>
           New chat
         </Button>
       </div>

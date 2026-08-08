@@ -32,13 +32,13 @@ export function CloseBufferDialog({ buffer, onSave, onDiscard, onCancel }: Close
         </h2>
         <p className="mt-2 font-sans text-sm text-text-dim">You have unsaved changes.</p>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="quiet" size="sm" onClick={onCancel} disabled={saving}>
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
             Cancel
           </Button>
           <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
             Discard
           </Button>
-          <Button variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving}>
+          <Button variant="secondary" size="sm" onClick={() => void handleSave()} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>

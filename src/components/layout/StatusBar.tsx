@@ -22,7 +22,7 @@ export function StatusBar() {
         {/* The mouse entry point for `Ctrl-w b` — without it a hidden sidebar is only recoverable
             by keyboard. State reads monochrome (brighter when shown), per the accent discipline. */}
         <Button
-          variant={sidebarOpen ? 'ghost' : 'quiet'}
+          variant="ghost"
           size="sm"
           className="h-5 px-1.5 text-xs uppercase tracking-caps"
           aria-pressed={sidebarOpen}
@@ -31,10 +31,10 @@ export function StatusBar() {
         >
           sidebar
         </Button>
-        <Button variant="quiet" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={showFileFinder}>
+        <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={showFileFinder}>
           find
         </Button>
-        <Button variant="quiet" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={openSettings}>
+        <Button variant="ghost" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={openSettings}>
           settings
         </Button>
         <Badge tone="muted">{mode}</Badge>
