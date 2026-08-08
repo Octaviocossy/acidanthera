@@ -67,9 +67,6 @@
   --color-text-faint: var(--text-faint);
   --color-fab-accent: var(--fab-accent);
   --color-fab-accent-dim: var(--fab-accent-dim);
-  --color-signal: var(--accent-signal);
-  --color-metric: var(--accent-metric);
-
   --text-xs: var(--font-size-meta);
   --text-sm: var(--font-size-ui);
   --text-base: var(--font-size-body);
