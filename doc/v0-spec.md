@@ -62,7 +62,7 @@ Data is plain `.md` files in a filesystem folder (Obsidian philosophy). The app 
 ### 3.2 Stack
 - **Tauri (Rust)** over Electron: lighter, decent binary, and it forces real native backend work (learning / CV goal).
 - **Frontend:** React + Vite.
-- **Styling / design system:** Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first — no `tailwind.config.js`) + shadcn/ui primitives, skinned entirely by the **Orbit-111 design tokens** vendored from the Claude Design project (see §5.6). We adopt shadcn's accessible *primitives*, not its default look. Lint/format stays on Biome; `cn()` uses `clsx` + `tailwind-merge`.
+- **Styling / design system:** Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first — no `tailwind.config.js`) + shadcn/ui primitives, skinned entirely by the **Orbit Design System** from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb` (see §5.6). We adopt shadcn's accessible *primitives*, not its default look. Lint/format stays on Biome; `cn()` uses `clsx` + `tailwind-merge`.
 - **Native Rust backend:** filesystem, spawning the agent process, file-watching (`notify` crate). API-key management in the keychain is left for the native-provider backends (post-v0 — see §4).
 
 ### 3.3 Authentication and data — zero auth, zero sync (v0)
@@ -166,7 +166,7 @@ Three-region structure, left to right:
 - **Sidebar (left):** collapsible folder-and-file explorer of the vault.
 - **Central viewer:** the open file (markdown editor). The widest region.
 - **AI chat (right):** an **invocable** panel in split view — when opened, the viewer shrinks and both stay visible side by side (not an overlay). Separated by a thin divider.
-- **Floating AI button (FAB):** top-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; the **only** place the accent color (lime `--accent #a3e635`) appears — a hint on its outline/spark glyph when active (§5.6). The chat panel carries **no header chrome** — no rule, no title — so the FAB floats over its top row beside the engine selector.
+- **Floating AI button (FAB):** top-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; its ember glyph is one of the sanctioned places the AI accent appears (§5.6), alongside the send button, active model pill, running tool chip, agent-turn glyph, and dirty-note dot. The chat panel carries **no header chrome** — no rule, no title — so the FAB floats over its top row beside the model pill.
 
 The chat is a region with open/closed state within the focus state machine (§3.4). The graph is no longer a permanent panel (§5.4).
 
@@ -175,7 +175,7 @@ It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/r
 
 - `@uiw/react-codemirror` accepts an `extensions` array of CM6 as a prop → that's where `vim()`, the `Ctrl-w` keybinding and `lang-markdown` go.
 - `@replit/codemirror-vim` API (v6.x): `vim()` goes first; `getCM(view)` gives access to the legacy API; `Vim.defineEx` registers ex-commands; the `vim-mode-change` event feeds the mode indicator.
-- Monochrome aesthetic driven by the **Orbit-111 design tokens** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the three text tiers, `--font-mono` = JetBrains Mono), so editor and chrome stay visually identical. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
+- Monochrome aesthetic driven by the **Orbit Design System** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the four text tiers, and JetBrains Mono for content), so editor and chrome stay visually identical. UI chrome uses Geist. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
 
 ### 5.2 AI chat (invocable panel)
 - Opens/closes with the FAB or a keyboard shortcut; split view next to the viewer.
@@ -184,7 +184,7 @@ It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/r
 - Input for user turns; backend selector.
 
 ### 5.3 File sidebar
-Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files. Rows use the design system's `FileTreeItem` (§5.6), which encodes the two vim selection states from §3.4: `active` (the open file — raised `--surface-2`) and `cursor` (the vim keyboard cursor — a thin inset `--border-active` bar, no fill).
+Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files. Rows use the design system's `FileTreeItem` (§5.6), which encodes the two vim selection states from §3.4: `active` (the open file — `--bg-elevated` with primary text) and `cursor` (the vim keyboard cursor — `--bg-hover` with secondary text). An unchanged row is transparent and moves to `--bg-hover` on pointer hover.
 
 ### 5.4 Neural tree / Graph view (invocable view, post-v0)
 A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges = links between notes.
@@ -198,50 +198,30 @@ A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges 
 
 ### 5.6 Design system & styling
 
-Orbit-111's visual layer is a purpose-built **design system** — the *Orbit-111 Design System* (Claude Design project `ff2532ab-4501-47c9-8acd-a36fe9719a84`) — delivered with **Tailwind CSS v4** and **shadcn/ui**. The design system is the source of truth for tokens and component behaviour; Tailwind + shadcn are the delivery mechanism, skinned entirely by the tokens (we take shadcn's *primitives*, not its default look).
+Orbit-111's visual layer is the **Orbit Design System**, from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb`, delivered with **Tailwind CSS v4**. The former project `ff2532ab-4501-47c9-8acd-a36fe9719a84` is superseded. Token values live in `src/styles/tokens/` and are exposed to Tailwind through `src/styles/index.css`.
 
-**Design language (formalizes §5.0/§5.1).** Monochrome, keyboard-first, calm: near-black layered surfaces, 1px hairline borders, one monospace typeface, generous negative space, near-square corners, and a **single reserved lime accent** used in exactly one place — the active AI button.
+#### Tokens and themes
 
-#### Tokens (vendored from the design project)
+- **Surfaces:** the five-step ladder is `--bg-canvas` (`#0b0c0d`) → `--bg-panel` → `--bg-surface` → `--bg-elevated` → `--bg-hover`. The editor canvas is deliberately darker than the sidebar panel; this contrast is load-bearing.
+- **Text:** `--text-primary`, `--text-body`, `--text-secondary`, and `--text-muted`. `--text-body` is editor prose specifically; primary is for headings and active rows.
+- **Borders:** `--border-hairline` for seams and dividers, `--border` for controls and cards, and `--border-strong` for focused outlines and modal edges.
+- **Accent:** ember is `#e8683a` in dark and `#f54e00` in light. It means *the AI acted here* and nothing else; see ADR 0007. Its sanctioned uses are the FAB and agent-turn glyphs, Send, the active model pill, a running tool chip, and the dirty-note dot. Diff colors retain their separate directional meaning.
+- **Typography:** Geist is the UI-chrome face; JetBrains Mono is for content and metadata. Headings stop at weight 500; 600 is reserved for strong inline emphasis. The semantic type scale lives in `typography.css`.
+- **Radii:** the eight-step semantic ladder is `--radius-kbd`, `--radius-btn`, `--radius-item`, `--radius-tab`, `--radius-card`, `--radius-panel`, `--radius-modal`, and `--radius-pill`, named for what each token wraps.
+- **Themes:** dark midnight and light parchment are keyed by `data-theme` and applied by `useApplyTheme`; there is no container theme class.
 
-`styles.css` + `tokens/*.css` are vendored into the repo as the base `:root` layer and exposed to Tailwind via `@theme`:
+#### Geometry, elevation, and iconography
 
-- **Surfaces:** `--bg #0a0a0b` (app) · `--surface #0e0e10` (sidebar/panels) · `--surface-2 #141416` (viewer / raised rows).
-- **Borders:** `--border #1e1e22` (hairline) · `--border-active #3a3a42` (focus/active).
-- **Text:** `--text #e4e4e7` · `--text-dim #71717a` · `--text-faint #3f3f46`.
-- **Accent (reserved):** `--accent #a3e635` (lime) · `--accent-dim #566a1d` — the only color; AI button only.
-- **Type:** one face — **JetBrains Mono**, self-hosted (substitutes the paid *Berkeley Mono*, which can be swapped in). `--font-sans` == `--font-mono`. Scale 11/12/13/14/16/20px; weights 300–700; tracking `-0.01em` display, `0.18em` tracked-caps.
-- **Spacing:** 4px grid (`--space-1…12`). **Radii:** `--radius-sm 3px` (chips/buttons/inputs), `--radius-md 5px` (panels/cards), `--radius-full` (AI button only). **Motion:** `--ease cubic-bezier(0.2,0,0,1)`, `--dur 160ms` — fades only, no bounce.
-- **Rails:** sidebar 240px · chat 360px · status bar 24px · title bar 38px · FAB 40px.
+- **Rails:** sidebar 224px · chat 340px · titlebar 40px · status 24px · FAB 40px.
+- **Elevation:** dark mode uses hairline borders rather than shadows, except window and overlay drops. Light mode uses warm shadows only, never cool-tinted shadows. The scrim is `rgba(5,6,7,.55)` with no backdrop blur.
+- **Motion:** short 150ms fades, no bounce; hover moves one surface step up.
+- **Glyphs:** `✦` AI · `◈` context/file · `⌕` search · `▸`/`▾` disclosure · `＋` add · `·` separator. Unicode glyphs are first-class icons. Drawn icons are hand-tuned at 15px on a 16 viewBox with a 1.2 stroke and `currentColor`; do not add an icon dependency.
 
-#### Stack integration
+#### Component inventory
 
-- **Tailwind v4** via `@tailwindcss/vite` (CSS-first; no `tailwind.config.js`). The CSS entry does `@import "tailwindcss";`, declares the Orbit tokens on `:root`, and an `@theme` block maps them to utilities (`bg-surface`, `text-dim`, `border-hairline`, `font-mono`, the radii/spacing scale).
-- **shadcn/ui** (Vite + React 19) with the `@/` alias (→ `src/`) and the `cn()` util (`src/lib/utils.ts`); config in `components.json`; primitives land in `src/components/ui/`.
-- **shadcn ⇄ Orbit mapping** (semantic var → token): `--background`→`--bg`, `--foreground`→`--text`, `--card`/`--popover`→`--surface`, `--muted`→`--surface-2`, `--muted-foreground`→`--text-dim`, `--border`/`--input`→`--border`, `--ring`→`--border-active`, `--radius`→`--radius-md`.
-- **Dark-only.** Orbit is always near-black. Tokens live on `:root`; no light theme and no `.dark` / `prefers-color-scheme` branch in v0 (the template's light/dark CSS is removed).
+`src/components/ui/` contains the five store-free primitives: `Kbd`, `SectionLabel`, `Chip`, `Switch`, and `Segmented`, plus `Button` and `Badge`. `Button` has `primary`, `secondary`, and `ghost` variants; `primary` is reserved for AI actions. `FileTreeItem` and `EditorTabs` deliberately remain store-aware application components rather than design primitives. The layout, editor, vault, overlay, and AI components compose these rules but are not promoted to generic primitives.
 
-**Accent discipline (hard rule).** Lime appears **only** on the active `AiFab`. Two consequences:
-1. shadcn's `--primary` (default button fill) maps to a **monochrome** surface (`--surface-2` + `--border-active`), never lime; `--ring` is `--border-active`, not lime.
-2. shadcn's semantic `--accent` (hover surface) collides by name with Orbit's reserved lime `--accent`. Resolution: the FAB reads lime via a decoupled literal (`--fab-accent: #a3e635`), freeing the bare `--accent` name for shadcn's hover semantic (mapped to `--surface-2`). Primitives that *can* render lime (`Badge tone="accent"`, `IconButton active`) are used with lime **nowhere** but the FAB.
-
-#### Component inventory (design system → app)
-
-The design project ships reference components (`.jsx` + `.d.ts` + `.prompt.md`) as the behavioural source of truth. shadcn primitives are re-skinned to match; Orbit-specific components (no shadcn equivalent) are hand-built on Tailwind + shadcn primitives, following the reference.
-
-| Component | Group | Role in app | shadcn basis |
-|---|---|---|---|
-| `Button` (`primary`/`ghost`/`quiet`, `sm`/`md`, `kbd`) | core | dialog/toolbar/chat actions | shadcn `Button`, re-skinned |
-| `IconButton` (`label`, `size`, `active`) | core | window controls, panel close | shadcn `Button` `size="icon"` |
-| `Badge` (`muted`/`accent`/`plain`) | core | status chips (mode badge kept muted) | shadcn `Badge` |
-| `FileTreeItem` (`kind`, `depth`, `active`, `cursor`, `collapsed`) | vault | sidebar row; `active`=open file, `cursor`=vim bar | hand-built |
-| `Wikilink` (`href`) | editor | inline `[[wikilink]]` (underline+hover, no color) | hand-built (CM6 render) |
-| `ChatMessage` (`role`, `streaming`) | ai | chat turn; `streaming` caret (future deltas) | hand-built |
-| `ToolChip` (`verb`, `path`, `status`) | ai | tool-call chip; spinner→check | hand-built (+ `error`, see §4.3) |
-| `ChatInput` | ai | `›`-prompt input row | shadcn `Input` + form |
-| `AiFab` (`active`) | ai | the FAB; **the one lime accent** | hand-built |
-
-The design system is refreshable via the `claude_design` MCP / the `orbit-111-design` skill when the project changes: re-vendor the tokens, re-check the component contracts.
+For implementation and review guidance, use the vendored `orbit-design` skill. ADRs 0006–0008 record the token-vocabulary, AI-accent, and titlebar decisions.
 
 ---
 

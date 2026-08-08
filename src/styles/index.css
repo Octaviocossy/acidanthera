@@ -57,33 +57,6 @@
   --radius-modal: var(--radius-modal);
   --radius-pill: var(--radius-pill);
 
-  /* Factory aliases - temporary, deleted by the Factory cleanup slice. */
-  --color-bg: var(--bg);
-  --color-surface-2: var(--surface-2);
-  --color-border-hairline: var(--border-hairline);
-  --color-border-active: var(--border-active);
-  --color-text: var(--text);
-  --color-text-dim: var(--text-dim);
-  --color-text-faint: var(--text-faint);
-  --color-fab-accent: var(--fab-accent);
-  --color-fab-accent-dim: var(--fab-accent-dim);
-  --text-xs: var(--font-size-meta);
-  --text-sm: var(--font-size-ui);
-  --text-base: var(--font-size-body);
-  --text-md: var(--font-size-input);
-  --text-lg: var(--font-size-h2);
-  --text-xl: var(--font-size-h1);
-  --text-heading: var(--font-size-h1);
-  --text-heading-lg: var(--font-size-display);
-
-  --tracking-heading: var(--tracking-display);
-  --tracking-heading-lg: var(--tracking-display);
-  --tracking-caps: var(--tracking-caps);
-
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-
   --ease-orbit: var(--ease);
 }
 

@@ -28,7 +28,4 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
-
-  /* Factory alias - temporary, until the cleanup slice removes old utilities. */
-  --tracking-caps: var(--tracking-label);
 }

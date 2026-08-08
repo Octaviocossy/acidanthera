@@ -43,7 +43,7 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
         <DocGlyph className={active ? 'opacity-80' : 'opacity-65'} />
       )}
       <span className="min-w-0 truncate">{label}</span>
-      {changed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
+      {changed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-pill bg-accent" aria-hidden="true" />}
     </div>
   );
 }
