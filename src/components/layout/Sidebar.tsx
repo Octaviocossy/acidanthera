@@ -1,8 +1,9 @@
 import { Fragment, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
+import { CogGlyph, NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { openConfigFile } from '@/lib/config/open-config-file';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ export function Sidebar() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const focusRegion = useAppStore((state) => state.focusRegion);
+  const openSettings = useAppStore((state) => state.openSettings);
 
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
@@ -36,6 +38,7 @@ export function Sidebar() {
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
 
   const activeFilePath = useEditorStore((state) => activeEditorBuffer(state)?.filePath);
+  const buffers = useEditorStore((state) => state.buffers);
 
   useEffect(() => {
     if (vaultRoot === null) return;
@@ -83,6 +86,7 @@ export function Sidebar() {
           depth={depth}
           active={entry.path === activeFilePath}
           cursor={entry.path === cursorPath}
+          changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
           collapsed={entry.isDir && !expanded.has(entry.path)}
           onClick={() => {
             focusRegion('sidebar');
@@ -102,7 +106,7 @@ export function Sidebar() {
         <Fragment key={row.path}>
           <div className="my-1 border-t border-border-hairline" aria-hidden="true" />
           <FileTreeItem
-            label="Config"
+            label={<SectionLabel>Config</SectionLabel>}
             kind="dir"
             depth={0}
             cursor={row.path === cursorPath}
@@ -126,6 +130,7 @@ export function Sidebar() {
         depth={depth}
         active={entry.name === activeFilePath}
         cursor={row.path === cursorPath}
+        changed={buffers.some((buffer) => buffer.filePath === entry.name && buffer.dirty)}
         onClick={() => {
           focusRegion('sidebar');
           setCursor(row.path);
@@ -146,32 +151,42 @@ export function Sidebar() {
 
   return (
     <aside
-      className={cn('flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col border-r bg-surface', isActive ? 'border-border-active' : 'border-border-hairline')}
+      className={cn('flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col border-r bg-panel', isActive ? 'border-border-strong' : 'border-hairline')}
       aria-label="Vault explorer"
     >
-      <div className="flex items-center justify-between gap-1 px-3 py-1.5">
-        <span className="font-mono text-text-dim text-xs uppercase tracking-caps">Vault</span>
+      <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
+        <SectionLabel>Vault</SectionLabel>
         {vaultRoot !== null && (
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
               <NewNoteGlyph />
             </Button>
-            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
               <NewFolderGlyph />
             </Button>
           </div>
         )}
       </div>
       {vaultRoot === null ? (
-        <div className="px-3">
-          <Button variant="ghost" size="sm" onClick={() => void pickAndPersistVault()}>
+        <div className="px-[14px]">
+          <Button variant="secondary" size="sm" onClick={() => void pickAndPersistVault()}>
             Open vault…
           </Button>
         </div>
       ) : (
-        <div role="tree" aria-label="Notes" className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
+        <div role="tree" aria-label="Notes" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[14px] pb-[14px]">
           {rowElements}
         </div>
+      )}
+      {vaultRoot !== null && (
+        <footer className="flex shrink-0 items-center gap-2 border-t border-hairline px-[14px] py-2">
+          <span className="min-w-0 flex-1 truncate font-mono text-meta text-text-muted" title={vaultRoot}>
+            ~/{vaultRoot.replace(/^\/+/, '')}
+          </span>
+          <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" aria-label="Settings" onClick={openSettings}>
+            <CogGlyph />
+          </Button>
+        </footer>
       )}
     </aside>
   );
