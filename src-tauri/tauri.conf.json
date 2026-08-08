@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "orbit-111",
-        "width": 800,
-        "height": 600
+        "width": 1280,
+        "height": 880
       }
     ],
     "security": {
