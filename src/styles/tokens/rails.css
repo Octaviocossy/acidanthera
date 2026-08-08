@@ -1,11 +1,11 @@
 /*
- * Orbit-111 design tokens — layout rails.
+ * Orbit-111 design tokens - layout rails.
  * Fixed dimensions for the app shell's chrome regions.
  */
 :root {
-  --rail-sidebar: 280px;
-  --rail-chat: 360px;
+  --rail-sidebar: 224px;
+  --rail-chat: 340px;
   --rail-status: 24px;
-  --rail-titlebar: 38px;
+  --rail-titlebar: 40px;
   --rail-fab: 40px;
 }

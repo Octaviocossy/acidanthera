@@ -1,9 +1,8 @@
 /*
- * Orbit-111 design tokens — spacing & radii.
+ * Orbit-111 design tokens - spacing & radii.
  * 4px grid. Tailwind's default spacing scale is already 4px-based (p-1 = 4px), so these
  * raw variables exist for non-Tailwind consumers (e.g. the CM6 theme in a later slice)
- * rather than being re-wired into `@theme`. Radii follow Factory
- * (`new-system-design-files-to-use/DESIGN.md`): 3px buttons/nav, 10px cards, 20px large panels.
+ * rather than being re-wired into `@theme`.
  */
 :root {
   --space-1: 4px;
@@ -19,8 +18,24 @@
   --space-11: 44px;
   --space-12: 48px;
 
-  --radius-sm: 3px;
-  --radius-md: 10px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
+  --radius-kbd: 4px;
+  --radius-btn: 6px;
+  --radius-item: 7px;
+  --radius-tab: 8px;
+  --radius-card: 10px;
+  --radius-panel: 12px;
+  --radius-modal: 14px;
+  --radius-pill: 9999px;
+
+  /* Elevation: dark = borders only; light = soft warm shadows. */
+  --shadow-window-dark: 0 12px 40px rgba(0, 0, 0, 0.25);
+  --shadow-overlay-dark: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --shadow-window-light: 0 12px 40px rgba(38, 37, 30, 0.12);
+  --shadow-popover-light: 0 8px 24px rgba(38, 37, 30, 0.25);
+  --shadow-input-light: 0 2px 8px rgba(38, 37, 30, 0.05);
+
+  /* Factory aliases - temporary, until the cleanup slice removes old utilities. */
+  --radius-sm: var(--radius-btn);
+  --radius-md: var(--radius-card);
+  --radius-lg: var(--radius-panel);
 }
