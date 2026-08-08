@@ -27,13 +27,13 @@ export function SwitchVaultDialog() {
         </p>
         <p className="mt-2 font-sans text-text-faint text-xs">Cancel leaves the vault open and this path un-applied — settings.toml keeps the new value on disk until you retry.</p>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="quiet" size="sm" onClick={() => pending.resolve('cancel')}>
+          <Button variant="ghost" size="sm" onClick={() => pending.resolve('cancel')}>
             Cancel
           </Button>
           <Button variant="ghost" size="sm" onClick={() => pending.resolve('discard')}>
             Discard all
           </Button>
-          <Button variant="primary" size="sm" onClick={() => pending.resolve('save')}>
+          <Button variant="secondary" size="sm" onClick={() => pending.resolve('save')}>
             Save all
           </Button>
         </div>
