@@ -11,7 +11,7 @@ const buffers = [
 describe('EditorTabs', () => {
   afterEach(cleanup);
 
-  it('exposes the active buffer through tab semantics', () => {
+  it('exposes the active and dirty buffers through tab semantics', () => {
     render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
     expect(screen.getByRole('tab', { name: 'one.md' })).toHaveAttribute('aria-selected', 'true');

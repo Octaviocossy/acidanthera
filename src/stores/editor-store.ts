@@ -30,6 +30,11 @@ export interface EditorSaveRequest {
   source: EditorBufferSource;
 }
 
+export interface EditorCursor {
+  line: number;
+  col: number;
+}
+
 let nextBufferId = 1;
 let nextSaveRequestId = 1;
 
@@ -56,10 +61,12 @@ export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | '
 interface EditorState {
   buffers: EditorBuffer[];
   activeBufferId: string | null;
+  cursor: EditorCursor;
   saveRequests: EditorSaveRequest[];
 
   activateBuffer: (bufferId: string) => void;
   updateBufferContent: (bufferId: string, content: string) => void;
+  setCursor: (cursor: EditorCursor) => void;
   setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
   requestSave: (bufferId?: string) => void;
   completeSaveRequest: (request: EditorSaveRequest) => void;
@@ -72,6 +79,7 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set) => ({
   buffers: [],
   activeBufferId: null,
+  cursor: { line: 1, col: 1 },
   saveRequests: [],
 
   activateBuffer: (bufferId) => set((state) => (state.buffers.some((buffer) => buffer.id === bufferId) ? { activeBufferId: bufferId } : state)),
@@ -80,6 +88,8 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => ({
       buffers: state.buffers.map((buffer) => (buffer.id === bufferId ? { ...buffer, content, revision: buffer.revision + 1, dirty: true } : buffer)),
     })),
+
+  setCursor: (cursor) => set({ cursor }),
 
   setBufferVimMode: (bufferId, vimMode) =>
     set((state) => ({

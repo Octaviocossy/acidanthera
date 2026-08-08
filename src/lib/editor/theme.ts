@@ -10,45 +10,45 @@ import { EditorView } from '@codemirror/view';
 const THEME_SPEC = {
   '&': {
     height: '100%',
-    backgroundColor: 'var(--bg)',
-    color: 'var(--text)',
+    backgroundColor: 'var(--bg-canvas)',
+    color: 'var(--text-body)',
   },
   '&.cm-editor.cm-focused': {
     outline: 'none',
   },
   '.cm-content': {
-    caretColor: 'var(--text)',
+    caretColor: 'var(--text-primary)',
     fontFamily: 'var(--editor-font)',
-    fontSize: 'var(--font-size-base)',
-    padding: 'var(--space-4) var(--space-6)',
+    fontSize: 'var(--font-size-body)',
+    padding: '28px 36px',
   },
   '.cm-scroller': {
     fontFamily: 'var(--editor-font)',
-    lineHeight: '1.6',
+    lineHeight: 'var(--leading-prose)',
   },
   '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: 'var(--border-active)',
+    borderLeftColor: 'var(--text-primary)',
   },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: 'var(--border)',
+    backgroundColor: 'var(--bg-hover)',
   },
   '.cm-gutters': {
-    backgroundColor: 'var(--bg)',
-    color: 'var(--text-dim)',
+    backgroundColor: 'var(--bg-canvas)',
+    color: 'var(--text-muted)',
     border: 'none',
   },
   '.cm-lineNumbers .cm-gutterElement': {
     padding: '0 var(--space-2) 0 var(--space-4)',
   },
   '.cm-activeLine': {
-    backgroundColor: 'var(--surface)',
+    backgroundColor: 'var(--bg-panel)',
   },
   '.cm-activeLineGutter': {
     backgroundColor: 'transparent',
-    color: 'var(--text)',
+    color: 'var(--text-secondary)',
   },
   '.cm-matchingBracket, .cm-nonmatchingBracket': {
-    backgroundColor: 'var(--surface-2)',
+    backgroundColor: 'var(--bg-elevated)',
     outline: 'none',
   },
 };
