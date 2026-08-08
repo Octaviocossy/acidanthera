@@ -3,11 +3,18 @@ import { BufferEditor } from '@/components/editor/BufferEditor';
 import { CloseBufferDialog } from '@/components/editor/CloseBufferDialog';
 import { EditorTabs } from '@/components/editor/EditorTabs';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { saveBuffer } from '@/lib/editor/save-buffer';
 import { cn } from '@/lib/utils';
+import type { VaultEntry } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, createEditorSaveRequest, useEditorStore } from '@/stores/editor-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 import { useToastStore } from '@/stores/toast-store';
+
+function hasVaultNotes(entries: readonly VaultEntry[]): boolean {
+  return entries.some((entry) => !entry.isDir || (entry.children !== null && hasVaultNotes(entry.children)));
+}
 
 /** The editor region, keeping every open buffer mounted to retain CodeMirror state. */
 export function Viewer() {
@@ -18,6 +25,8 @@ export function Viewer() {
   const activateBuffer = useEditorStore((state) => state.activateBuffer);
   const closeBuffer = useEditorStore((state) => state.closeBuffer);
   const completeSaveRequest = useEditorStore((state) => state.completeSaveRequest);
+  const vaultRoot = useAppStore((state) => state.vaultRoot);
+  const vaultTree = useSidebarStore((state) => state.tree);
   const [closingBufferId, setClosingBufferId] = useState<string | null>(null);
   const closingBuffer = buffers.find((buffer) => buffer.id === closingBufferId);
 
@@ -50,13 +59,15 @@ export function Viewer() {
   };
 
   return (
-    <main aria-label="Editor" className={cn('relative flex h-full flex-1 flex-col overflow-hidden border-t-2 bg-bg', isActive ? 'border-border-active' : 'border-transparent')}>
+    <main aria-label="Editor" className={cn('relative flex h-full flex-1 flex-col overflow-hidden border-t bg-canvas', isActive ? 'border-border-strong' : 'border-transparent')}>
       <EditorTabs buffers={buffers} activeBufferId={activeBufferId} onActivate={activateBuffer} onClose={requestClose} />
       <div className="min-h-0 flex-1">
         {buffers.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <span className="font-sans text-display text-text-faint tracking-display">ORBIT</span>
-            <span className="font-mono text-text-dim text-xs">Ctrl-w f to open a note</span>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <span className="font-sans text-display font-medium text-text-primary tracking-display">orbit</span>
+            <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
+            <span className="font-mono text-meta text-text-muted">~/{vaultRoot?.replace(/^\/+/, '') ?? ''}</span>
+            <Kbd>Ctrl-w f</Kbd>
           </div>
         ) : (
           buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)
