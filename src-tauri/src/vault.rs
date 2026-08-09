@@ -15,7 +15,10 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_dialog::DialogExt;
 use thiserror::Error;
 
-use crate::logging::LogResult;
+use crate::{
+    logging::LogResult,
+    wikilink::{find_wikilinks, rewrite_targets},
+};
 
 /// A file or directory inside the open vault, filtered to Markdown notes.
 #[derive(Debug, Clone, Serialize)]
@@ -25,6 +28,25 @@ pub struct VaultEntry {
     pub path: String,
     pub is_dir: bool,
     pub children: Option<Vec<VaultEntry>>,
+}
+
+/// Matching wikilinks found across the open vault.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WikilinkScan {
+    pub notes: Vec<String>,
+    pub links: usize,
+    pub ambiguous: bool,
+}
+
+/// Outcome of rewriting matching wikilink targets across the open vault.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WikilinkRewrite {
+    pub notes_changed: Vec<String>,
+    pub links_changed: usize,
+    pub failures: Vec<String>,
+    pub skipped_ambiguous: bool,
 }
 
 #[derive(Debug, Error)]
@@ -426,6 +448,139 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
     Ok(entries)
 }
 
+/// Recursively collects visible Markdown notes, skipping hidden and symlinked entries. The root's
+/// agent context is excluded because its templates contain literal wikilink examples.
+fn collect_markdown_files(root: &Path) -> VaultResult<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    collect_markdown_files_at(root, true, &mut files)?;
+    files.sort();
+    Ok(files)
+}
+
+fn collect_markdown_files_at(
+    dir: &Path,
+    is_root: bool,
+    files: &mut Vec<PathBuf>,
+) -> VaultResult<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.')
+            || (is_root
+                && AGENT_CONTEXT_FILES
+                    .iter()
+                    .any(|(file_name, _)| *file_name == name))
+        {
+            continue;
+        }
+
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        let path = entry.path();
+        if file_type.is_dir() {
+            collect_markdown_files_at(&path, false, files)?;
+        } else if file_type.is_file() && path.extension().is_some_and(|ext| ext == "md") {
+            files.push(path);
+        }
+    }
+
+    Ok(())
+}
+
+fn has_matching_stem(path: &Path, stem: &str) -> bool {
+    path.file_stem()
+        .is_some_and(|file_stem| file_stem.to_string_lossy().to_lowercase() == stem.to_lowercase())
+}
+
+fn scan_wikilink_targets_in(root: &Path, stem: &str) -> VaultResult<WikilinkScan> {
+    let files = collect_markdown_files(root)?;
+    let ambiguous = files
+        .iter()
+        .filter(|path| has_matching_stem(path, stem))
+        .take(2)
+        .count()
+        > 1;
+    let normalized_stem = stem.to_lowercase();
+    let mut notes = Vec::new();
+    let mut links = 0;
+
+    for path in files {
+        let path_string = path.to_string_lossy();
+        let contents = read_note_in(root, &path_string)?;
+        let matching_links = find_wikilinks(&contents)
+            .iter()
+            .filter(|wikilink| wikilink.target.trim().to_lowercase() == normalized_stem)
+            .count();
+        if matching_links > 0 {
+            notes.push(path_string.into_owned());
+            links += matching_links;
+        }
+    }
+
+    Ok(WikilinkScan {
+        notes,
+        links,
+        ambiguous,
+    })
+}
+
+fn rewrite_wikilinks_in(
+    root: &Path,
+    old_stem: &str,
+    new_stem: &str,
+) -> VaultResult<WikilinkRewrite> {
+    let files = collect_markdown_files(root)?;
+    let ambiguous = files
+        .iter()
+        .filter(|path| has_matching_stem(path, old_stem))
+        .take(2)
+        .count()
+        > 1;
+    if ambiguous {
+        return Ok(WikilinkRewrite {
+            notes_changed: Vec::new(),
+            links_changed: 0,
+            failures: Vec::new(),
+            skipped_ambiguous: true,
+        });
+    }
+
+    let mut notes_changed = Vec::new();
+    let mut links_changed = 0;
+    let mut failures = Vec::new();
+
+    for path in files {
+        let path_string = path.to_string_lossy().into_owned();
+        let contents = match read_note_in(root, &path_string) {
+            Ok(contents) => contents,
+            Err(err) => {
+                failures.push(format!("{path_string}: {err}"));
+                continue;
+            }
+        };
+        let Some((rewritten, links)) = rewrite_targets(&contents, old_stem, new_stem) else {
+            continue;
+        };
+        if let Err(err) = write_note_in(root, &path_string, &rewritten) {
+            failures.push(format!("{path_string}: {err}"));
+            continue;
+        }
+
+        notes_changed.push(path_string);
+        links_changed += links;
+    }
+
+    Ok(WikilinkRewrite {
+        notes_changed,
+        links_changed,
+        failures,
+        skipped_ambiguous: false,
+    })
+}
+
 /// (Re)starts the `notify` watcher over `root` — replacing, and thus stopping, any prior one —
 /// emitting `vault-changed` with the touched paths on every subsequent filesystem event.
 fn watch(app: &AppHandle, state: &VaultState, root: PathBuf) -> VaultResult<()> {
@@ -569,6 +724,28 @@ pub fn duplicate_entry(path: String, state: State<'_, VaultState>) -> VaultResul
     .log_err("duplicate_entry")
 }
 
+/// Finds all links whose target matches `stem`, reporting duplicate note stems before a rewrite.
+#[tauri::command]
+pub fn scan_wikilink_targets(
+    stem: String,
+    state: State<'_, VaultState>,
+) -> VaultResult<WikilinkScan> {
+    log::info!("scan_wikilink_targets: stem={stem}");
+    (|| scan_wikilink_targets_in(&current_root(&state)?, &stem))().log_err("scan_wikilink_targets")
+}
+
+/// Rewrites links targeting `old_stem`, refusing to write when more than one note owns that stem.
+#[tauri::command]
+pub fn rewrite_wikilinks(
+    old_stem: String,
+    new_stem: String,
+    state: State<'_, VaultState>,
+) -> VaultResult<WikilinkRewrite> {
+    log::info!("rewrite_wikilinks: old_stem={old_stem} new_stem={new_stem}");
+    (|| rewrite_wikilinks_in(&current_root(&state)?, &old_stem, &new_stem))()
+        .log_err("rewrite_wikilinks")
+}
+
 #[tauri::command]
 pub fn delete_entry(path: String, state: State<'_, VaultState>) -> VaultResult<()> {
     log::info!("delete_entry: path={path}");
@@ -590,6 +767,137 @@ mod tests {
 
     fn path_str(path: &Path) -> String {
         path.to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn collect_markdown_files_should_skip_root_context_hidden_and_non_markdown_files() {
+        let root = temp_root("wikilink-collector");
+        fs::write(root.join("AGENTS.md"), "[[Old]]").expect("writes root agent context");
+        fs::write(root.join("CLAUDE.md"), "[[Old]]").expect("writes root claude context");
+        fs::write(root.join("visible.md"), "").expect("writes visible note");
+        fs::write(root.join(".hidden.md"), "").expect("writes hidden note");
+        fs::write(root.join("image.png"), "").expect("writes non-note");
+        fs::create_dir(root.join("nested")).expect("creates nested directory");
+        fs::write(root.join("nested").join("AGENTS.md"), "").expect("writes nested note");
+
+        let files = collect_markdown_files(&root).expect("collects notes");
+        let relative_paths: Vec<PathBuf> = files
+            .iter()
+            .map(|path| {
+                path.strip_prefix(&root)
+                    .expect("is inside root")
+                    .to_path_buf()
+            })
+            .collect();
+
+        assert_eq!(
+            relative_paths,
+            [
+                PathBuf::from("nested/AGENTS.md"),
+                PathBuf::from("visible.md")
+            ]
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collect_markdown_files_should_skip_symlinked_notes() {
+        let root = temp_root("wikilink-collector-symlink");
+        let outside = temp_root("wikilink-collector-symlink-outside");
+        fs::write(root.join("visible.md"), "").expect("writes visible note");
+        fs::write(outside.join("outside.md"), "").expect("writes outside note");
+        std::os::unix::fs::symlink(outside.join("outside.md"), root.join("linked.md"))
+            .expect("links note");
+
+        let files = collect_markdown_files(&root).expect("collects notes");
+
+        assert_eq!(files, [root.join("visible.md")]);
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[test]
+    fn scan_wikilink_targets_in_should_find_nested_matching_links() {
+        let root = temp_root("wikilink-scan");
+        fs::write(root.join("Old.md"), "").expect("writes target note");
+        fs::write(root.join("AGENTS.md"), "[[Old]]").expect("writes root template");
+        fs::create_dir(root.join("nested")).expect("creates nested directory");
+        let source = root.join("nested").join("source.md");
+        fs::write(&source, "[[ old ]] and [[Old|alias]]").expect("writes source note");
+
+        let scan = scan_wikilink_targets_in(&root, "Old").expect("scans wikilinks");
+
+        assert_eq!(scan.notes, [path_str(&source)]);
+        assert_eq!(scan.links, 2);
+        assert!(!scan.ambiguous);
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn scan_wikilink_targets_in_should_report_ambiguous_note_stems() {
+        let root = temp_root("wikilink-ambiguity");
+        fs::write(root.join("Old.md"), "").expect("writes target note");
+        fs::create_dir(root.join("nested")).expect("creates nested directory");
+        fs::write(root.join("nested").join("Old.md"), "").expect("writes duplicate target");
+        fs::write(root.join("source.md"), "[[Old]]").expect("writes source note");
+
+        let scan = scan_wikilink_targets_in(&root, "Old").expect("scans wikilinks");
+
+        assert!(scan.ambiguous);
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rewrite_wikilinks_in_should_skip_ambiguous_stems_without_writing() {
+        let root = temp_root("wikilink-rewrite-ambiguous");
+        fs::write(root.join("Old.md"), "").expect("writes target note");
+        fs::create_dir(root.join("nested")).expect("creates nested directory");
+        fs::write(root.join("nested").join("Old.md"), "").expect("writes duplicate target");
+        let source = root.join("source.md");
+        fs::write(&source, "[[Old]]").expect("writes source note");
+
+        let rewritten = rewrite_wikilinks_in(&root, "Old", "New").expect("rewrites wikilinks");
+
+        assert!(rewritten.notes_changed.is_empty());
+        assert_eq!(rewritten.links_changed, 0);
+        assert!(rewritten.failures.is_empty());
+        assert!(rewritten.skipped_ambiguous);
+        assert_eq!(
+            fs::read_to_string(&source).expect("reads source note"),
+            "[[Old]]"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rewrite_wikilinks_in_should_change_only_matching_targets() {
+        let root = temp_root("wikilink-rewrite");
+        fs::write(root.join("Old.md"), "").expect("writes target note");
+        let source = root.join("source.md");
+        fs::write(
+            &source,
+            "[[Old]] [[ Old #heading|alias]] [[Old^block]] [[Old notes]] [[Other|Old]]",
+        )
+        .expect("writes source note");
+        let untouched = root.join("untouched.md");
+        fs::write(&untouched, "[[Old notes]]").expect("writes nonmatching note");
+
+        let rewritten = rewrite_wikilinks_in(&root, "Old", "New").expect("rewrites wikilinks");
+
+        assert_eq!(rewritten.notes_changed, [path_str(&source)]);
+        assert_eq!(rewritten.links_changed, 3);
+        assert!(rewritten.failures.is_empty());
+        assert!(!rewritten.skipped_ambiguous);
+        assert_eq!(
+            fs::read_to_string(&source).expect("reads rewritten source"),
+            "[[New]] [[ New #heading|alias]] [[New^block]] [[Old notes]] [[Other|Old]]"
+        );
+        assert_eq!(
+            fs::read_to_string(&untouched).expect("reads untouched note"),
+            "[[Old notes]]"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
     }
 
     #[test]
@@ -1316,6 +1624,32 @@ mod tests {
         assert_eq!(
             value,
             serde_json::json!({ "name": "notes", "path": "/vault/notes", "isDir": true, "children": [] })
+        );
+    }
+
+    #[test]
+    fn wikilink_results_should_serialize_to_the_frontend_contract() {
+        let scan = serde_json::to_value(WikilinkScan {
+            notes: vec!["/vault/source.md".into()],
+            links: 2,
+            ambiguous: false,
+        })
+        .expect("serializes scan");
+        let rewrite = serde_json::to_value(WikilinkRewrite {
+            notes_changed: vec!["/vault/source.md".into()],
+            links_changed: 2,
+            failures: vec!["/vault/broken.md: permission denied".into()],
+            skipped_ambiguous: false,
+        })
+        .expect("serializes rewrite");
+
+        assert_eq!(
+            scan,
+            serde_json::json!({ "notes": ["/vault/source.md"], "links": 2, "ambiguous": false })
+        );
+        assert_eq!(
+            rewrite,
+            serde_json::json!({ "notesChanged": ["/vault/source.md"], "linksChanged": 2, "failures": ["/vault/broken.md: permission denied"], "skippedAmbiguous": false })
         );
     }
 
