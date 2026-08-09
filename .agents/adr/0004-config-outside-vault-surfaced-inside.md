@@ -11,11 +11,12 @@ vault-scoped. So the files are injected into them deliberately, as documented ex
 Two otherwise-strict contracts get explicit exceptions, and a reader who finds either one without
 this context will reasonably think it is a bug:
 
-- The sidebar renders a **Config section whose rows `build_tree` never produced**. They are not
+- ~~The sidebar renders a **Config section whose rows `build_tree` never produced**. They are not
   injected into `useSidebarStore.tree` — `Sidebar.tsx` replaces that wholesale on every
   `vault-changed`, which would erase them — but concatenated into the flattened row list, so the
   cursor and keymap must tolerate a row with no vault path, and `a`/`A` drafts need a vault-only
-  guard.
+  guard.~~ **Superseded by ADR 0010 (2026-08-08):** the Config section was removed from the sidebar
+  and the second row source deleted with it. The finder is now config's only entry point.
 - The finder lists **candidates that fail its own vault-root prefix check** at `file-search.ts:26`.
   They come from a separate source and carry a `source` field so selection can route away from
   `openVaultFile`.

@@ -22,7 +22,7 @@ describe('focusRegion', () => {
 
 describe('focusNext / focusPrevious', () => {
   it('cycles only over reachable regions, skipping a closed chat', () => {
-    // sidebarOpen: true, chatOpen: false -> reachable = [sidebar, viewer]
+    // sidebarExpanded: true, chatOpen: false -> reachable = [sidebar, viewer]
     useAppStore.getState().focusRegion('sidebar');
     useAppStore.getState().focusNext();
     expect(useAppStore.getState().activeRegion).toBe('viewer');
@@ -81,32 +81,32 @@ describe('setMode', () => {
   });
 });
 
-describe('sidebar visibility', () => {
-  it('closeSidebar reassigns activeRegion to viewer when sidebar was active', () => {
+describe('sidebar expansion', () => {
+  it('collapseSidebar reassigns activeRegion to viewer when sidebar was active', () => {
     useAppStore.getState().focusRegion('sidebar');
-    useAppStore.getState().closeSidebar();
+    useAppStore.getState().collapseSidebar();
     const state = useAppStore.getState();
-    expect(state.sidebarOpen).toBe(false);
+    expect(state.sidebarExpanded).toBe(false);
     expect(state.activeRegion).toBe('viewer');
   });
 
-  it('closeSidebar leaves an unrelated activeRegion untouched', () => {
+  it('collapseSidebar leaves an unrelated activeRegion untouched', () => {
     useAppStore.getState().openChat();
     useAppStore.getState().focusRegion('chat');
-    useAppStore.getState().closeSidebar();
+    useAppStore.getState().collapseSidebar();
     expect(useAppStore.getState().activeRegion).toBe('chat');
   });
 
-  it('toggleSidebar flips open -> closed -> open', () => {
-    expect(useAppStore.getState().sidebarOpen).toBe(true);
+  it('toggleSidebar flips expanded -> collapsed -> expanded', () => {
+    expect(useAppStore.getState().sidebarExpanded).toBe(true);
     useAppStore.getState().toggleSidebar();
-    expect(useAppStore.getState().sidebarOpen).toBe(false);
+    expect(useAppStore.getState().sidebarExpanded).toBe(false);
     useAppStore.getState().toggleSidebar();
-    expect(useAppStore.getState().sidebarOpen).toBe(true);
+    expect(useAppStore.getState().sidebarExpanded).toBe(true);
   });
 
-  it('a hidden sidebar is unreachable via focusRegion', () => {
-    useAppStore.getState().closeSidebar();
+  it('a collapsed sidebar is unreachable via focusRegion', () => {
+    useAppStore.getState().collapseSidebar();
     useAppStore.getState().focusRegion('sidebar');
     expect(useAppStore.getState().activeRegion).toBe('viewer');
   });

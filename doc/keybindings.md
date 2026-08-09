@@ -4,8 +4,10 @@ orbit-111 is vim-first and keyboard-first — see `doc/v0-spec.md` §3.4 for the
 behind the two-level vim system (app-level focus chords vs. the editor's own CodeMirror vim mode).
 
 Every binding below except the editor's own CodeMirror-vim keys, `:w`, and system-clipboard yank
-is **user-rebindable** in `~/.config/orbit-111/keymaps.toml` (path varies by OS — see your
-platform's Tauri app-config dir). The file ships fully commented out, one line per command,
+is **user-rebindable** in `keymaps.toml`, which lives in the platform Tauri app-config dir — on
+macOS `~/Library/Application Support/com.ovct.orbit-111/keymaps.toml`. (This is *not* the XDG
+`~/.config` path on macOS; `config.rs` resolves it through Tauri's `app_config_dir()`, so it
+varies by OS.) The file ships fully commented out, one line per command,
 showing its current default; uncomment a line and edit its chord array to rebind it, or set the
 array to `[]` to unbind the command entirely. A chord array is always replaced wholesale, never
 merged with the default — see the file's own header comment for the full contract. Source of
@@ -30,7 +32,7 @@ isn't inside an editable field (e.g. the command bar or chat input).
 |------|------------|--------|-------|
 | `Ctrl-w` then `h` | `global.focus-previous` | Move focus to the previous region | Region cycle: sidebar → viewer → chat → sidebar (wraps; `chat` only reachable if the chat panel is open) |
 | `Ctrl-w` then `l` | `global.focus-next` | Move focus to the next region | Same cycle, opposite direction |
-| `Ctrl-w` then `b` | `global.toggle-sidebar` | Toggle the sidebar open/closed | |
+| `Ctrl-w` then `b` | `global.toggle-sidebar` | Expand/collapse the sidebar | |
 | `Ctrl-w` then `c` | `global.toggle-chat` | Toggle the chat panel open/closed | |
 | `Ctrl-w` then `s` | `global.toggle-settings` | Toggle the settings dialog | |
 | `Ctrl-w` then `f` | `global.find-file` | Open the file finder | |

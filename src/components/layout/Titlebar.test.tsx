@@ -1,17 +1,16 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from '@/stores/app-store';
 import { Titlebar } from './Titlebar';
 
 describe('Titlebar', () => {
   beforeEach(() => {
-    useAppStore.setState({ vaultRoot: null, sidebarOpen: true, settingsOpen: false });
+    useAppStore.setState({ vaultRoot: null, settingsOpen: false });
   });
 
   afterEach(() => {
     cleanup();
-    useAppStore.setState({ vaultRoot: null, sidebarOpen: true, settingsOpen: false });
+    useAppStore.setState({ vaultRoot: null, settingsOpen: false });
   });
 
   it('renders the open vault name', () => {
@@ -31,22 +30,11 @@ describe('Titlebar', () => {
     expect(screen.queryByText('—')).not.toBeInTheDocument();
   });
 
-  it('shows the sidebar recovery control only while the sidebar is hidden', async () => {
-    const user = userEvent.setup();
-    useAppStore.setState({ sidebarOpen: false });
-
-    render(<Titlebar />);
-
-    await user.click(screen.getByRole('button', { name: 'Show sidebar' }));
-
-    expect(useAppStore.getState().sidebarOpen).toBe(true);
-  });
-
-  it('keeps find and settings controls available', () => {
+  it('keeps settings as its only control', () => {
     render(<Titlebar />);
 
     expect(screen.queryByRole('button', { name: 'Show sidebar' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Find file' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Find file' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 

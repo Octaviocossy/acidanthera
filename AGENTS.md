@@ -38,7 +38,7 @@
 
 ## Workspace
 - Package manager: pnpm @ 10 (unpinned — no `packageManager` field in `package.json`)
-- Node: >=18 (required by Vite 7 / React 19; no `engines` field pinned)
+- Node: >=18 (required by Vite 7 / React 19; declared in `package.json` `engines`)
 - Monorepo: no — single-package
 - Apps: Tauri 2 desktop app (React 19 + Vite 7 frontend in `src/`, Rust backend in `src-tauri/`)
 - Packages: none

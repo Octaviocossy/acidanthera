@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format
+        run: pnpm check
+
+      - name: Type-check and build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+  rust:
+    name: Rust
+    # macOS matches the only platform orbit currently supports (ADR 0008), and avoids
+    # installing the libwebkit2gtk apt dependencies a Linux Tauri build would need.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No Node setup here on purpose: the Tauri build script does not require a built
+      # `dist/` to compile or test the crate, so this job skips pnpm entirely.
+      # Equivalent to `pnpm test:rust`.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Test
+        run: cargo test --manifest-path src-tauri/Cargo.toml

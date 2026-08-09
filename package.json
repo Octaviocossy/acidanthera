@@ -3,6 +3,20 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "description": "A local-first, vim-first markdown notes app with a built-in coding agent.",
+  "license": "MIT",
+  "author": "Octavio Cossy Torquati",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Octaviocossy/orbit-111.git"
+  },
+  "homepage": "https://github.com/Octaviocossy/orbit-111#readme",
+  "bugs": {
+    "url": "https://github.com/Octaviocossy/orbit-111/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

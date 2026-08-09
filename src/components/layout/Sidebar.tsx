@@ -1,32 +1,32 @@
-import { Fragment, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { ChevronLeftGlyph, NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
+import { ChevronLeftGlyph, ChevronRightGlyph, DocGlyph, FolderGlyph, NewFolderGlyph, NewNoteGlyph, OrbitMarkGlyph, SearchGlyph } from '@/components/vault/glyphs';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
-import { openConfigFile } from '@/lib/config/open-config-file';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
-import { CONFIG_SECTION_PATH, flattenSidebarRows } from '@/lib/vault/sidebar-rows';
-import { vaultService } from '@/services/vault.service';
+import { type VaultEntry, vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
+import { useFileFinderStore } from '@/stores/file-finder-store';
 import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
 
-/** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). Hideable via `sidebarOpen` (#38). */
+/** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). */
 export function Sidebar() {
   useSidebarKeymap();
 
   const isActive = useAppStore((state) => state.activeRegion === 'sidebar');
-  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
+  const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const focusRegion = useAppStore((state) => state.focusRegion);
-  const closeSidebar = useAppStore((state) => state.closeSidebar);
+  const collapseSidebar = useAppStore((state) => state.collapseSidebar);
+  const expandSidebar = useAppStore((state) => state.expandSidebar);
+  const showFileFinder = useFileFinderStore((state) => state.show);
 
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
@@ -56,86 +56,108 @@ export function Sidebar() {
     };
   }, [setTree]);
 
-  // Guard *after* the hooks (as `ChatPanel` does for `chatOpen`): the component stays mounted while
-  // hidden, so the watcher-driven tree refresh above keeps running and re-showing is instant.
-  // `useSidebarKeymap` stays registered too, but is inert — a hidden sidebar is never `activeRegion`.
-  if (!sidebarOpen) return null;
-
   const vaultRows = flattenVisibleTree(tree, expanded);
-  const sidebarRows = flattenSidebarRows(tree, expanded);
 
-  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. Inert on
-   *  a config row (#100): it has no vault-tree parent for `resolveDraftParent` to fall back to. */
+  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. */
   const startDraft = (kind: EntryDraftKind) => {
-    const cursorRow = sidebarRows.find((row) => row.path === cursorPath);
-    if (cursorRow !== undefined && cursorRow.source !== 'vault') return;
-
     const parentPath = resolveDraftParent(vaultRows, cursorPath, vaultRoot);
     if (parentPath === null) return;
     focusRegion('sidebar');
     beginDraft(kind, parentPath);
   };
 
-  const rowElements = sidebarRows.map((row) => {
-    if (row.source === 'vault') {
-      const { entry, depth } = row;
-      return (
-        <FileTreeItem
-          key={row.path}
-          label={entry.name}
-          kind={entry.isDir ? 'dir' : 'file'}
-          depth={depth}
-          active={entry.path === activeFilePath}
-          cursor={entry.path === cursorPath}
-          changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
-          collapsed={entry.isDir && !expanded.has(entry.path)}
-          onClick={() => {
-            focusRegion('sidebar');
-            setCursor(entry.path);
-            if (entry.isDir) {
-              toggleExpanded(entry.path);
-            } else {
-              openVaultFile(entry.path);
-            }
-          }}
-        />
-      );
+  /** The rail is a launcher, not a preview: files open in place; directories expand first. */
+  const openRailEntry = (entry: VaultEntry) => {
+    setCursor(entry.path);
+    if (!entry.isDir) {
+      openVaultFile(entry.path);
+      return;
     }
+    expandSidebar();
+    if (!expanded.has(entry.path)) toggleExpanded(entry.path);
+    focusRegion('sidebar');
+  };
 
-    if (row.source === 'config-section') {
-      return (
-        <Fragment key={row.path}>
-          <div className="my-1 border-t border-hairline" aria-hidden="true" />
-          <FileTreeItem
-            label={<SectionLabel>Config</SectionLabel>}
-            kind="dir"
-            depth={0}
-            cursor={row.path === cursorPath}
-            collapsed={!expanded.has(CONFIG_SECTION_PATH)}
-            onClick={() => {
-              focusRegion('sidebar');
-              setCursor(row.path);
-              toggleExpanded(CONFIG_SECTION_PATH);
-            }}
-          />
-        </Fragment>
-      );
-    }
+  if (!sidebarExpanded) {
+    return (
+      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
+        <OrbitMarkGlyph className="mb-1 text-text-secondary" />
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
+          <ChevronRightGlyph />
+        </Button>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
+          <SearchGlyph />
+        </Button>
+        {vaultRoot !== null && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              aria-label="New note"
+              title="New note (a)"
+              onClick={() => {
+                expandSidebar();
+                startDraft('note');
+              }}
+            >
+              <NewNoteGlyph />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              aria-label="New folder"
+              title="New folder (A)"
+              onClick={() => {
+                expandSidebar();
+                startDraft('directory');
+              }}
+            >
+              <NewFolderGlyph />
+            </Button>
+            {tree.length > 0 && (
+              <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+                {tree.map((entry) => (
+                  <Button
+                    key={entry.path}
+                    variant="ghost"
+                    size="sm"
+                    className={cn('h-6 w-6 shrink-0 p-0', entry.path === activeFilePath && 'bg-elevated text-text-primary')}
+                    aria-label={entry.name}
+                    title={entry.name}
+                    onClick={() => openRailEntry(entry)}
+                  >
+                    {entry.isDir ? <FolderGlyph /> : <DocGlyph />}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </aside>
+    );
+  }
 
-    const { entry, depth } = row;
+  const rowElements = vaultRows.map(({ entry, depth }) => {
     return (
       <FileTreeItem
-        key={row.path}
-        label={entry.label}
-        kind="file"
+        key={entry.path}
+        label={entry.name}
+        kind={entry.isDir ? 'dir' : 'file'}
         depth={depth}
-        active={entry.name === activeFilePath}
-        cursor={row.path === cursorPath}
-        changed={buffers.some((buffer) => buffer.filePath === entry.name && buffer.dirty)}
+        active={entry.path === activeFilePath}
+        cursor={entry.path === cursorPath}
+        changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
+        collapsed={entry.isDir && !expanded.has(entry.path)}
         onClick={() => {
           focusRegion('sidebar');
-          setCursor(row.path);
-          void openConfigFile(entry.name);
+          setCursor(entry.path);
+          if (entry.isDir) {
+            toggleExpanded(entry.path);
+          } else {
+            openVaultFile(entry.path);
+          }
         }}
       />
     );
@@ -156,8 +178,11 @@ export function Sidebar() {
       aria-label="Vault explorer"
     >
       <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
-        <SectionLabel>Vault</SectionLabel>
+        <OrbitMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
+            <SearchGlyph />
+          </Button>
           {vaultRoot !== null && (
             <>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
@@ -168,7 +193,7 @@ export function Sidebar() {
               </Button>
             </>
           )}
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Hide sidebar" title="Hide sidebar" onClick={closeSidebar}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={collapseSidebar}>
             <ChevronLeftGlyph />
           </Button>
         </div>

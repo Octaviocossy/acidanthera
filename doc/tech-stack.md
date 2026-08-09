@@ -3,7 +3,7 @@
 orbit-111 is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
-**snapshot as of 2026-07-22**. For architecture rationale, see `doc/v0-spec.md`; for what each
+**snapshot as of 2026-08-08**. For architecture rationale, see `doc/v0-spec.md`; for what each
 module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md`.
 
 ## At a glance
@@ -25,13 +25,17 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `@codemirror/view` | ^6.43.6 | CM6 view layer — decorations, keymaps, `Prec` (`src/lib/editor/*`) |
 | `@codemirror/state` | ^6.7.1 | CM6 state/extension primitives (`src/lib/editor/*`) |
 | `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support for the editor |
+| `@codemirror/language` | ^6.12.4 | `HighlightStyle` + `StreamLanguage` (`src/lib/editor/highlight.ts`, `toml-language.ts`) |
+| `@codemirror/legacy-modes` | ^6.5.3 | The TOML stream mode backing config buffers |
+| `@lezer/highlight` | ^1.2.3 | Syntax tags the markdown `HighlightStyle` binds against |
 | `@replit/codemirror-vim` | ^6.3.0 | Vim emulation + `Vim.defineEx` for `:w` (`src/lib/editor/save.ts`, `vim-mode-sync.ts`) |
 | `tailwindcss` | ^4.3.2 | Utility CSS framework (Tailwind v4), imported in `src/styles/index.css` |
 | `@tailwindcss/vite` | ^4.3.2 | Tailwind v4 Vite plugin (wired in `vite.config.ts`) |
 | `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/{button,badge}.tsx` |
 | `clsx` + `tailwind-merge` | ^2.1.1 / ^3.6.0 | The `cn()` classname helper — **only** in `src/lib/utils.ts` |
 | `@radix-ui/react-slot` | ^1.3.0 | `asChild` slot pattern — **only** in `src/components/ui/button.tsx` |
-| `@fontsource-variable/geist` / `@fontsource-variable/geist-mono` | ^5.2.x | Self-hosted sans and mono variable fonts, imported in `src/styles/index.css` |
+| `@fontsource-variable/geist` | ^5.2.9 | Self-hosted sans variable font — UI chrome; imported in `src/styles/index.css` |
+| `@fontsource-variable/jetbrains-mono` | ^5.3.0 | Self-hosted mono variable font — editor and content |
 | `@tauri-apps/api` | ^2 | Frontend↔Rust bridge (`invoke`, event `listen`) — used **only** in `src/services/*` and `src/lib/agent/backends/*` |
 | `@tauri-apps/plugin-clipboard-manager` | ^2 | Native system clipboard writes (`src/services/clipboard.service.ts`) |
 | `@tauri-apps/plugin-opener` | ^2 | JS side of the opener plugin |
@@ -81,16 +85,20 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `notify` | 7 | Filesystem watcher for the open vault (`src-tauri/src/vault.rs`) |
 | `thiserror` | 2 | Ergonomic error enums (`VaultError`, `CommandNotFound`, …) |
 | `log` | 0.4 | Logging facade the whole backend logs through |
+| `toml` | 1 | Reading `settings.toml` / `keymaps.toml` (`settings.rs`, `config.rs`) |
+| `toml_edit` | 0.25 | Comment- and order-preserving writes to `settings.toml` (`settings.rs`) |
 
 ### What each module is built with
 
 | File | Primary technologies |
 |------|------------------------|
 | `main.rs` | Thin binary entry; calls `orbit_111_lib::run()` |
-| `lib.rs` | `tauri::Builder` — registers the log/opener/dialog/clipboard plugins, `manage`s `VaultState` + `AgentProcessState`, and registers frontend commands |
+| `lib.rs` | `tauri::Builder` — registers the log/opener/dialog/clipboard plugins, `manage`s `VaultState` + `AgentProcessState` + `ConfigWatcherState`, and registers the frontend commands |
 | `vault.rs` | `notify` watcher, `serde`, `std::fs`, Tauri `command`/`State`/`emit`; `VaultState`, `VaultError`, the guarded vault commands, `scaffold_agent_context` |
 | `agent.rs` | `std::process` child spawning, PATH resolution, Tauri `State`/`emit`; `AgentProcessState`, `agent_spawn`/`agent_send`/`agent_stop` |
-| `settings.rs` | `serde` + `serde_json` + `std::fs`, Tauri app-config-dir path; `Settings`, default vault |
+| `settings.rs` | `serde` + `toml` (read) + `toml_edit` (comment-preserving write) + `std::fs`, Tauri app-config-dir path; `Settings`, `SettingsDiagnostic`, legacy `settings.json` migration, default vault |
+| `config.rs` | `toml` + `notify` + `std::fs`; the allowlisted config-file commands, `ConfigWatcherState` / `config-changed`, first-run scaffolding |
+| `chats.rs` | `serde` + `std::fs`; format-agnostic chat persistence under `<vault>/.orbit/chats/`, `ChatRecord` |
 | `logging.rs` | `tauri-plugin-log` + `log`; `logging::plugin()`, `LogResult::log_err` |
 
 ## Build & config glue

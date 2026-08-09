@@ -120,6 +120,47 @@ export function FolderGlyph({ className }: GlyphProps) {
   );
 }
 
+export function SearchGlyph({ className }: GlyphProps) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      className={cn('h-[15px] w-[15px]', className)}
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="4.25" />
+      <path d="m10.25 10.25 3 3" />
+    </svg>
+  );
+}
+
+/** Placeholder brand mark until the official one exists. It stays monochrome: ember marks AI agency. */
+export function OrbitMarkGlyph({ className }: GlyphProps) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('h-[15px] w-[15px]', className)}
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="5.5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
+    </svg>
+  );
+}
+
 /** A tab close glyph. */
 export function CloseGlyph({ className }: GlyphProps) {
   return (

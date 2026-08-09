@@ -9,13 +9,13 @@ export type GlobalMode = 'normal' | 'command';
 const REGION_ORDER: FocusRegion[] = ['sidebar', 'viewer', 'chat'];
 
 /**
- * The regions the focus state machine can reach right now. A hidden sidebar (#38) and a closed
- * chat are both unreachable, so `Ctrl-w h`/`l` skip over them. `viewer` is always reachable,
- * which is what guarantees the returned list is never empty.
+ * The regions the focus state machine can reach right now. The sidebar is always visible — it
+ * collapses to a 40px rail rather than unmounting — so expansion, not visibility, gates it.
+ * A closed chat is genuinely hidden. `viewer` is always reachable, guaranteeing a non-empty list.
  */
-function reachableRegions({ sidebarOpen, chatOpen }: Pick<AppState, 'sidebarOpen' | 'chatOpen'>): FocusRegion[] {
+function reachableRegions({ sidebarExpanded, chatOpen }: Pick<AppState, 'sidebarExpanded' | 'chatOpen'>): FocusRegion[] {
   return REGION_ORDER.filter((region) => {
-    if (region === 'sidebar') return sidebarOpen;
+    if (region === 'sidebar') return sidebarExpanded;
     if (region === 'chat') return chatOpen;
     return true;
   });
@@ -31,8 +31,8 @@ interface AppState {
    */
   editorFocusRequest: number;
   mode: GlobalMode;
-  /** Whether the sidebar region is shown (#38). Unlike `settingsOpen` this gates a `FocusRegion`. */
-  sidebarOpen: boolean;
+  /** Whether the sidebar shows its explorer rather than its collapsed rail. */
+  sidebarExpanded: boolean;
   chatOpen: boolean;
   /** Whether the settings dialog overlay is up (#29). An overlay, not a `FocusRegion`. */
   settingsOpen: boolean;
@@ -46,8 +46,8 @@ interface AppState {
   focusEditor: () => void;
   requestEditorFocus: () => void;
   setMode: (mode: GlobalMode) => void;
-  openSidebar: () => void;
-  closeSidebar: () => void;
+  expandSidebar: () => void;
+  collapseSidebar: () => void;
   toggleSidebar: () => void;
   openChat: () => void;
   closeChat: () => void;
@@ -62,7 +62,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeRegion: 'viewer',
   editorFocusRequest: 0,
   mode: 'normal',
-  sidebarOpen: true,
+  sidebarExpanded: true,
   chatOpen: false,
   settingsOpen: false,
   vaultRoot: null,
@@ -98,15 +98,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setMode: (mode) => set({ mode }),
 
-  openSidebar: () => set({ sidebarOpen: true }),
+  expandSidebar: () => set({ sidebarExpanded: true }),
 
-  closeSidebar: () =>
+  collapseSidebar: () =>
     set((state) => ({
-      sidebarOpen: false,
+      sidebarExpanded: false,
       activeRegion: state.activeRegion === 'sidebar' ? 'viewer' : state.activeRegion,
     })),
 
-  toggleSidebar: () => (get().sidebarOpen ? get().closeSidebar() : get().openSidebar()),
+  toggleSidebar: () => (get().sidebarExpanded ? get().collapseSidebar() : get().expandSidebar()),
 
   openChat: () => set({ chatOpen: true }),
 

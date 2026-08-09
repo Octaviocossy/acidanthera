@@ -1,9 +1,11 @@
 [package]
 name = "orbit-111"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A local-first, vim-first markdown notes app with a built-in coding agent."
+authors = ["Octavio Cossy Torquati"]
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/Octaviocossy/orbit-111"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
