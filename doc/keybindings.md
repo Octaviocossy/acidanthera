@@ -52,6 +52,8 @@ target not editable).
 | `h` | `sidebar.collapse` | Collapse cursor row | Only if the cursor is on an expanded directory; no-op on files or already-collapsed directories |
 | `a` | `sidebar.new-note` | Start naming a new note | Placed as a sibling of the cursor row, or a child if the cursor is on a directory |
 | `A` (`Shift-a`) | `sidebar.new-directory` | Start naming a new folder | Same placement rule as `a` |
+| `r` | `sidebar.rename` | Rename the cursor entry | Registered for the upcoming rename flow |
+| `D` (`Shift-d`) | `sidebar.duplicate` | Duplicate the cursor entry | Places the sidebar cursor on the duplicate |
 | `d` then `d` | `sidebar.delete` | Move the cursor entry to Trash | Opens a confirmation that names any dirty buffers whose edits will be discarded |
 
 ## File finder
