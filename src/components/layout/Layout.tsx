@@ -7,6 +7,7 @@ import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
 import { Titlebar } from '@/components/layout/Titlebar';
 import { ToastHost } from '@/components/layout/ToastHost';
 import { Viewer } from '@/components/layout/Viewer';
+import { SidebarContextMenu } from '@/components/vault/SidebarContextMenu';
 import { useModalKeymap } from '@/hooks/use-modal-keymap';
 
 /**
@@ -25,6 +26,7 @@ export function Layout() {
         <ChatPanel />
         <CommandBar />
         <FileFinder />
+        <SidebarContextMenu />
         {/* Before ToastHost so toasts stay visible above the modal scrim. */}
         <SettingsDialog />
         <SwitchVaultDialog />

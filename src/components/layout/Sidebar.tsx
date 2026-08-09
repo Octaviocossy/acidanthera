@@ -12,6 +12,7 @@ import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import { type VaultEntry, vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
+import { useContextMenuStore } from '@/stores/context-menu-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
@@ -27,6 +28,7 @@ export function Sidebar() {
   const collapseSidebar = useAppStore((state) => state.collapseSidebar);
   const expandSidebar = useAppStore((state) => state.expandSidebar);
   const showFileFinder = useFileFinderStore((state) => state.show);
+  const showContextMenu = useContextMenuStore((state) => state.show);
 
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
@@ -159,6 +161,13 @@ export function Sidebar() {
             openVaultFile(entry.path);
           }
         }}
+        onContextMenu={(event) => {
+          if (vaultRoot === null) return;
+          event.preventDefault();
+          focusRegion('sidebar');
+          setCursor(entry.path);
+          showContextMenu(event.clientX, event.clientY, entry.path);
+        }}
       />
     );
   });
@@ -205,7 +214,16 @@ export function Sidebar() {
           </Button>
         </div>
       ) : (
-        <div role="tree" aria-label="Notes" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[14px] pb-[14px]">
+        <div
+          role="tree"
+          aria-label="Notes"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[14px] pb-[14px]"
+          onContextMenu={(event) => {
+            if (vaultRoot === null || event.target !== event.currentTarget) return;
+            event.preventDefault();
+            showContextMenu(event.clientX, event.clientY, null);
+          }}
+        >
           {rowElements}
         </div>
       )}
