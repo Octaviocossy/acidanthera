@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
+import { Icon, Trash2 } from '@/components/ui/icon';
 import { Modal } from '@/components/ui/modal';
-import { TrashGlyph } from '@/components/vault/glyphs';
 import { truncatePathStart } from '@/lib/chat/tool-path';
 import { type Chord, canonicalChordString } from '@/lib/keymap/chord';
 import { useDeletePrompt } from '@/lib/vault/confirm-delete';
@@ -51,7 +51,7 @@ export function DeleteEntryDialog() {
       title="Move to Trash?"
       icon={
         <span className="flex h-7 w-7 items-center justify-center rounded-item bg-danger-soft text-danger">
-          <TrashGlyph />
+          <Icon icon={Trash2} size={15} />
         </span>
       }
       note="recoverable from Trash"

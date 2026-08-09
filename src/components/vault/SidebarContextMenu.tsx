@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
+import { FilePlus, FolderPlus, Icon } from '@/components/ui/icon';
 import { pushModalOverlay } from '@/lib/keymap/modal-overlay';
 import { resolveParentForTarget } from '@/lib/vault/create-entry';
 import { deleteVaultEntry } from '@/lib/vault/delete-entry';
@@ -99,7 +99,7 @@ export function SidebarContextMenu() {
           className="flex cursor-pointer items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body text-text-secondary hover:bg-hover"
           onClick={() => startDraft('note')}
         >
-          <NewNoteGlyph />
+          <Icon icon={FilePlus} size={14} />
           New note
         </div>
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: menu actions are deliberately mouse-only; sidebar chords remain region-scoped. */}
@@ -109,7 +109,7 @@ export function SidebarContextMenu() {
           className="flex cursor-pointer items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body text-text-secondary hover:bg-hover"
           onClick={() => startDraft('directory')}
         >
-          <NewFolderGlyph />
+          <Icon icon={FolderPlus} size={14} />
           New folder
         </div>
         {target !== null && (

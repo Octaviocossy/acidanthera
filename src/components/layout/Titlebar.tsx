@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { CogGlyph } from '@/components/vault/glyphs';
+import { Icon, Settings } from '@/components/ui/icon';
 import { useAppStore } from '@/stores/app-store';
 
 export function Titlebar() {
@@ -37,7 +37,7 @@ export function Titlebar() {
           </span>
         </Button>
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Settings" title="Settings (Ctrl-w s)" aria-haspopup="dialog" onClick={openSettings}>
-          <CogGlyph />
+          <Icon icon={Settings} size={15} />
         </Button>
       </div>
     </header>
