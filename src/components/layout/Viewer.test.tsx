@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
@@ -10,7 +10,7 @@ describe('Viewer', () => {
 
   beforeEach(() => {
     useAppStore.setState({ activeRegion: 'viewer' });
-    useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
+    useEditorStore.setState({ buffers: [], activeBufferId: null, cursor: { line: 1, col: 1 }, saveRequests: [] });
     useSidebarStore.setState({ tree: [] });
   });
 
@@ -21,6 +21,8 @@ describe('Viewer', () => {
     expect(screen.getByText('Your vault is empty. Good — clean slate.')).toBeInTheDocument();
     expect(screen.getByText('Ctrl-w f')).toBeInTheDocument();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ln 1 · col 1/)).not.toBeInTheDocument();
+    expect(screen.queryByText('normal')).not.toBeInTheDocument();
   });
 
   it('shows a neutral empty-editor line when the vault has notes', () => {
@@ -29,5 +31,14 @@ describe('Viewer', () => {
     render(<Viewer />);
 
     expect(screen.getByText('No note open.')).toBeInTheDocument();
+  });
+
+  it('shows the editor status cluster while a buffer is open', () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
+    expect(screen.getByText('normal')).toBeInTheDocument();
   });
 });

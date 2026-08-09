@@ -212,7 +212,7 @@ Orbit-111's visual layer is the **Orbit Design System**, from Claude Design proj
 
 #### Geometry, elevation, and iconography
 
-- **Rails:** sidebar 224px · chat 340px · titlebar 40px · status 24px · FAB 40px.
+- **Rails:** sidebar 224px · chat 340px · titlebar 40px · FAB 40px. There is no status bar: editor state renders in the editor's bottom-right status cluster, while the titlebar hosts the sidebar re-show, find, and settings controls.
 - **Elevation:** dark mode uses hairline borders rather than shadows, except window and overlay drops. Light mode uses warm shadows only, never cool-tinted shadows. The scrim is `rgba(5,6,7,.55)` with no backdrop blur.
 - **Motion:** short 150ms fades, no bounce; hover moves one surface step up.
 - **Glyphs:** `✦` AI · `◈` context/file · `⌕` search · `▸`/`▾` disclosure · `＋` add · `·` separator. Unicode glyphs are first-class icons. Drawn icons are hand-tuned at 15px on a 16 viewBox with a 1.2 stroke and `currentColor`; do not add an icon dependency.

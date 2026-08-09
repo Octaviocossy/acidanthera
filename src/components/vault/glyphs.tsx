@@ -153,8 +153,47 @@ export function CogGlyph({ className }: GlyphProps) {
       className={cn('h-[15px] w-[15px]', className)}
       aria-hidden="true"
     >
+      <circle cx="8" cy="8" r="4.6" />
       <circle cx="8" cy="8" r="2.2" />
-      <path d="M8 1.8v2.1M8 12.1v2.1M1.8 8h2.1M12.1 8h2.1M3.6 3.6l1.5 1.5M10.9 10.9l1.5 1.5M12.4 3.6l-1.5 1.5M5.1 10.9l-1.5 1.5" />
+      <path d="M8 1.3v1.9M8 12.8v1.9M1.3 8h1.9M12.8 8h1.9M3.3 3.3l1.35 1.35M11.35 11.35l1.35 1.35M12.7 3.3l-1.35 1.35M4.65 11.35L3.3 12.7" />
+    </svg>
+  );
+}
+
+export function ChevronLeftGlyph() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-[15px] w-[15px]"
+      aria-hidden="true"
+    >
+      <path d="M10 3.5 5.5 8l4.5 4.5" />
+    </svg>
+  );
+}
+
+export function ChevronRightGlyph() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-[15px] w-[15px]"
+      aria-hidden="true"
+    >
+      <path d="M6 3.5 10.5 8 6 12.5" />
     </svg>
   );
 }

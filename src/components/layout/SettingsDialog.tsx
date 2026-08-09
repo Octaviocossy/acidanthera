@@ -4,6 +4,7 @@ import { Chip } from '@/components/ui/chip';
 import { SectionLabel } from '@/components/ui/section-label';
 import { Segmented } from '@/components/ui/segmented';
 import { listModels } from '@/lib/agent/model-catalog';
+import { displayPath } from '@/lib/vault/display-path';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import type { SettingsDiagnostic, ThemeName } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
@@ -31,7 +32,7 @@ function SettingsRow({ label, description, children }: { label: string; descript
  * model, theme, editor font, vault path — through `useSettingsStore`'s write-through
  * `updateSettings`. Monochrome, hand-built on the design primitives. Selecting a model also
  * switches the chat model (and thus its engine) immediately; theme/font values are applied by
- * the theme slice. Opened from the StatusBar button or the `Ctrl-w` `s` chord; Escape or a
+ * the theme slice. Opened from the titlebar control or the `Ctrl-w` `s` chord; Escape or a
  * scrim click closes.
  */
 export function SettingsDialog() {
@@ -186,7 +187,7 @@ export function SettingsDialog() {
               <SettingsRow label="Vault" description="The root folder opened when Orbit starts.">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="truncate font-mono text-meta text-text-muted" title={settings.vaultPath}>
-                    {settings.vaultPath.replace(/^\/(?:Users|home)\/[^/]+/, '~')}
+                    {displayPath(settings.vaultPath)}
                   </span>
                   <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>
                     Change…

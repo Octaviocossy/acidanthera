@@ -4,7 +4,6 @@ import { CommandBar } from '@/components/layout/CommandBar';
 import { FileFinder } from '@/components/layout/FileFinder';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { StatusBar } from '@/components/layout/StatusBar';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
 import { Titlebar } from '@/components/layout/Titlebar';
 import { ToastHost } from '@/components/layout/ToastHost';
@@ -30,7 +29,6 @@ export function Layout() {
         <SwitchVaultDialog />
         <ToastHost />
       </div>
-      <StatusBar />
     </div>
   );
 }

@@ -98,8 +98,8 @@ Vim emulation is enabled by default (no toggle in v0). Beyond the `:w` ex-comman
 yank behavior above, standard `@replit/codemirror-vim` keys (insert `i`/`a`/`o`, visual `v`/`V`,
 replace `R`, `Esc`, motions, operators like `d`/`c`, other ex-commands, etc.) work unmodified. See
 the [`@replit/codemirror-vim` project](https://github.com/replit/codemirror-vim) for the full vim
-key reference rather than this doc. The editor shows a live mode indicator badge (bottom-right)
-reflecting the current vim submode.
+key reference rather than this doc. The editor's bottom-right status cluster shows its live
+line and column plus a badge reflecting the current vim submode.
 
 ## Chat
 

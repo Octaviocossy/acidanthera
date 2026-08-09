@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { CogGlyph, NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
+import { ChevronLeftGlyph, NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { openConfigFile } from '@/lib/config/open-config-file';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
+import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
@@ -25,7 +26,7 @@ export function Sidebar() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const focusRegion = useAppStore((state) => state.focusRegion);
-  const openSettings = useAppStore((state) => state.openSettings);
+  const closeSidebar = useAppStore((state) => state.closeSidebar);
 
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
@@ -156,16 +157,21 @@ export function Sidebar() {
     >
       <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
         <SectionLabel>Vault</SectionLabel>
-        {vaultRoot !== null && (
-          <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
-              <NewNoteGlyph />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
-              <NewFolderGlyph />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-0.5">
+          {vaultRoot !== null && (
+            <>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
+                <NewNoteGlyph />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
+                <NewFolderGlyph />
+              </Button>
+            </>
+          )}
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Hide sidebar" title="Hide sidebar" onClick={closeSidebar}>
+            <ChevronLeftGlyph />
+          </Button>
+        </div>
       </div>
       {vaultRoot === null ? (
         <div className="px-[14px]">
@@ -179,13 +185,10 @@ export function Sidebar() {
         </div>
       )}
       {vaultRoot !== null && (
-        <footer className="flex shrink-0 items-center gap-2 border-t border-hairline px-[14px] py-2">
-          <span className="min-w-0 flex-1 truncate font-mono text-meta text-text-muted" title={vaultRoot}>
-            ~/{vaultRoot.replace(/^\/+/, '')}
+        <footer className="shrink-0 border-t border-hairline px-[14px] py-2">
+          <span className="block min-w-0 truncate font-mono text-meta text-text-muted" title={vaultRoot}>
+            {displayPath(vaultRoot)}
           </span>
-          <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" aria-label="Settings" onClick={openSettings}>
-            <CogGlyph />
-          </Button>
         </footer>
       )}
     </aside>
