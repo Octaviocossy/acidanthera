@@ -1,4 +1,4 @@
-import { CloseGlyph } from '@/components/vault/glyphs';
+import { Icon, X } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import type { EditorBuffer } from '@/stores/editor-store';
 
@@ -44,7 +44,7 @@ export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: Edi
               aria-label={`Close ${buffer.title}`}
               onClick={() => onClose(buffer.id)}
             >
-              <CloseGlyph />
+              <Icon icon={X} size={16} />
             </button>
           </div>
         );

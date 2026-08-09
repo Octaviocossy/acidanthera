@@ -1,5 +1,5 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { ChevronGlyph, DocGlyph, FolderGlyph } from '@/components/vault/glyphs';
+import { ChevronRight, FileText, Folder, Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 
 export interface FileTreeItemProps {
@@ -37,12 +37,12 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       {kind === 'dir' ? (
         <>
           <span className={active ? 'opacity-80' : 'opacity-65'}>
-            <ChevronGlyph collapsed={collapsed} />
+            <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit', collapsed ? '' : 'rotate-90')} />
           </span>
-          <FolderGlyph className={active ? 'opacity-80' : 'opacity-65'} />
+          <Icon icon={Folder} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
         </>
       ) : (
-        <DocGlyph className={active ? 'opacity-80' : 'opacity-65'} />
+        <Icon icon={FileText} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
       )}
       <span className="min-w-0 truncate">{label}</span>
       {changed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-pill bg-accent" aria-hidden="true" />}

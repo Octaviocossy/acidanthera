@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronGlyph, DocGlyph, FolderGlyph } from '@/components/vault/glyphs';
+import { ChevronRight, FileText, Folder, Icon } from '@/components/ui/icon';
+import { cn } from '@/lib/utils';
 import type { EntryDraftKind } from '@/stores/sidebar-store';
 
 export interface EntryDraftRowProps {
@@ -32,8 +33,8 @@ export function EntryDraftRow({ kind, depth, onCommit, onCancel }: EntryDraftRow
       style={{ paddingLeft: depth * 12 + 10 }}
       className="flex shrink-0 items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] text-text-secondary outline-none"
     >
-      {kind === 'directory' && <ChevronGlyph collapsed />}
-      {kind === 'directory' ? <FolderGlyph className="opacity-65" /> : <DocGlyph className="opacity-65" />}
+      {kind === 'directory' && <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit')} />}
+      {kind === 'directory' ? <Icon icon={Folder} size={15} className="opacity-65" /> : <Icon icon={FileText} size={15} className="opacity-65" />}
       <input
         ref={inputRef}
         value={name}

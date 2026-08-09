@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search } from '@/components/ui/icon';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { ChevronLeftGlyph, ChevronRightGlyph, DocGlyph, FolderGlyph, NewFolderGlyph, NewNoteGlyph, OrbitMarkGlyph, SearchGlyph } from '@/components/vault/glyphs';
+import { OrbitMarkGlyph } from '@/components/vault/glyphs';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
@@ -85,10 +86,10 @@ export function Sidebar() {
       <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
         <OrbitMarkGlyph className="text-text-secondary" />
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
-          <ChevronRightGlyph />
+          <Icon icon={ChevronRight} size={15} />
         </Button>
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
-          <SearchGlyph />
+          <Icon icon={Search} size={15} />
         </Button>
         {vaultRoot !== null && (
           <>
@@ -103,7 +104,7 @@ export function Sidebar() {
                 startDraft('note');
               }}
             >
-              <NewNoteGlyph />
+              <Icon icon={FilePlus} size={14} />
             </Button>
             <Button
               variant="ghost"
@@ -116,7 +117,7 @@ export function Sidebar() {
                 startDraft('directory');
               }}
             >
-              <NewFolderGlyph />
+              <Icon icon={FolderPlus} size={14} />
             </Button>
             {tree.length > 0 && (
               <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
@@ -130,7 +131,7 @@ export function Sidebar() {
                     title={entry.name}
                     onClick={() => openRailEntry(entry)}
                   >
-                    {entry.isDir ? <FolderGlyph /> : <DocGlyph />}
+                    {entry.isDir ? <Icon icon={Folder} size={15} /> : <Icon icon={FileText} size={15} />}
                   </Button>
                 ))}
               </div>
@@ -190,20 +191,20 @@ export function Sidebar() {
         <OrbitMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
-            <SearchGlyph />
+            <Icon icon={Search} size={15} />
           </Button>
           {vaultRoot !== null && (
             <>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
-                <NewNoteGlyph />
+                <Icon icon={FilePlus} size={14} />
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
-                <NewFolderGlyph />
+                <Icon icon={FolderPlus} size={14} />
               </Button>
             </>
           )}
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={collapseSidebar}>
-            <ChevronLeftGlyph />
+            <Icon icon={ChevronLeft} size={15} />
           </Button>
         </div>
       </div>
