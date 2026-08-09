@@ -70,6 +70,15 @@ describe('SidebarContextMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'New folder' }));
 
     expect(useSidebarStore.getState().draft).toEqual({ kind: 'directory', parentPath: '/vault' });
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it('offers Delete for a vault entry', () => {
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
   });
 
   it('creates a note inside a folder row selected by the menu', async () => {

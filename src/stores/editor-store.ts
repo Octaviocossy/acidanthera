@@ -72,6 +72,8 @@ interface EditorState {
   completeSaveRequest: (request: EditorSaveRequest) => void;
   failSaveRequest: (requestId: number) => void;
   closeBuffer: (bufferId: string) => void;
+  /** Closes vault buffers at `path` or below it, leaving config buffers and prefix-named siblings intact. */
+  closeBuffersUnder: (path: string) => void;
   /** Opens a file read from disk, activating an existing buffer of the same source instead of overwriting it. */
   openFile: (filePath: string, content: string, source?: EditorBufferSource) => void;
 }
@@ -126,6 +128,28 @@ export const useEditorStore = create<EditorState>((set) => ({
 
       if (state.activeBufferId !== bufferId) return { buffers };
       return { buffers, activeBufferId: buffers[Math.min(index, buffers.length - 1)].id };
+    }),
+
+  closeBuffersUnder: (path) =>
+    set((state) => {
+      const normalizedPath = path.replace(/[\\/]+$/, '');
+      const bufferIds = state.buffers
+        .filter(
+          (buffer) =>
+            buffer.source === 'vault' &&
+            (buffer.filePath === normalizedPath || buffer.filePath.startsWith(`${normalizedPath}/`) || buffer.filePath.startsWith(`${normalizedPath}\\`))
+        )
+        .map((buffer) => buffer.id);
+
+      let buffers = state.buffers;
+      let activeBufferId = state.activeBufferId;
+      for (const bufferId of bufferIds) {
+        const index = buffers.findIndex((buffer) => buffer.id === bufferId);
+        if (index === -1) continue;
+        buffers = buffers.filter((buffer) => buffer.id !== bufferId);
+        if (activeBufferId === bufferId) activeBufferId = buffers.length === 0 ? null : buffers[Math.min(index, buffers.length - 1)].id;
+      }
+      return { buffers, activeBufferId };
     }),
 
   openFile: (filePath, content, source = 'vault') =>
