@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { NewFolderGlyph, NewNoteGlyph } from '@/components/vault/glyphs';
 import { pushModalOverlay } from '@/lib/keymap/modal-overlay';
 import { resolveParentForTarget } from '@/lib/vault/create-entry';
+import { deleteVaultEntry } from '@/lib/vault/delete-entry';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
@@ -74,6 +75,12 @@ export function SidebarContextMenu() {
     hide();
   };
 
+  const deleteTarget = () => {
+    if (target === null) return;
+    hide();
+    void deleteVaultEntry(target, flattenVisibleTree(tree, expanded));
+  };
+
   if (!open) return null;
 
   return (
@@ -105,6 +112,20 @@ export function SidebarContextMenu() {
           <NewFolderGlyph />
           New folder
         </div>
+        {target !== null && (
+          <>
+            <div className="my-1 border-t border-hairline" />
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: menu actions are deliberately mouse-only; sidebar chords remain region-scoped. */}
+            {/* biome-ignore lint/a11y/useFocusableInteractive: menu actions intentionally have no tabIndex or DOM focus. */}
+            <div
+              role="menuitem"
+              className="flex cursor-pointer items-center rounded-item px-2.5 py-2 font-sans text-body text-text-secondary hover:bg-hover"
+              onClick={deleteTarget}
+            >
+              Delete
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

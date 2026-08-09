@@ -1,5 +1,6 @@
 import { ChatPanel } from '@/components/layout/ChatPanel';
 import { CommandBar } from '@/components/layout/CommandBar';
+import { DeleteEntryDialog } from '@/components/layout/DeleteEntryDialog';
 import { FileFinder } from '@/components/layout/FileFinder';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -30,6 +31,7 @@ export function Layout() {
         {/* Before ToastHost so toasts stay visible above the modal scrim. */}
         <SettingsDialog />
         <SwitchVaultDialog />
+        <DeleteEntryDialog />
         <ToastHost />
       </div>
     </div>

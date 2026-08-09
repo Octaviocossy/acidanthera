@@ -61,6 +61,7 @@ const DEFAULT_KEYMAPS_TOML: &str = r#"# orbit-111 keymaps
 # "sidebar.collapse"      = ["h"]
 # "sidebar.new-note"      = ["a"]
 # "sidebar.new-directory" = ["shift-a"]
+# "sidebar.delete"        = ["d d"]
 
 # [chat.history] — every command, with its default chords.
 # Uncomment a line and edit it to change it.

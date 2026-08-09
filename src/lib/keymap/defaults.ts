@@ -34,6 +34,7 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'sidebar.collapse': ['h'],
   'sidebar.new-note': ['a'],
   'sidebar.new-directory': ['shift-a'],
+  'sidebar.delete': ['d d'],
 
   // [chat.history]
   'chat.history.cursor-down': ['j'],
