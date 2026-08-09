@@ -7,12 +7,15 @@ import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
 import { Titlebar } from '@/components/layout/Titlebar';
 import { ToastHost } from '@/components/layout/ToastHost';
 import { Viewer } from '@/components/layout/Viewer';
+import { useModalKeymap } from '@/hooks/use-modal-keymap';
 
 /**
  * The 3-region app shell (doc/v0-spec.md §5.0): sidebar, viewer, invocable chat, split view.
  * Owned by slice #10 — siblings only replace their own placeholder region file.
  */
 export function Layout() {
+  useModalKeymap();
+
   return (
     <div className="flex h-screen w-screen flex-col bg-canvas text-text-primary">
       <Titlebar />

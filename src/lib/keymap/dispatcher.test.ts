@@ -114,6 +114,78 @@ describe('createDispatcher', () => {
     expect(globalRun).toHaveBeenCalledTimes(1);
   });
 
+  it('has unchanged fallthrough behavior when no swallowing layer is active', () => {
+    const lowerRun = vi.fn();
+    const modal: DispatcherLayer = { name: 'modal', commands: [], isActive: () => false, swallows: true };
+    const lower: DispatcherLayer = { name: 'global', commands: [command('global.some-command', 'j', lowerRun)], isActive: () => true };
+    const dispatcher = createDispatcher([modal, lower]);
+
+    const handled = dispatcher.handleKeyDown(keyEvent({ key: 'j' }));
+
+    expect(handled).toBe(true);
+    expect(lowerRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('absorbs an unmatched key in an active swallowing layer', () => {
+    const lowerRun = vi.fn();
+    const modal: DispatcherLayer = { name: 'modal', commands: [], isActive: () => true, swallows: true };
+    const lower: DispatcherLayer = { name: 'sidebar', commands: [command('sidebar.cursor-down', 'j', lowerRun)], isActive: () => true };
+    const dispatcher = createDispatcher([modal, lower]);
+    const event = keyEvent({ key: 'j' });
+
+    const handled = dispatcher.handleKeyDown(event);
+
+    expect(handled).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(lowerRun).not.toHaveBeenCalled();
+  });
+
+  it('dispatches a matched chord in an active swallowing layer', () => {
+    const modalRun = vi.fn();
+    const lowerRun = vi.fn();
+    const modal: DispatcherLayer = { name: 'modal', commands: [command('modal.cancel', 'escape', modalRun)], isActive: () => true, swallows: true };
+    const lower: DispatcherLayer = { name: 'global', commands: [command('global.some-command', 'escape', lowerRun)], isActive: () => true };
+    const dispatcher = createDispatcher([modal, lower]);
+
+    const handled = dispatcher.handleKeyDown(keyEvent({ key: 'Escape' }));
+
+    expect(handled).toBe(true);
+    expect(modalRun).toHaveBeenCalledTimes(1);
+    expect(lowerRun).not.toHaveBeenCalled();
+  });
+
+  it('does not swallow when the swallowing layer is inactive', () => {
+    const lowerRun = vi.fn();
+    const modal: DispatcherLayer = { name: 'modal', commands: [], isActive: () => false, swallows: true };
+    const lower: DispatcherLayer = { name: 'sidebar', commands: [command('sidebar.cursor-down', 'j', lowerRun)], isActive: () => true };
+    const dispatcher = createDispatcher([modal, lower]);
+
+    const handled = dispatcher.handleKeyDown(keyEvent({ key: 'j' }));
+
+    expect(handled).toBe(true);
+    expect(lowerRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('disarms a lower-layer pending sequence when a swallowing layer becomes active', () => {
+    const sidebarRun = vi.fn();
+    let modalActive = false;
+    const modal: DispatcherLayer = { name: 'modal', commands: [], isActive: () => modalActive, swallows: true };
+    const sidebar: DispatcherLayer = { name: 'sidebar', commands: [command('sidebar.delete', 'd d', sidebarRun)], isActive: () => true };
+    const dispatcher = createDispatcher([modal, sidebar]);
+
+    dispatcher.handleKeyDown(keyEvent({ key: 'd' }));
+    expect(dispatcher.isPending()).toBe(true);
+
+    modalActive = true;
+    const completion = keyEvent({ key: 'd' });
+    const handled = dispatcher.handleKeyDown(completion);
+
+    expect(handled).toBe(true);
+    expect(dispatcher.isPending()).toBe(false);
+    expect(completion.preventDefault).toHaveBeenCalledTimes(1);
+    expect(sidebarRun).not.toHaveBeenCalled();
+  });
+
   it('does not fall through mid-sequence when the committed layer goes inactive before the sequence completes', () => {
     const run = vi.fn();
     let active = true;
