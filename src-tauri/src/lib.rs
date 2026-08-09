@@ -4,6 +4,7 @@ mod config;
 mod logging;
 mod settings;
 mod vault;
+mod wikilink;
 
 use agent::AgentProcessState;
 use config::ConfigWatcherState;
@@ -42,6 +43,8 @@ pub fn run() {
             vault::delete_entry,
             vault::rename_entry,
             vault::duplicate_entry,
+            vault::scan_wikilink_targets,
+            vault::rewrite_wikilinks,
             settings::read_settings,
             settings::write_settings,
             chats::save_chat,
