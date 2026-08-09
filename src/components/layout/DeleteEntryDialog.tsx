@@ -3,22 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Icon, Trash2 } from '@/components/ui/icon';
 import { Modal } from '@/components/ui/modal';
 import { truncatePathStart } from '@/lib/chat/tool-path';
-import { type Chord, canonicalChordString } from '@/lib/keymap/chord';
+import { formatChord } from '@/lib/keymap/format-chord';
 import { useDeletePrompt } from '@/lib/vault/confirm-delete';
 import { displayPath } from '@/lib/vault/display-path';
 import { useKeymapStore } from '@/stores/keymap-store';
 
 /** Roughly what fits the 460px panel's mono field before eliding. */
 const MAX_DELETE_PATH_CHARS = 56;
-
-const HINT_LABELS: Record<string, string> = { Escape: 'esc', Enter: '⏎' };
-
-function chordHint(chords: Chord[] | undefined): string | undefined {
-  const first = chords?.[0];
-  if (first === undefined) return undefined;
-  const canonical = canonicalChordString(first);
-  return HINT_LABELS[canonical] ?? canonical.toLowerCase();
-}
 
 function countLabel(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
@@ -60,10 +51,10 @@ export function DeleteEntryDialog() {
       width={460}
       actions={
         <>
-          <Button variant="ghost" size="sm" kbd={chordHint(modalBindings.get('modal.cancel'))} onClick={() => pending.resolve('cancel')}>
+          <Button variant="ghost" size="sm" kbd={formatChord(modalBindings.get('modal.cancel'))} onClick={() => pending.resolve('cancel')}>
             Cancel
           </Button>
-          <Button variant="danger" size="sm" kbd={chordHint(modalBindings.get('modal.confirm'))} onClick={() => pending.resolve('confirm')}>
+          <Button variant="danger" size="sm" kbd={formatChord(modalBindings.get('modal.confirm'))} onClick={() => pending.resolve('confirm')}>
             Move to Trash
           </Button>
         </>
