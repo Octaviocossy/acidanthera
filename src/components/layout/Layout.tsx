@@ -2,6 +2,7 @@ import { ChatPanel } from '@/components/layout/ChatPanel';
 import { CommandBar } from '@/components/layout/CommandBar';
 import { DeleteEntryDialog } from '@/components/layout/DeleteEntryDialog';
 import { FileFinder } from '@/components/layout/FileFinder';
+import { RenameEntryDialog } from '@/components/layout/RenameEntryDialog';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
@@ -32,6 +33,7 @@ export function Layout() {
         <SettingsDialog />
         <SwitchVaultDialog />
         <DeleteEntryDialog />
+        <RenameEntryDialog />
         <ToastHost />
       </div>
     </div>

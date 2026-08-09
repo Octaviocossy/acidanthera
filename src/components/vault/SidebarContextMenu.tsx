@@ -56,6 +56,7 @@ export function SidebarContextMenu() {
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
   const beginDraft = useSidebarStore((state) => state.beginDraft);
+  const beginRename = useSidebarStore((state) => state.beginRename);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const sidebarBindings = useKeymapStore((state) => state.resolved.layers.sidebar);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -122,7 +123,10 @@ export function SidebarContextMenu() {
         startDraft('directory');
         break;
       case 'rename':
-        hide();
+        if (target !== null) {
+          hide();
+          beginRename(target);
+        }
         break;
       case 'duplicate':
         if (target !== null) {
