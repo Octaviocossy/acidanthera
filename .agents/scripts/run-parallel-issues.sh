@@ -144,13 +144,24 @@ process_issue() {
     echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
 
-  _body_file="$WORKTREES_DIR/.bodies/$_issue.md"
-  _body_block=""
-  if [ -f "$_body_file" ]; then
-    _body_block=$(printf '\n--- Issue #%s body (fetched by the orchestrating agent; you have no GitHub access) ---\n%s\n--- end issue body ---\n' "$_issue" "$(cat "$_body_file")")
+  # A pushed child only survives a prior --epic run when integration conflicted. Its
+  # acceptance gate has already passed, so retry the merge without asking an agent to
+  # reproduce work and then rejecting it for making no new changes.
+  _retry_integration=0
+  if [ -n "$EPIC_BRANCH" ] \
+    && git ls-remote --exit-code --heads origin "$_branch" >/dev/null 2>&1; then
+    _retry_integration=1
+    log "[#$_issue] retry: reusing pushed child $_branch for integration"
   fi
 
-  _prompt=$(cat <<EOF
+  if [ "$_retry_integration" -eq 0 ]; then
+    _body_file="$WORKTREES_DIR/.bodies/$_issue.md"
+    _body_block=""
+    if [ -f "$_body_file" ]; then
+      _body_block=$(printf '\n--- Issue #%s body (fetched by the orchestrating agent; you have no GitHub access) ---\n%s\n--- end issue body ---\n' "$_issue" "$(cat "$_body_file")")
+    fi
+
+    _prompt=$(cat <<EOF
 You are a headless coding agent working inside a git worktree for ONE GitHub issue.
 
 Issue: #$_issue — $_title
@@ -171,43 +182,44 @@ import-order violations it finds. The runner enforces its own acceptance gate af
 EOF
 )
 
-  (
-    cd "$_wt" || exit 91
-    # shellcheck disable=SC2086
-    run_with_timeout "$AGENT_TIMEOUT" $AGENT_EXEC_CMD "$_prompt"
-  ) >>"$_logf" 2>&1
-  _agent_rc=$?
+    (
+      cd "$_wt" || exit 91
+      # shellcheck disable=SC2086
+      run_with_timeout "$AGENT_TIMEOUT" $AGENT_EXEC_CMD "$_prompt"
+    ) >>"$_logf" 2>&1
+    _agent_rc=$?
 
-  if [ "$_agent_rc" -ne 0 ]; then
-    log "[#$_issue] FAILED: agent exited $_agent_rc (see $_logf). Not pushing."
-    echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
-  fi
-  if [ -z "$(git -C "$_wt" status --porcelain)" ]; then
-    log "[#$_issue] FAILED: agent made no changes. Not pushing."
-    echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
-  fi
-  if [ -n "$ACCEPTANCE_CMD" ]; then
-    if ! ( cd "$_wt" && sh -c "$ACCEPTANCE_CMD" ) >>"$_logf" 2>&1; then
-      log "[#$_issue] FAILED: acceptance '$ACCEPTANCE_CMD' failed (see $_logf). Not pushing."
+    if [ "$_agent_rc" -ne 0 ]; then
+      log "[#$_issue] FAILED: agent exited $_agent_rc (see $_logf). Not pushing."
       echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
     fi
-  fi
+    if [ -z "$(git -C "$_wt" status --porcelain)" ]; then
+      log "[#$_issue] FAILED: agent made no changes. Not pushing."
+      echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
+    fi
+    if [ -n "$ACCEPTANCE_CMD" ]; then
+      if ! ( cd "$_wt" && sh -c "$ACCEPTANCE_CMD" ) >>"$_logf" 2>&1; then
+        log "[#$_issue] FAILED: acceptance '$ACCEPTANCE_CMD' failed (see $_logf). Not pushing."
+        echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
+      fi
+    fi
 
-  git -C "$_wt" add -A >>"$_logf" 2>&1
-  git -C "$_wt" commit -m "feat(#$_issue): $_title" \
-      -m "Implements #$_issue via /execute-epic parallel runner." \
-      >>"$_logf" 2>&1
-  if [ "$?" -ne 0 ]; then
-    log "[#$_issue] FAILED: git commit failed (see $_logf)."
-    echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
-  fi
-  if ! git -C "$_wt" push -u origin "$_branch" >>"$_logf" 2>&1; then
-    log "[#$_issue] FAILED: git push failed (see $_logf)."
-    echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
-  fi
+    git -C "$_wt" add -A >>"$_logf" 2>&1
+    git -C "$_wt" commit -m "feat(#$_issue): $_title" \
+        -m "Implements #$_issue via /execute-epic parallel runner." \
+        >>"$_logf" 2>&1
+    if [ "$?" -ne 0 ]; then
+      log "[#$_issue] FAILED: git commit failed (see $_logf)."
+      echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
+    fi
+    if ! git -C "$_wt" push -u origin "$_branch" >>"$_logf" 2>&1; then
+      log "[#$_issue] FAILED: git push failed (see $_logf)."
+      echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
+    fi
 
-  log "[#$_issue] OK: pushed $_branch"
-  echo "$_issue $_branch" >> "$WORKTREES_DIR/.pushed"
+    log "[#$_issue] OK: pushed $_branch"
+    echo "$_issue $_branch" >> "$WORKTREES_DIR/.pushed"
+  fi
 
   # child branch is pushed and recorded in .pushed above; now integrate it.
   if [ -n "$EPIC_BRANCH" ]; then
