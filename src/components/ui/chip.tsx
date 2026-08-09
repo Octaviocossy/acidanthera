@@ -2,7 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
-const chipVariants = cva('inline-flex items-center gap-[5px] rounded-pill border px-[10px] py-[3px] font-mono text-label', {
+const chipVariants = cva('inline-flex items-center gap-[5px] rounded-pill border px-2 py-[2px] font-mono text-micro', {
   variants: {
     variant: {
       plain: 'border-border bg-elevated text-text-secondary',

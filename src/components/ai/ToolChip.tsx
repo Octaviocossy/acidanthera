@@ -20,7 +20,7 @@ export function ToolChip({ verb, path, status }: ToolChipProps) {
   return (
     <div
       className={cn(
-        'inline-flex max-w-full items-center gap-1.5 rounded-pill border px-[10px] py-[3px] font-mono text-label',
+        'inline-flex max-w-[85%] items-center gap-1.5 rounded-pill border px-2 py-[2px] font-mono text-micro',
         status === 'running' && 'border-accent text-accent',
         status === 'done' && 'border-border bg-elevated text-text-muted',
         status === 'error' && 'border-border-strong bg-elevated text-text-secondary'

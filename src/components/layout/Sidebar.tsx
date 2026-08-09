@@ -80,8 +80,8 @@ export function Sidebar() {
 
   if (!sidebarExpanded) {
     return (
-      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
-        <OrbitMarkGlyph className="mb-1 text-text-secondary" />
+      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
+        <OrbitMarkGlyph className="text-text-secondary" />
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
           <ChevronRightGlyph />
         </Button>
@@ -117,7 +117,7 @@ export function Sidebar() {
               <NewFolderGlyph />
             </Button>
             {tree.length > 0 && (
-              <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto">
+              <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
                 {tree.map((entry) => (
                   <Button
                     key={entry.path}

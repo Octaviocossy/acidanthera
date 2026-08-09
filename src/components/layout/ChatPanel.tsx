@@ -6,6 +6,7 @@ import { ThinkingIndicator } from '@/components/ai/ThinkingIndicator';
 import { ToolChip, type ToolChipStatus } from '@/components/ai/ToolChip';
 import { Button } from '@/components/ui/button';
 import { useChatHistoryKeymap } from '@/hooks/use-chat-history-keymap';
+import { toolCallPath } from '@/lib/chat/tool-path';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { type ChatTab, useChatHistoryStore } from '@/stores/chat-history-store';
@@ -13,12 +14,7 @@ import { type ChatItem, type ChatToolCallStatus, useChatStore } from '@/stores/c
 
 const TOOL_CHIP_STATUS: Record<ChatToolCallStatus, ToolChipStatus> = { running: 'running', ok: 'done', error: 'error' };
 
-function toolPath(args: Record<string, unknown>): string | undefined {
-  const value = args.file_path ?? args.path ?? args.pattern;
-  return typeof value === 'string' ? value : undefined;
-}
-
-function ChatItemRow({ item }: { item: ChatItem }) {
+function ChatItemRow({ item, vaultRoot }: { item: ChatItem; vaultRoot: string | null }) {
   switch (item.kind) {
     case 'user_message':
       // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
@@ -31,7 +27,7 @@ function ChatItemRow({ item }: { item: ChatItem }) {
     case 'tool_call':
       return (
         <div className="px-4 py-2">
-          <ToolChip verb={item.call.toolName} path={toolPath(item.call.args)} status={TOOL_CHIP_STATUS[item.call.status]} />
+          <ToolChip verb={item.call.toolName} path={toolCallPath(item.call.args, vaultRoot)} status={TOOL_CHIP_STATUS[item.call.status]} />
         </div>
       );
   }
@@ -63,6 +59,7 @@ export function ChatPanel() {
   const chatOpen = useAppStore((state) => state.chatOpen);
   const isActive = useAppStore((state) => state.activeRegion === 'chat');
   const focusRegion = useAppStore((state) => state.focusRegion);
+  const vaultRoot = useAppStore((state) => state.vaultRoot);
   const items = useChatStore((state) => state.items);
   const turnActive = useChatStore((state) => state.turnActive);
   const sendMessage = useChatStore((state) => state.sendMessage);
@@ -109,7 +106,7 @@ export function ChatPanel() {
           <div ref={listRef} role="tabpanel" aria-label="Chat" className="min-h-0 flex-1 overflow-y-auto">
             <div className="py-2">
               {items.map((item) => (
-                <ChatItemRow key={item.id} item={item} />
+                <ChatItemRow key={item.id} item={item} vaultRoot={vaultRoot} />
               ))}
               {turnActive && <ThinkingIndicator />}
             </div>

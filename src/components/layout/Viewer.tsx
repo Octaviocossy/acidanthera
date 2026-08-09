@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { BufferEditor } from '@/components/editor/BufferEditor';
 import { CloseBufferDialog } from '@/components/editor/CloseBufferDialog';
 import { EditorTabs } from '@/components/editor/EditorTabs';
-import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { saveBuffer } from '@/lib/editor/save-buffer';
 import { cn } from '@/lib/utils';
@@ -80,7 +79,7 @@ export function Viewer() {
           <span className="font-mono text-meta text-text-muted">
             ln {cursor.line} · col {cursor.col}
           </span>
-          {vimMode !== undefined && <Badge tone="muted">{vimMode}</Badge>}
+          {vimMode !== undefined && <span className="font-mono text-meta uppercase tracking-label text-text-muted">{vimMode}</span>}
         </div>
       )}
       <CloseBufferDialog
