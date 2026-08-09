@@ -32,4 +32,4 @@ tauri-plugin-log = "2"
 tauri-plugin-clipboard-manager = "2"
 toml = "1"
 toml_edit = "0.25"
-
+trash = "5"

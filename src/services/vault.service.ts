@@ -38,6 +38,9 @@ export const vaultService = {
   /** Creates an empty directory inside an existing vault directory, resolving to its path. Rejects if an entry already exists there. */
   createDirectory: (path: string): Promise<string> => invoke('create_directory', { path }),
 
+  /** Moves a note or directory to the OS trash. */
+  deleteEntry: (path: string): Promise<void> => invoke('delete_entry', { path }),
+
   /** Subscribes to `vault-changed`, firing with the filesystem paths touched by the change. */
   onVaultChanged: (handler: (paths: string[]) => void): Promise<UnlistenFn> => listen<string[]>(VAULT_CHANGED_EVENT, (event) => handler(event.payload)),
 };
