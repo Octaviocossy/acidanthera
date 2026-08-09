@@ -40,6 +40,8 @@ pub fn run() {
             vault::create_note,
             vault::create_directory,
             vault::delete_entry,
+            vault::rename_entry,
+            vault::duplicate_entry,
             settings::read_settings,
             settings::write_settings,
             chats::save_chat,

@@ -41,6 +41,12 @@ export const vaultService = {
   /** Moves a note or directory to the OS trash. */
   deleteEntry: (path: string): Promise<void> => invoke('delete_entry', { path }),
 
+  /** Renames a note or directory within its current parent. */
+  renameEntry: (path: string, newName: string): Promise<string> => invoke('rename_entry', { path, newName }),
+
+  /** Duplicates a note or directory within its current parent. */
+  duplicateEntry: (path: string): Promise<string> => invoke('duplicate_entry', { path }),
+
   /** Subscribes to `vault-changed`, firing with the filesystem paths touched by the change. */
   onVaultChanged: (handler: (paths: string[]) => void): Promise<UnlistenFn> => listen<string[]>(VAULT_CHANGED_EVENT, (event) => handler(event.payload)),
 };
