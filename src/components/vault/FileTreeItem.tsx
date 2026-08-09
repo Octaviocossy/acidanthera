@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { ChevronGlyph, DocGlyph, FolderGlyph } from '@/components/vault/glyphs';
 import { cn } from '@/lib/utils';
 
@@ -14,10 +14,11 @@ export interface FileTreeItemProps {
   changed?: boolean;
   collapsed?: boolean;
   onClick?: () => void;
+  onContextMenu?: (event: ReactMouseEvent) => void;
 }
 
 /** Sidebar vault-explorer row (doc/v0-spec.md §5.3, §5.6 component inventory). */
-export function FileTreeItem({ label, kind, depth, active = false, cursor = false, changed = false, collapsed = false, onClick }: FileTreeItemProps) {
+export function FileTreeItem({ label, kind, depth, active = false, cursor = false, changed = false, collapsed = false, onClick, onContextMenu }: FileTreeItemProps) {
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: keyboard interaction is region-scoped via useSidebarKeymap (window-level, vim-style), not per-row DOM focus.
     // biome-ignore lint/a11y/useKeyWithClickEvents: same as above — onClick is a mouse affordance alongside the keyboard path, not a replacement for it.
@@ -26,6 +27,7 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       aria-selected={active}
       aria-expanded={kind === 'dir' ? !collapsed : undefined}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       style={{ paddingLeft: depth * 12 + 10 }}
       className={cn(
         'flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',

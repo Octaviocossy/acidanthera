@@ -34,6 +34,14 @@ export function resolveDraftParent(rows: FlatVaultRow[], cursorPath: string | nu
   return vaultRoot;
 }
 
+/** Parent for a context-menu create. `null` target is the empty background, which always means the
+ * vault root — never the current cursor, which may sit anywhere. */
+export function resolveParentForTarget(rows: FlatVaultRow[], target: string | null, vaultRoot: string | null): string | null {
+  if (vaultRoot === null) return null;
+  if (target === null) return vaultRoot;
+  return resolveDraftParent(rows, target, vaultRoot);
+}
+
 /** Where the draft row renders: as its parent's first child, or at the top of the tree for the rootless vault root. */
 export function draftPlacement(rows: FlatVaultRow[], draft: EntryDraft): { index: number; depth: number } {
   const parentIndex = rows.findIndex((row) => row.entry.path === draft.parentPath);
