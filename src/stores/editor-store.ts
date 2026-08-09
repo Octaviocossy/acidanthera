@@ -74,6 +74,10 @@ interface EditorState {
   closeBuffer: (bufferId: string) => void;
   /** Closes vault buffers at `path` or below it, leaving config buffers and prefix-named siblings intact. */
   closeBuffersUnder: (path: string) => void;
+  /** Moves vault buffers at `oldPath` or below it to their renamed paths without changing their editing state. */
+  rewriteBufferPaths: (oldPath: string, newPath: string) => void;
+  /** Replaces a clean vault buffer's content after an external wikilink rewrite. */
+  reloadCleanBuffer: (filePath: string, content: string) => void;
   /** Opens a file read from disk, activating an existing buffer of the same source instead of overwriting it. */
   openFile: (filePath: string, content: string, source?: EditorBufferSource) => void;
 }
@@ -151,6 +155,27 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       return { buffers, activeBufferId };
     }),
+
+  rewriteBufferPaths: (oldPath, newPath) =>
+    set((state) => {
+      const normalizedOldPath = oldPath.replace(/[\\/]+$/, '');
+      const normalizedNewPath = newPath.replace(/[\\/]+$/, '');
+      return {
+        buffers: state.buffers.map((buffer) => {
+          if (buffer.source !== 'vault') return buffer;
+          if (buffer.filePath === normalizedOldPath) return { ...buffer, filePath: normalizedNewPath, title: fileTitle(normalizedNewPath) };
+          if (!buffer.filePath.startsWith(`${normalizedOldPath}/`) && !buffer.filePath.startsWith(`${normalizedOldPath}\\`)) return buffer;
+
+          const filePath = `${normalizedNewPath}${buffer.filePath.slice(normalizedOldPath.length)}`;
+          return { ...buffer, filePath, title: fileTitle(filePath) };
+        }),
+      };
+    }),
+
+  reloadCleanBuffer: (filePath, content) =>
+    set((state) => ({
+      buffers: state.buffers.map((buffer) => (buffer.source === 'vault' && buffer.filePath === filePath && !buffer.dirty ? { ...buffer, content } : buffer)),
+    })),
 
   openFile: (filePath, content, source = 'vault') =>
     set((state) => {

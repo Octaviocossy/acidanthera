@@ -127,3 +127,24 @@ describe('closeBuffersUnder', () => {
     expect(useEditorStore.getState().buffers.map((buffer) => buffer.id)).not.toContain(two);
   });
 });
+
+describe('rewriteBufferPaths', () => {
+  it('moves dirty vault buffers at and under a renamed directory without changing their content or dirty state', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes/one.md', 'one');
+    const one = getActiveBufferId();
+    store.updateBufferContent(one, 'changed');
+    store.openFile('/vault/notes/nested/two.md', 'two');
+    store.openFile('/vault/notebook.md', 'sibling');
+
+    store.rewriteBufferPaths('/vault/notes', '/vault/archive');
+
+    expect(useEditorStore.getState().buffers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: one, filePath: '/vault/archive/one.md', title: 'one.md', content: 'changed', dirty: true }),
+        expect.objectContaining({ filePath: '/vault/archive/nested/two.md', title: 'two.md' }),
+        expect.objectContaining({ filePath: '/vault/notebook.md' }),
+      ])
+    );
+  });
+});

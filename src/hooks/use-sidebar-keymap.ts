@@ -72,6 +72,13 @@ function duplicateCursorRow(): void {
   void duplicateVaultEntry(cursorPath);
 }
 
+function renameCursorRow(): void {
+  const rows = visibleRows();
+  const sidebar = useSidebarStore.getState();
+  if (sidebar.cursorPath === null || !rows.some((row) => row.entry.path === sidebar.cursorPath)) return;
+  sidebar.beginRename(sidebar.cursorPath);
+}
+
 /**
  * Vim-style `j`/`k`/`l`/`h`/`Enter` navigation over the sidebar's visible rows, plus `a`/`A` to
  * start a new note / folder (doc/v0-spec.md §3.4, §5.3). Contributes the `[sidebar]` layer to the
@@ -92,6 +99,7 @@ export function useSidebarKeymap() {
       { id: 'sidebar.collapse', chords: layerBindings.get('sidebar.collapse') ?? [], run: collapseCursorRow },
       { id: 'sidebar.new-note', chords: layerBindings.get('sidebar.new-note') ?? [], run: () => beginDraft('note') },
       { id: 'sidebar.new-directory', chords: layerBindings.get('sidebar.new-directory') ?? [], run: () => beginDraft('directory') },
+      { id: 'sidebar.rename', chords: layerBindings.get('sidebar.rename') ?? [], run: renameCursorRow },
       { id: 'sidebar.duplicate', chords: layerBindings.get('sidebar.duplicate') ?? [], run: duplicateCursorRow },
       { id: 'sidebar.delete', chords: layerBindings.get('sidebar.delete') ?? [], run: deleteCursorRow },
     ],

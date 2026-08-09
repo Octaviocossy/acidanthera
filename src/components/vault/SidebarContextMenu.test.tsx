@@ -100,6 +100,17 @@ describe('SidebarContextMenu', () => {
     expect(screen.queryByRole('menuitem', { name: 'Find related notes' })).not.toBeInTheDocument();
   });
 
+  it('starts inline editing when Rename is selected', async () => {
+    const user = userEvent.setup();
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+
+    expect(screen.getByRole('textbox', { name: 'Rename folder' })).toHaveValue('notes');
+    expect(useSidebarStore.getState().renamePath).toBe('/vault/notes');
+  });
+
   it('shows all seven rows and marks AI placeholders unavailable for a note', () => {
     renderSidebarWithMenu();
 

@@ -20,12 +20,16 @@ interface SidebarState {
   cursorPath: string | null;
   /** The pending "new note" / "new folder" row, or `null` when nothing is being named (#40). */
   draft: EntryDraft | null;
+  /** Existing vault entry being renamed inline, kept separate from the not-yet-created draft. */
+  renamePath: string | null;
 
   setTree: (tree: VaultEntry[]) => void;
   toggleExpanded: (path: string) => void;
   setCursor: (path: string | null) => void;
   beginDraft: (kind: EntryDraftKind, parentPath: string) => void;
   cancelDraft: () => void;
+  beginRename: (path: string) => void;
+  cancelRename: () => void;
 }
 
 export const useSidebarStore = create<SidebarState>((set) => ({
@@ -33,6 +37,7 @@ export const useSidebarStore = create<SidebarState>((set) => ({
   expanded: new Set(),
   cursorPath: null,
   draft: null,
+  renamePath: null,
 
   setTree: (tree) => set({ tree }),
 
@@ -52,10 +57,15 @@ export const useSidebarStore = create<SidebarState>((set) => ({
   beginDraft: (kind, parentPath) =>
     set((state) => ({
       draft: { kind, parentPath },
+      renamePath: null,
       // Unfold the target so the draft row is actually on screen. The vault root never has a row
       // of its own, so expanding it is inert.
       expanded: new Set(state.expanded).add(parentPath),
     })),
 
   cancelDraft: () => set({ draft: null }),
+
+  beginRename: (renamePath) => set({ renamePath, draft: null }),
+
+  cancelRename: () => set({ renamePath: null }),
 }));
