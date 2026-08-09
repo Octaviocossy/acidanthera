@@ -89,7 +89,7 @@ export function SidebarContextMenu() {
         ref={panelRef}
         role="menu"
         aria-label="Sidebar actions"
-        className="absolute min-w-40 rounded-card border border-border-strong bg-elevated p-1 shadow-[var(--shadow-overlay-dark)]"
+        className="absolute min-w-40 rounded-card border border-border-strong bg-elevated p-1"
         style={position === null ? { visibility: 'hidden' } : { left: position.left, top: position.top }}
       >
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: menu actions are deliberately mouse-only; sidebar chords remain region-scoped. */}
