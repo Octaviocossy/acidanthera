@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -7,14 +7,15 @@ import { useContextMenuStore } from '@/stores/context-menu-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { SidebarContextMenu } from './SidebarContextMenu';
 
-const { openVaultFile, readVaultTree, onVaultChanged } = vi.hoisted(() => ({
+const { invoke, listen, openVaultFile } = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  listen: vi.fn(),
   openVaultFile: vi.fn(),
-  readVaultTree: vi.fn(),
-  onVaultChanged: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/api/core', () => ({ invoke }));
+vi.mock('@tauri-apps/api/event', () => ({ listen }));
 vi.mock('@/lib/vault/open-file', () => ({ openVaultFile }));
-vi.mock('@/services/vault.service', () => ({ vaultService: { readVaultTree, onVaultChanged } }));
 
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
@@ -36,8 +37,12 @@ function renderSidebarWithMenu() {
 describe('SidebarContextMenu', () => {
   beforeEach(() => {
     openVaultFile.mockReset();
-    readVaultTree.mockResolvedValue(tree);
-    onVaultChanged.mockResolvedValue(() => {});
+    invoke.mockImplementation((command: string) => {
+      if (command === 'read_vault_tree') return Promise.resolve(tree);
+      if (command === 'duplicate_entry') return Promise.resolve('/vault/notes/ideas copy.md');
+      return Promise.resolve();
+    });
+    listen.mockResolvedValue(() => {});
     useAppStore.setState(initialAppState, true);
     useAppStore.setState({ vaultRoot: '/vault', sidebarExpanded: true });
     useSidebarStore.setState(initialSidebarState, true);
@@ -70,15 +75,60 @@ describe('SidebarContextMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'New folder' }));
 
     expect(useSidebarStore.getState().draft).toEqual({ kind: 'directory', parentPath: '/vault' });
-    expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Move to Trash' })).not.toBeInTheDocument();
   });
 
-  it('offers Delete for a vault entry', () => {
+  it('shows only the creation rows on the tree background', () => {
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('tree', { name: 'Notes' }), { clientX: 80, clientY: 100 });
+
+    expect(screen.getAllByRole('menuitem')).toHaveLength(2);
+    expect(screen.getByRole('menuitem', { name: 'New note' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'New folder' })).toBeInTheDocument();
+  });
+
+  it('shows entry actions but not AI placeholders for a directory', () => {
     renderSidebarWithMenu();
 
     fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
 
-    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Rename' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Duplicate' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Move to Trash' })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Summarize note' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Find related notes' })).not.toBeInTheDocument();
+  });
+
+  it('starts inline editing when Rename is selected', async () => {
+    const user = userEvent.setup();
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+
+    expect(screen.getByRole('textbox', { name: 'Rename folder' })).toHaveValue('notes');
+    expect(useSidebarStore.getState().renamePath).toBe('/vault/notes');
+  });
+
+  it('shows all seven rows and marks AI placeholders unavailable for a note', () => {
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'ideas.md' }), { clientX: 80, clientY: 100 });
+
+    expect(screen.getAllByRole('menuitem')).toHaveLength(7);
+    expect(screen.getByRole('menuitem', { name: 'Summarize note' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('menuitem', { name: 'Find related notes' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('duplicates through the Tauri invoke boundary', async () => {
+    const user = userEvent.setup();
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'ideas.md' }), { clientX: 80, clientY: 100 });
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('duplicate_entry', { path: '/vault/notes/ideas.md' }));
   });
 
   it('creates a note inside a folder row selected by the menu', async () => {

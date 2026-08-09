@@ -9,6 +9,21 @@ export interface VaultEntry {
   children: VaultEntry[] | null;
 }
 
+/** Matching wikilinks found across the open vault. */
+export interface WikilinkScan {
+  notes: string[];
+  links: number;
+  ambiguous: boolean;
+}
+
+/** Result of rewriting matching wikilink targets across the open vault. */
+export interface WikilinkRewrite {
+  notesChanged: string[];
+  linksChanged: number;
+  failures: string[];
+  skippedAmbiguous: boolean;
+}
+
 /** Emitted by the Rust `notify` watcher whenever a file inside the open vault changes. */
 const VAULT_CHANGED_EVENT = 'vault-changed';
 
@@ -40,6 +55,18 @@ export const vaultService = {
 
   /** Moves a note or directory to the OS trash. */
   deleteEntry: (path: string): Promise<void> => invoke('delete_entry', { path }),
+
+  /** Renames a note or directory within its current parent. */
+  renameEntry: (path: string, newName: string): Promise<string> => invoke('rename_entry', { path, newName }),
+
+  /** Duplicates a note or directory within its current parent. */
+  duplicateEntry: (path: string): Promise<string> => invoke('duplicate_entry', { path }),
+
+  /** Finds links whose target matches `stem` and reports whether that stem is ambiguous. */
+  scanWikilinkTargets: (stem: string): Promise<WikilinkScan> => invoke('scan_wikilink_targets', { stem }),
+
+  /** Rewrites matching link targets unless more than one note owns `oldStem`. */
+  rewriteWikilinks: (oldStem: string, newStem: string): Promise<WikilinkRewrite> => invoke('rewrite_wikilinks', { oldStem, newStem }),
 
   /** Subscribes to `vault-changed`, firing with the filesystem paths touched by the change. */
   onVaultChanged: (handler: (paths: string[]) => void): Promise<UnlistenFn> => listen<string[]>(VAULT_CHANGED_EVENT, (event) => handler(event.payload)),

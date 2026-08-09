@@ -24,6 +24,8 @@ export type AppCommandId =
   | 'sidebar.collapse'
   | 'sidebar.new-note'
   | 'sidebar.new-directory'
+  | 'sidebar.rename'
+  | 'sidebar.duplicate'
   | 'sidebar.delete'
   | 'chat.history.cursor-down'
   | 'chat.history.cursor-up'
@@ -63,6 +65,8 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'sidebar.collapse', label: 'Collapse directory', layer: 'sidebar' },
   { id: 'sidebar.new-note', label: 'New note', layer: 'sidebar' },
   { id: 'sidebar.new-directory', label: 'New directory', layer: 'sidebar' },
+  { id: 'sidebar.rename', label: 'Rename entry', layer: 'sidebar' },
+  { id: 'sidebar.duplicate', label: 'Duplicate entry', layer: 'sidebar' },
   { id: 'sidebar.delete', label: 'Delete entry', layer: 'sidebar' },
   { id: 'chat.history.cursor-down', label: 'Move cursor down', layer: 'chat.history' },
   { id: 'chat.history.cursor-up', label: 'Move cursor up', layer: 'chat.history' },

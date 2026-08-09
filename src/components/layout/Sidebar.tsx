@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search } from '@/components/ui/icon';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { ChevronLeftGlyph, ChevronRightGlyph, DocGlyph, FolderGlyph, NewFolderGlyph, NewNoteGlyph, OrbitMarkGlyph, SearchGlyph } from '@/components/vault/glyphs';
+import { OrbitMarkGlyph } from '@/components/vault/glyphs';
+import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
@@ -10,6 +12,7 @@ import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
+import { renameVaultEntry } from '@/lib/vault/rename-entry';
 import { type VaultEntry, vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
@@ -34,11 +37,13 @@ export function Sidebar() {
   const expanded = useSidebarStore((state) => state.expanded);
   const cursorPath = useSidebarStore((state) => state.cursorPath);
   const draft = useSidebarStore((state) => state.draft);
+  const renamePath = useSidebarStore((state) => state.renamePath);
   const setTree = useSidebarStore((state) => state.setTree);
   const toggleExpanded = useSidebarStore((state) => state.toggleExpanded);
   const setCursor = useSidebarStore((state) => state.setCursor);
   const beginDraft = useSidebarStore((state) => state.beginDraft);
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
+  const cancelRename = useSidebarStore((state) => state.cancelRename);
 
   const activeFilePath = useEditorStore((state) => activeEditorBuffer(state)?.filePath);
   const buffers = useEditorStore((state) => state.buffers);
@@ -85,10 +90,10 @@ export function Sidebar() {
       <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
         <OrbitMarkGlyph className="text-text-secondary" />
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
-          <ChevronRightGlyph />
+          <Icon icon={ChevronRight} size={15} />
         </Button>
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
-          <SearchGlyph />
+          <Icon icon={Search} size={15} />
         </Button>
         {vaultRoot !== null && (
           <>
@@ -103,7 +108,7 @@ export function Sidebar() {
                 startDraft('note');
               }}
             >
-              <NewNoteGlyph />
+              <Icon icon={FilePlus} size={14} />
             </Button>
             <Button
               variant="ghost"
@@ -116,7 +121,7 @@ export function Sidebar() {
                 startDraft('directory');
               }}
             >
-              <NewFolderGlyph />
+              <Icon icon={FolderPlus} size={14} />
             </Button>
             {tree.length > 0 && (
               <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
@@ -130,7 +135,7 @@ export function Sidebar() {
                     title={entry.name}
                     onClick={() => openRailEntry(entry)}
                   >
-                    {entry.isDir ? <FolderGlyph /> : <DocGlyph />}
+                    {entry.isDir ? <Icon icon={Folder} size={15} /> : <Icon icon={FileText} size={15} />}
                   </Button>
                 ))}
               </div>
@@ -142,6 +147,37 @@ export function Sidebar() {
   }
 
   const rowElements = vaultRows.map(({ entry, depth }) => {
+    if (entry.path === renamePath) {
+      const initialValue = entry.isDir ? entry.name : entry.name.replace(/\.md$/, '');
+      return (
+        <InlineNameInput
+          key={entry.path}
+          depth={depth}
+          initialValue={initialValue}
+          placeholder={entry.isDir ? 'folder name' : 'note name'}
+          ariaLabel={entry.isDir ? 'Rename folder' : 'Rename note'}
+          icon={
+            entry.isDir ? (
+              <>
+                <span className="opacity-65">
+                  <Icon
+                    icon={ChevronRight}
+                    size={12}
+                    className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit', expanded.has(entry.path) ? 'rotate-90' : '')}
+                  />
+                </span>
+                <Icon icon={Folder} size={15} className="opacity-65" />
+              </>
+            ) : (
+              <Icon icon={FileText} size={15} className="opacity-65" />
+            )
+          }
+          onCommit={(name) => void renameVaultEntry(entry.path, name, entry.isDir)}
+          onCancel={cancelRename}
+        />
+      );
+    }
+
     return (
       <FileTreeItem
         key={entry.path}
@@ -190,20 +226,20 @@ export function Sidebar() {
         <OrbitMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
-            <SearchGlyph />
+            <Icon icon={Search} size={15} />
           </Button>
           {vaultRoot !== null && (
             <>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
-                <NewNoteGlyph />
+                <Icon icon={FilePlus} size={14} />
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
-                <NewFolderGlyph />
+                <Icon icon={FolderPlus} size={14} />
               </Button>
             </>
           )}
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={collapseSidebar}>
-            <ChevronLeftGlyph />
+            <Icon icon={ChevronLeft} size={15} />
           </Button>
         </div>
       </div>
