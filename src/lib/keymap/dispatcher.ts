@@ -17,6 +17,9 @@ export interface DispatcherLayer {
   /** Checked fresh on every keydown (spec decision 24) — a layer that goes inactive mid-sequence
    *  can't complete it; the sequence disarms instead of falling through to a lower layer. */
   isActive: () => boolean;
+  /** Whether an *active* layer absorbs a keydown its trie does not match, instead of letting the
+   *  walk continue to a lower layer. Only `modal` sets it (ADR 0014). */
+  swallows?: boolean;
 }
 
 /** The subset of `KeyboardEvent` the dispatcher needs — narrow enough that `dispatcher.test.ts`
@@ -156,6 +159,13 @@ export function createDispatcher(layers: DispatcherLayer[], options: DispatcherO
     }
 
     if (pending !== null) {
+      const pendingLayerName = pending.layerName;
+      if (layers.some((layer) => layer.swallows && layer.name !== pendingLayerName && layer.isActive())) {
+        clearPending();
+      }
+    }
+
+    if (pending !== null) {
       const { layerName, node } = pending;
       const layer = layers.find((candidate) => candidate.name === layerName);
       clearPending();
@@ -170,7 +180,13 @@ export function createDispatcher(layers: DispatcherLayer[], options: DispatcherO
       const trie = tries.get(layer.name);
       if (!trie) continue;
       const next = step(trie, event);
-      if (next === null) continue;
+      if (next === null) {
+        if (layer.swallows) {
+          event.preventDefault();
+          return true;
+        }
+        continue;
+      }
       return advance(layer.name, next, event);
     }
 
@@ -190,9 +206,9 @@ export function createDispatcher(layers: DispatcherLayer[], options: DispatcherO
 // `useDispatcherLayer`; this module owns the single `createDispatcher` instance and the single
 // `window.addEventListener` call, rebuilding whenever a layer's bindings or guard change.
 
-/** Region layers precede `global` (spec decision 24); `sidebar` and `chat.history` are mutually
- *  exclusive in practice (only one region is ever active), so their relative order doesn't matter. */
-const LAYER_PRECEDENCE = ['sidebar', 'chat.history', 'global'] as const;
+/** `modal` precedes region layers and `global` so it can swallow unmatched keydowns; `sidebar` and
+ *  `chat.history` are mutually exclusive in practice, so their relative order doesn't matter. */
+const LAYER_PRECEDENCE = ['modal', 'sidebar', 'chat.history', 'global'] as const;
 
 const registeredLayers = new Map<string, DispatcherLayer>();
 let liveDispatcher: KeymapDispatcher | null = null;

@@ -106,3 +106,24 @@ describe('closeBuffer', () => {
     expect(useEditorStore.getState()).toMatchObject({ buffers: [], activeBufferId: null });
   });
 });
+
+describe('closeBuffersUnder', () => {
+  it('closes only vault buffers at the target boundary and preserves the existing activation behavior', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes/one.md', 'one');
+    const one = getActiveBufferId();
+    store.openFile('/vault/notes/two.md', 'two');
+    const two = getActiveBufferId();
+    store.openFile('/vault/notebook.md', 'sibling');
+    const sibling = getActiveBufferId();
+    store.openFile('/vault/notes/settings.toml', 'settings', 'config');
+    const config = getActiveBufferId();
+    store.activateBuffer(one);
+
+    store.closeBuffersUnder('/vault/notes');
+
+    expect(useEditorStore.getState().buffers.map((buffer) => buffer.id)).toEqual([sibling, config]);
+    expect(useEditorStore.getState().activeBufferId).toBe(sibling);
+    expect(useEditorStore.getState().buffers.map((buffer) => buffer.id)).not.toContain(two);
+  });
+});

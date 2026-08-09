@@ -39,6 +39,7 @@ pub fn run() {
             vault::write_note,
             vault::create_note,
             vault::create_directory,
+            vault::delete_entry,
             settings::read_settings,
             settings::write_settings,
             chats::save_chat,

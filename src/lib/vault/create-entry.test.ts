@@ -6,7 +6,7 @@ import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
 import { type EntryDraft, useSidebarStore } from '@/stores/sidebar-store';
 import { useToastStore } from '@/stores/toast-store';
-import { createVaultEntry, draftPlacement, resolveDraftParent } from './create-entry';
+import { createVaultEntry, draftPlacement, resolveDraftParent, resolveParentForTarget } from './create-entry';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
@@ -51,6 +51,27 @@ describe('resolveDraftParent', () => {
   it('falls back to the vault root when a top-level file cursor has no shallower row', () => {
     const rows = [row(file('a.md', '/vault/a.md'), 0)];
     expect(resolveDraftParent(rows, '/vault/a.md', '/vault')).toBe('/vault');
+  });
+});
+
+describe('resolveParentForTarget', () => {
+  it('returns null when no vault is open', () => {
+    expect(resolveParentForTarget([], '/vault/notes', null)).toBeNull();
+  });
+
+  it('targets a directory row itself', () => {
+    const rows = [row(dir('notes', '/vault/notes'), 0)];
+    expect(resolveParentForTarget(rows, '/vault/notes', '/vault')).toBe('/vault/notes');
+  });
+
+  it('targets the parent directory of a file row', () => {
+    const rows = [row(dir('notes', '/vault/notes'), 0), row(file('a.md', '/vault/notes/a.md'), 1)];
+    expect(resolveParentForTarget(rows, '/vault/notes/a.md', '/vault')).toBe('/vault/notes');
+  });
+
+  it('uses the vault root for an empty-background target even when other rows exist', () => {
+    const rows = [row(dir('notes', '/vault/notes'), 0), row(file('a.md', '/vault/notes/a.md'), 1)];
+    expect(resolveParentForTarget(rows, null, '/vault')).toBe('/vault');
   });
 });
 
