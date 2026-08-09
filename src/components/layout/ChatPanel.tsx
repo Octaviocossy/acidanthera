@@ -88,15 +88,16 @@ export function ChatPanel() {
 
   return (
     <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-panel', isActive ? 'border-border-strong' : 'border-hairline')} aria-label="AI chat">
-      {/* Header strip (#71): the two tabs + a New chat control, left-aligned so the top-right FAB
-          (floating over this band) never overlaps them. The band reserves the FAB's footprint
-          (`--rail-fab` + inset). New chat starts a fresh thread (the prior one is auto-saved). */}
-      <div className="flex h-[calc(var(--rail-fab)_+_var(--space-8))] shrink-0 items-center gap-4 border-b border-hairline px-3">
+      {/* Header strip (#71): tabs left, New chat right. Height is `--rail-titlebar` so the panel
+          joins the app's 40px chrome rhythm — it was `--rail-fab` + inset only to reserve the
+          footprint of the FAB that used to float over this band, which now lives in the titlebar.
+          New chat starts a fresh thread (the prior one is auto-saved). */}
+      <div className="flex h-[var(--rail-titlebar)] shrink-0 items-center border-b border-hairline px-3">
         <div role="tablist" aria-label="Chat panel" className="flex items-center gap-3">
           <TabButton tab="chat" label="Chat" active={tab === 'chat'} onSelect={selectTab} />
           <TabButton tab="history" label="History" active={tab === 'history'} onSelect={selectTab} />
         </div>
-        <Button variant="ghost" size="sm" className="font-mono uppercase tracking-label" onClick={handleNewChat}>
+        <Button variant="ghost" size="sm" className="ml-auto font-mono uppercase tracking-label" onClick={handleNewChat}>
           New chat
         </Button>
       </div>
