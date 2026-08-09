@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Self-hosted Geist + Geist Mono (variable weight, normal style — Factory's two-face type system). */
+/* Self-hosted Geist for UI chrome and JetBrains Mono for content. */
 @import "@fontsource-variable/geist";
-@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/jetbrains-mono";
 
 @import "./tokens/colors.css";
 @import "./tokens/typography.css";
@@ -10,104 +10,57 @@
 @import "./tokens/motion.css";
 @import "./tokens/rails.css";
 
-/* shadcn semantic layer — mapped onto Orbit tokens (doc/v0-spec.md §5.6 "shadcn ⇄ Orbit mapping").
-   One mapping, no `.dark` branch: theming happens a level below, where the Orbit tokens
-   themselves flip via `:root[data-theme='light']` (tokens/colors.css, #28). */
-:root {
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--surface);
-  --card-foreground: var(--text);
-  --popover: var(--surface);
-  --popover-foreground: var(--text);
-  --primary: var(--surface-2);
-  --primary-foreground: var(--text);
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--text);
-  --muted: var(--surface-2);
-  --muted-foreground: var(--text-dim);
-  /* shadcn's hover-surface semantic — monochrome. Orbit's reserved accent lives at --fab-accent
-     (Factory signal-orange, `--accent-signal`). */
-  --accent: var(--surface-2);
-  --accent-foreground: var(--text);
-  --destructive: var(--text);
-  --destructive-foreground: var(--bg);
-  /* No `--border: var(--border);` alias here — Orbit's own hairline token is already named
-     `--border` (tokens/colors.css), so re-declaring it under the same name here would be a
-     self-reference (invalid at computed-value time); `--color-border` below reads the real
-     token directly. */
-  --input: var(--border);
-  --ring: var(--border-active);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-}
-
-/* Orbit-native utilities (bg-surface, text-dim, border-hairline, font-mono, ...). */
 @theme {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-border-hairline: var(--border);
-  --color-border-active: var(--border-active);
-  --color-text: var(--text);
-  --color-text-dim: var(--text-dim);
-  --color-text-faint: var(--text-faint);
-  --color-fab-accent: var(--fab-accent);
-  --color-fab-accent-dim: var(--fab-accent-dim);
+  --color-canvas: var(--bg-canvas);
+  --color-panel: var(--bg-panel);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-hover: var(--bg-hover);
 
-  /* Factory data-voice accents (signal orange / metric green) — never a button fill or
-     decoration, see the accent discipline note in `.agents/ubiquitous-language.md`. */
-  --color-signal: var(--accent-signal);
-  --color-metric: var(--accent-metric);
+  --color-hairline: var(--border-hairline);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
 
-  --font-mono: var(--font-mono);
+  --color-text-primary: var(--text-primary);
+  --color-text-body: var(--text-body);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-on: var(--accent-on);
+  --color-accent-soft: var(--accent-soft);
+
   --font-sans: var(--font-sans);
-  --font-geist: var(--font-geist);
-  --font-geist-mono: var(--font-geist-mono);
+  --font-mono: var(--font-mono);
 
-  --text-xs: var(--font-size-xs);
-  --text-sm: var(--font-size-sm);
-  --text-base: var(--font-size-base);
-  --text-md: var(--font-size-md);
-  --text-lg: var(--font-size-lg);
-  --text-xl: var(--font-size-xl);
-  --text-heading: var(--font-size-heading);
-  --text-heading-lg: var(--font-size-heading-lg);
+  --text-micro: var(--font-size-micro);
+  --text-label: var(--font-size-label);
+  --text-meta: var(--font-size-meta);
+  --text-caption: var(--font-size-caption);
+  --text-ui: var(--font-size-ui);
+  /* Tailwind's --text-* namespace is font sizes; color uses --color-text-body. */
+  --text-body: var(--font-size-body);
+  --text-input: var(--font-size-input);
+  --text-h2: var(--font-size-h2);
+  --text-h1: var(--font-size-h1);
   --text-display: var(--font-size-display);
 
-  --tracking-heading: var(--tracking-heading);
-  --tracking-heading-lg: var(--tracking-heading-lg);
+  --tracking-label: var(--tracking-label);
   --tracking-display: var(--tracking-display);
-  --tracking-caps: var(--tracking-caps);
 
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  --radius-kbd: var(--radius-kbd);
+  --radius-btn: var(--radius-btn);
+  --radius-item: var(--radius-item);
+  --radius-tab: var(--radius-tab);
+  --radius-card: var(--radius-card);
+  --radius-panel: var(--radius-panel);
+  --radius-modal: var(--radius-modal);
+  --radius-pill: var(--radius-pill);
 
   --ease-orbit: var(--ease);
 }
 
-/* Toast entry fade (ToastHost) — fades only, no bounce (motion tokens, doc/v0-spec.md §5.6). */
+/* Toast entry fade (ToastHost) - fades only, no bounce (motion tokens, doc/v0-spec.md section 5.6). */
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -117,7 +70,7 @@
   }
 }
 
-/* Theme follows the persisted setting (`data-theme`, #28) — never prefers-color-scheme. */
+/* Theme follows the persisted setting (`data-theme`, #28) - never prefers-color-scheme. */
 html,
 body {
   height: 100%;
@@ -125,10 +78,10 @@ body {
 
 body {
   margin: 0;
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -139,14 +92,14 @@ body {
   height: 100%;
 }
 
-/* Minimalist scrollbars — thin, trackless, theme-aware.
+/* Minimalist scrollbars - thin, trackless, theme-aware.
    Tauri's webview is always WebKit-family (WKWebView / WebKitGTK / Chromium), so
    `::-webkit-scrollbar` is universally supported. We intentionally do NOT set the
    standard `scrollbar-width` / `scrollbar-color`: on Safari 18.2+ / modern WebKit,
    setting either one DISABLES the `::-webkit-scrollbar` pseudo-elements, which would
    drop this fine-grained styling. Colors use the semantic border tokens so they flip
    with `data-theme` (#28). This one global rule also covers CM6's `.cm-scroller`
-   (light DOM) — the editor, sidebar tree, and chat transcript all inherit it. */
+   (light DOM) - the editor, sidebar tree, and chat transcript all inherit it. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -158,7 +111,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background-color: var(--border);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-pill);
   /* Transparent border + padding-box clip insets the thumb to ~4px visible width,
      so it reads as a hairline sliver rather than a solid 8px bar. */
   border: 2px solid transparent;
@@ -166,7 +119,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--border-active);
+  background-color: var(--border-strong);
 }
 
 ::-webkit-scrollbar-corner {

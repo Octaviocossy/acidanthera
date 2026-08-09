@@ -34,7 +34,7 @@ const { useSettingsStore } = await import('@/stores/settings-store');
 const { useToastStore } = await import('@/stores/toast-store');
 
 const READ_SETTINGS_RESULT = {
-  settings: { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' },
+  settings: { model: 'sonnet-5', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault' },
   diagnostics: [],
 };
 

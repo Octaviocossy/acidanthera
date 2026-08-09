@@ -39,7 +39,7 @@ fn default_model() -> String {
 }
 
 fn default_editor_font() -> String {
-    "Geist Mono".into()
+    "JetBrains Mono".into()
 }
 
 fn default_theme() -> String {
@@ -441,7 +441,7 @@ mod tests {
                 settings.theme.as_str(),
                 settings.vault_path.as_str()
             ),
-            ("gpt-5.4-mini", "Geist Mono", "dark", "")
+            ("gpt-5.4-mini", "JetBrains Mono", "dark", "")
         );
     }
 

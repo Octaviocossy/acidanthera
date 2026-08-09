@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { SectionLabel } from '@/components/ui/section-label';
+import { Segmented } from '@/components/ui/segmented';
 import { listModels } from '@/lib/agent/model-catalog';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import type { SettingsDiagnostic, ThemeName } from '@/services/settings.service';
@@ -9,12 +11,17 @@ import { useChatStore } from '@/stores/chat-store';
 import { useSettingsStore } from '@/stores/settings-store';
 
 const THEMES: ThemeName[] = ['dark', 'light'];
+const CATEGORIES = ['Appearance', 'Editor', 'Vault'] as const;
+type SettingsCategory = (typeof CATEGORIES)[number];
 
-function SettingsRow({ label, children }: { label: string; children: ReactNode }) {
+function SettingsRow({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="shrink-0 font-mono text-text-dim text-xs uppercase tracking-caps">{label}</span>
-      {children}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="shrink-0 font-sans text-body text-text-primary">{label}</span>
+        {children}
+      </div>
+      {description && <span className="font-sans text-caption text-text-secondary">{description}</span>}
     </div>
   );
 }
@@ -22,11 +29,10 @@ function SettingsRow({ label, children }: { label: string; children: ReactNode }
 /**
  * The settings dialog (#29): a modal overlay editing the four persisted settings (#25) —
  * model, theme, editor font, vault path — through `useSettingsStore`'s write-through
- * `updateSettings`. Monochrome, hand-built on `Button`/`Badge` like every overlay
- * (doc/v0-spec.md §5.6). Selecting a model also switches the chat model (and thus its
- * engine) immediately (the reactive wiring #25 deferred); theme/font values are applied by
- * the theme slice (#28). Opened from the StatusBar button or the `Ctrl-w` `s` chord; Escape
- * or a scrim click closes.
+ * `updateSettings`. Monochrome, hand-built on the design primitives. Selecting a model also
+ * switches the chat model (and thus its engine) immediately; theme/font values are applied by
+ * the theme slice. Opened from the StatusBar button or the `Ctrl-w` `s` chord; Escape or a
+ * scrim click closes.
  */
 export function SettingsDialog() {
   const open = useAppStore((state) => state.settingsOpen);
@@ -41,6 +47,7 @@ export function SettingsDialog() {
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [fontDraft, setFontDraft] = useState('');
+  const [category, setCategory] = useState<SettingsCategory>('Appearance');
 
   // Settings are loaded at boot by `useSettingsBootstrap`; this covers the dialog racing it.
   useEffect(() => {
@@ -81,14 +88,14 @@ export function SettingsDialog() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; Escape (window listener above) is the keyboard path and the panel is the real dialog.
-    <div role="presentation" className="absolute inset-0 flex items-center justify-center bg-bg/70" onClick={closeSettings}>
+    <div role="presentation" className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)]" onClick={closeSettings}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="w-[420px] rounded-lg border border-border-hairline bg-surface outline-none"
+        className="w-[760px] overflow-hidden rounded-modal border border-border-strong bg-surface shadow-[var(--shadow-overlay-dark)] outline-none"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           // Keep keystrokes inside the modal: without this, `:`/`Ctrl-w` typed while a
@@ -97,83 +104,98 @@ export function SettingsDialog() {
           if (event.key !== 'Escape') event.stopPropagation();
         }}
       >
-        <div className="flex items-center justify-between border-b border-border-hairline px-4 py-2">
-          <span className="font-mono text-text-faint text-xs uppercase tracking-caps">Settings</span>
-          <Button variant="quiet" size="sm" kbd onClick={closeSettings} aria-label="Close settings">
+        <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
+          <SectionLabel>Settings</SectionLabel>
+          <Button variant="ghost" size="sm" asKbd onClick={closeSettings} aria-label="Close settings">
             esc
           </Button>
         </div>
 
-        {settings !== null && syntaxError && (
-          <div className="flex flex-col gap-2 rounded-sm border border-border-active px-4 py-4">
-            <span className="font-mono text-text-dim text-xs uppercase tracking-caps">settings.toml has a syntax error</span>
-            <span className="font-sans text-sm text-text">
-              {syntaxError.line !== null ? `Line ${syntaxError.line}: ` : ''}
-              {syntaxError.message}
-            </span>
-            <span className="font-sans text-text-faint text-xs">Fix the file on disk, then reopen this dialog. Settings can't be changed until it parses.</span>
-          </div>
-        )}
+        <div className="flex min-h-[360px]">
+          <nav aria-label="Settings categories" className="w-44 shrink-0 border-r border-hairline p-3">
+            {CATEGORIES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-current={item === category ? 'page' : undefined}
+                className={`flex w-full rounded-item px-[10px] py-2 text-left font-sans text-body ${item === category ? 'bg-elevated text-text-primary' : 'text-text-secondary'}`}
+                onClick={() => setCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </nav>
 
-        {settings !== null && !syntaxError && (
-          <div className="flex flex-col gap-4 px-4 py-4">
-            <SettingsRow label="Model">
-              <div className="flex flex-wrap justify-end gap-1">
-                {listModels().map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    aria-pressed={model.id === settings.model}
-                    onClick={() => {
-                      void updateSettings({ model: model.id });
-                      setModel(model.id);
-                    }}
-                  >
-                    <Badge tone={model.id === settings.model ? 'plain' : 'muted'}>{model.label}</Badge>
-                  </button>
-                ))}
-              </div>
-            </SettingsRow>
-
-            <SettingsRow label="Theme">
-              <div className="flex gap-1">
-                {THEMES.map((theme) => (
-                  <button key={theme} type="button" aria-pressed={theme === settings.theme} onClick={() => void updateSettings({ theme })}>
-                    <Badge tone={theme === settings.theme ? 'plain' : 'muted'}>{theme}</Badge>
-                  </button>
-                ))}
-              </div>
-            </SettingsRow>
-
-            <SettingsRow label="Editor font">
-              <input
-                value={fontDraft}
-                onChange={(event) => setFontDraft(event.currentTarget.value)}
-                onBlur={commitFont}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    commitFont();
-                  }
-                }}
-                className="w-48 rounded-sm border border-border-hairline bg-transparent px-2 py-1 font-sans text-sm text-text outline-none focus:border-border-active"
-                spellCheck={false}
-                aria-label="Editor font"
-              />
-            </SettingsRow>
-
-            <SettingsRow label="Vault">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate font-sans text-sm text-text-dim" title={settings.vaultPath}>
-                  {settings.vaultPath}
+          <div className="min-w-0 flex-1 p-5">
+            {settings !== null && syntaxError && (
+              <div className="flex flex-col gap-2 rounded-card border border-border-strong px-4 py-4">
+                <SectionLabel>settings.toml has a syntax error</SectionLabel>
+                <span className="font-sans text-ui text-text-primary">
+                  {syntaxError.line !== null && <span className="font-mono text-meta">Line {syntaxError.line}: </span>}
+                  {syntaxError.message}
                 </span>
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>
-                  Change…
-                </Button>
+                <span className="font-sans text-caption text-text-secondary">Fix the file on disk, then reopen this dialog. Settings can't be changed until it parses.</span>
               </div>
-            </SettingsRow>
+            )}
+
+            {settings !== null && !syntaxError && category === 'Appearance' && (
+              <div className="flex flex-col gap-6">
+                <SettingsRow label="Theme">
+                  <Segmented options={THEMES} value={settings.theme} onChange={(theme) => void updateSettings({ theme: theme as ThemeName })} />
+                </SettingsRow>
+                <SettingsRow label="Model" description="Selects the model used for new agent turns.">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {listModels().map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        aria-pressed={model.id === settings.model}
+                        onClick={() => {
+                          void updateSettings({ model: model.id });
+                          setModel(model.id);
+                        }}
+                      >
+                        <Chip variant={model.id === settings.model ? 'model' : 'plain'}>{model.label}</Chip>
+                      </button>
+                    ))}
+                  </div>
+                </SettingsRow>
+              </div>
+            )}
+
+            {settings !== null && !syntaxError && category === 'Editor' && (
+              <SettingsRow label="Editor font" description="Applied to the editor canvas.">
+                <input
+                  value={fontDraft}
+                  onChange={(event) => setFontDraft(event.currentTarget.value)}
+                  onBlur={commitFont}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      commitFont();
+                    }
+                  }}
+                  className="w-56 rounded-card border border-border bg-[var(--surface-input)] px-3 py-2 font-sans text-input text-text-primary outline-none focus:border-border-strong"
+                  spellCheck={false}
+                  aria-label="Editor font"
+                />
+              </SettingsRow>
+            )}
+
+            {settings !== null && !syntaxError && category === 'Vault' && (
+              <SettingsRow label="Vault" description="The root folder opened when Orbit starts.">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="truncate font-mono text-meta text-text-muted" title={settings.vaultPath}>
+                    {settings.vaultPath.replace(/^\/(?:Users|home)\/[^/]+/, '~')}
+                  </span>
+                  <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>
+                    Change…
+                  </Button>
+                </div>
+              </SettingsRow>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

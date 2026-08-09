@@ -20,6 +20,12 @@ export function vimModeSync(bufferId: string) {
         this.cm?.on('vim-mode-change', this.onModeChange);
       }
 
+      update(update: { selectionSet: boolean; state: EditorView['state'] }) {
+        if (!update.selectionSet || useEditorStore.getState().activeBufferId !== bufferId) return;
+        const line = update.state.doc.lineAt(update.state.selection.main.head);
+        useEditorStore.getState().setCursor({ line: line.number, col: update.state.selection.main.head - line.from + 1 });
+      }
+
       destroy() {
         this.cm?.off('vim-mode-change', this.onModeChange);
       }

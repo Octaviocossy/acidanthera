@@ -4,6 +4,7 @@ import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
 import { useEffect, useMemo, useState } from 'react';
 import { applyEditorKeymap } from '@/lib/editor/apply-vim-keymap';
+import { orbitHighlighting } from '@/lib/editor/highlight';
 import { editorKeymapExtension, trackEditorView } from '@/lib/editor/keymap-compartment';
 import { regionExit } from '@/lib/editor/region-exit';
 import { editorTheme } from '@/lib/editor/theme';
@@ -25,6 +26,7 @@ interface BufferEditorProps {
 export function BufferEditor({ buffer, active }: BufferEditorProps) {
   const theme = useSettingsStore((state) => state.settings?.theme ?? 'dark');
   const updateBufferContent = useEditorStore((state) => state.updateBufferContent);
+  const setCursor = useEditorStore((state) => state.setCursor);
   const resolvedKeymap = useKeymapStore((state) => state.resolved);
   const viewerActive = useAppStore((state) => state.activeRegion === 'viewer');
   const focusRequest = useAppStore((state) => state.editorFocusRequest);
@@ -48,6 +50,7 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
       buffer.source === 'config' ? tomlLanguage : markdown(),
+      orbitHighlighting,
       vimModeSync(buffer.id),
       // Wikilinks are a Markdown-note concept and meaningless in TOML.
       ...(buffer.source === 'config' ? [] : wikilink),
@@ -60,6 +63,12 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
   useEffect(() => {
     applyEditorKeymap(resolvedKeymap);
   }, [resolvedKeymap]);
+
+  useEffect(() => {
+    if (!active || view === null) return;
+    const line = view.state.doc.lineAt(view.state.selection.main.head);
+    setCursor({ line: line.number, col: view.state.selection.main.head - line.from + 1 });
+  }, [active, view, setCursor]);
 
   // Real DOM focus follows the focused region. The window dispatcher bails on any `contenteditable`
   // target (`isEditableTarget`), so the two halves have to agree: region focus without DOM focus

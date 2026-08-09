@@ -13,8 +13,8 @@ describe('Badge', () => {
     expect(screen.getByText('default')).toHaveClass('border-border');
   });
 
-  it('applies the accent tone when requested', () => {
-    render(<Badge tone="accent">live</Badge>);
-    expect(screen.getByText('live')).toHaveClass('border-fab-accent');
+  it('applies the plain tone when requested', () => {
+    render(<Badge tone="plain">label</Badge>);
+    expect(screen.getByText('label')).toHaveClass('text-text-secondary');
   });
 });

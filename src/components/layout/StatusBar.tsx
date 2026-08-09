@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/app-store';
+import { useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 
 /**
@@ -14,27 +15,36 @@ export function StatusBar() {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const openSettings = useAppStore((state) => state.openSettings);
   const showFileFinder = useFileFinderStore((state) => state.show);
+  const activeBufferId = useEditorStore((state) => state.activeBufferId);
+  const cursor = useEditorStore((state) => state.cursor);
 
   return (
-    <footer className="flex h-[var(--rail-status)] shrink-0 items-center justify-between border-t border-border-hairline bg-surface px-3">
-      <span className="font-mono text-text-dim text-xs uppercase tracking-caps">{activeRegion}</span>
+    <footer className="flex h-[var(--rail-status)] shrink-0 items-center justify-between border-t border-hairline bg-panel px-3 font-mono text-meta text-text-muted">
+      <div className="flex items-center gap-3">
+        <span className="uppercase tracking-label">{activeRegion}</span>
+        {activeBufferId !== null && (
+          <span>
+            ln {cursor.line} · col {cursor.col}
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         {/* The mouse entry point for `Ctrl-w b` — without it a hidden sidebar is only recoverable
             by keyboard. State reads monochrome (brighter when shown), per the accent discipline. */}
         <Button
-          variant={sidebarOpen ? 'ghost' : 'quiet'}
+          variant="ghost"
           size="sm"
-          className="h-5 px-1.5 text-xs uppercase tracking-caps"
+          className="h-5 px-1.5 font-mono text-meta uppercase tracking-label"
           aria-pressed={sidebarOpen}
           aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
           onClick={toggleSidebar}
         >
           sidebar
         </Button>
-        <Button variant="quiet" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={showFileFinder}>
+        <Button variant="ghost" size="sm" className="h-5 px-1.5 font-mono text-meta uppercase tracking-label" aria-haspopup="dialog" onClick={showFileFinder}>
           find
         </Button>
-        <Button variant="quiet" size="sm" className="h-5 px-1.5 text-xs uppercase tracking-caps" aria-haspopup="dialog" onClick={openSettings}>
+        <Button variant="ghost" size="sm" className="h-5 px-1.5 font-mono text-meta uppercase tracking-label" aria-haspopup="dialog" onClick={openSettings}>
           settings
         </Button>
         <Badge tone="muted">{mode}</Badge>

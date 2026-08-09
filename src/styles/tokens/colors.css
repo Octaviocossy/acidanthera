@@ -1,71 +1,77 @@
-/*
- * Orbit-111 design tokens — colors.
- * Factory design system (`new-system-design-files-to-use/DESIGN.md`). The raw `--color-*` ramp
- * below still records the true Factory anchors (obsidian canvas, bone, chalk, …) verbatim. The
- * semantic tokens (`--bg`, `--text`, …) intentionally run a *softened* variant of Factory —
- * lifted/dimmed a step in from those pure anchors in both themes, per explicit user preference
- * to reduce the stark high-contrast feel — rather than aliasing them 1:1. `useApplyTheme` (#28)
- * sets `data-theme` from the persisted settings; the light block below mirrors the same
- * softened contrast ordering as dark.
- */
 :root {
   color-scheme: dark;
 
-  /* Factory raw palette — first-class tokens for direct use alongside the mapped names below. */
-  --color-obsidian-canvas: #101010;
-  --color-carbon-lift: #1d1a18;
-  --color-ash-stroke: #3d3a39;
-  --color-graphite-mid: #4d4947;
-  --color-warm-granite: #8a8380;
-  --color-pale-stone: #b8b3b0;
-  --color-bone: #eeeeee;
-  --color-chalk: #fafafa;
-  --color-signal-orange: #ee6018;
-  --color-metric-green: #a0ca92;
+  /* Surface ladder (Linear-midnight). Canvas is DARKER than panel - the core move. */
+  --bg-canvas: #0b0c0d; /* editor canvas, window base */
+  --bg-panel: #0e0f11; /* sidebar, side panels, status bar */
+  --bg-surface: #111214; /* title bar, modals, palette */
+  --bg-elevated: #17181b; /* active rows, chips, cards-on-panel */
+  --bg-hover: #1b1d21; /* hover / selected row in overlays */
 
-  /* Surfaces — lifted off pure obsidian for a softer canvas (was #101010 / carbon / #252220). */
-  --bg: #1a1917;
-  --surface: #232120;
-  --surface-2: #2c2a27;
+  /* Borders */
+  --border-hairline: #1c1e22; /* panel seams, internal dividers */
+  --border: #232529; /* cards, inputs, chips */
+  --border-strong: #2c2f35; /* modal edges, focused outlines */
 
-  /* Borders — unchanged (borders aren't the contrast complaint); kept on the Factory ramp. */
-  --border: var(--color-ash-stroke);
-  --border-active: var(--color-graphite-mid);
+  /* Text ladder */
+  --text-primary: #ecedee;
+  --text-body: #c8ccd2; /* editor prose */
+  --text-secondary: #9aa0a8; /* UI labels, inactive nav */
+  --text-muted: #61656d; /* metadata, hints, section labels */
 
-  /* Text — softened off pure bone; dim/faint lifted a touch for the lifted canvas. */
-  --text: #e2dfdb;
-  --text-dim: #97908b;
-  --text-faint: #565250;
+  /* Accent - ember. AI presence only, never decorative, never a large fill (ADR 0007). */
+  --accent: #e8683a;
+  --accent-on: #0b0c0d;
+  --accent-soft: rgba(232, 104, 58, 0.12);
+  --accent-tint: var(--accent-soft);
+  --accent-border: var(--border);
 
-  /* Accent — data-voice only, never decoration or button fill (DESIGN.md "Do's and Don'ts").
-     `--fab-accent`/`--fab-accent-dim` kept as an alias to `--accent-signal` for one release so
-     child #58 (chat) still compiles before it restyles the AiFab off the old lime accent. */
-  --accent-signal: var(--color-signal-orange);
-  --accent-metric: var(--color-metric-green);
-  --fab-accent: var(--accent-signal);
-  --fab-accent-dim: #7a3410;
+  /* Diff - encodes change direction inside a diff; NOT the accent, NOT decoration. */
+  --diff-add-bg: rgba(39, 166, 68, 0.08);
+  --diff-add-fg: #7fa87b;
+  --diff-del-bg: rgba(235, 87, 87, 0.07);
+  --diff-del-fg: #8a5b56;
+
+  /* Traffic lights (11px circles) */
+  --mac-red: #f5645a;
+  --mac-yellow: #f5b93c;
+  --mac-green: #4fc463;
+
+  /* Overlay scrim - no backdrop blur. */
+  --scrim: rgba(5, 6, 7, 0.55);
+
+  /* Semantic aliases */
+  --surface-window: var(--bg-canvas);
+  --surface-card: var(--bg-elevated);
+  --surface-input: var(--bg-elevated);
+  --text-on-accent: var(--accent-on);
 }
 
-/* Light palette — a Factory-derived mirror (bone/chalk surfaces, obsidian text), same
-   contrast ordering as dark: text > dim > faint, border between the surfaces and border-active. */
+/* Light theme (Cursor-parchment). Never cool grays; shadows are warm. */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --bg: #f4f2ef;
-  --surface: #ebe8e4;
-  --surface-2: #e2deda;
+  --bg-canvas: #f7f7f4;
+  --bg-panel: #f2f1ed;
+  --bg-surface: #ffffff;
+  --bg-elevated: #e9e8e2;
+  --bg-hover: #e9e8e2;
 
-  --border: #dcd8d4;
-  --border-active: var(--color-warm-granite);
+  --border-hairline: #e6e5e0;
+  --border: #deddd6;
+  --border-strong: #cdcdc9;
 
-  /* Softened off pure obsidian text for a calmer light surface. */
-  --text: #26231f;
-  --text-dim: #5c5652;
-  --text-faint: #837c77;
+  --text-primary: #26251e;
+  --text-body: #3d3c35;
+  --text-secondary: #7a7974;
+  --text-muted: #a8a7a1;
 
-  /* Signal-orange darkened slightly for WCAG contrast as small text on a light --bg. */
-  --accent-signal: #c24d10;
-  --accent-metric: var(--color-metric-green);
-  --fab-accent: var(--accent-signal);
-  --fab-accent-dim: #f3c8ac;
+  --accent: #f54e00;
+  --accent-on: #ffffff;
+  --accent-soft: #fdeee6;
+  --accent-tint: #fdf6f1; /* AI answer-card fill */
+  --accent-border: #f0d9cc; /* AI answer-card edge */
+
+  --surface-card: #ffffff;
+  --surface-input: #ffffff;
 }

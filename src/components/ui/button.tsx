@@ -4,40 +4,43 @@ import type * as React from 'react';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm border font-mono transition-colors duration-[var(--dur)] ease-orbit disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-active',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-btn border font-sans transition-[color,background-color,border-color] duration-[150ms] ease-[ease] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-strong',
   {
     variants: {
       variant: {
-        /* Dark Filled Button (DESIGN.md) — the neutral committing action, never a chromatic fill. */
-        primary: 'border-transparent bg-surface text-text hover:bg-surface-2',
-        /* Ghost Text Link (DESIGN.md) — border/text shift only, no fill ever appears on hover. */
-        ghost: 'border-border-hairline bg-transparent text-text hover:border-text hover:text-text',
-        /* Light Filled Button (DESIGN.md) — chalk fill, obsidian text; the nav "Log In" treatment. */
-        light: 'border-transparent bg-[var(--color-chalk)] text-[var(--color-obsidian-canvas)] hover:bg-[var(--color-bone)]',
-        quiet: 'border-transparent bg-transparent text-text-dim hover:text-text',
+        primary: 'border-transparent bg-accent font-medium text-accent-on',
+        secondary: 'border-border bg-transparent font-normal text-text-secondary',
+        ghost: 'border-transparent bg-transparent font-normal text-text-secondary',
       },
       size: {
-        sm: 'h-6 px-2 text-xs',
-        md: 'h-8 px-3 text-sm',
+        sm: 'px-3 py-1 text-[11px]',
+        md: 'px-[14px] py-[5px] text-ui',
       },
-      kbd: {
-        true: 'h-5 rounded-sm border-border bg-surface px-1.5 text-xs text-text-dim',
+      asKbd: {
+        true: 'h-5 rounded-kbd border-border bg-elevated px-1.5 py-0 font-mono text-micro text-text-muted',
         false: '',
       },
     },
     defaultVariants: {
-      variant: 'ghost',
+      variant: 'secondary',
       size: 'md',
-      kbd: false,
+      asKbd: false,
     },
   }
 );
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Trailing key hint rendered inside the button, e.g. "⌘⏎". */
+  kbd?: string;
 }
 
-export function Button({ className, variant, size, kbd, asChild = false, ...props }: ButtonProps) {
+export function Button({ className, variant, size, asKbd, kbd, asChild = false, children, ...props }: ButtonProps) {
   const Comp = asChild ? Slot : 'button';
-  return <Comp className={cn(buttonVariants({ variant, size, kbd, className }))} {...props} />;
+  return (
+    <Comp className={cn(buttonVariants({ variant, size, asKbd, className }))} {...props}>
+      {children}
+      {kbd && <span className="font-mono text-micro opacity-70">{kbd}</span>}
+    </Comp>
+  );
 }

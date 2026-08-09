@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronGlyph, FileGlyph } from '@/components/vault/glyphs';
+import { ChevronGlyph, DocGlyph, FolderGlyph } from '@/components/vault/glyphs';
 import type { EntryDraftKind } from '@/stores/sidebar-store';
 
 export interface EntryDraftRowProps {
@@ -26,8 +26,14 @@ export function EntryDraftRow({ kind, depth, onCommit, onCancel }: EntryDraftRow
   }, []);
 
   return (
-    <div role="treeitem" tabIndex={-1} style={{ paddingLeft: depth * 12 + 8 }} className="flex h-6 shrink-0 items-center gap-1.5 pr-2 text-sm outline-none">
-      {kind === 'directory' ? <ChevronGlyph collapsed /> : <FileGlyph />}
+    <div
+      role="treeitem"
+      tabIndex={-1}
+      style={{ paddingLeft: depth * 12 + 10 }}
+      className="flex shrink-0 items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] text-text-secondary outline-none"
+    >
+      {kind === 'directory' && <ChevronGlyph collapsed />}
+      {kind === 'directory' ? <FolderGlyph className="opacity-65" /> : <DocGlyph className="opacity-65" />}
       <input
         ref={inputRef}
         value={name}
@@ -43,7 +49,7 @@ export function EntryDraftRow({ kind, depth, onCommit, onCancel }: EntryDraftRow
         }}
         onBlur={onCancel}
         placeholder={kind === 'note' ? 'note name' : 'folder name'}
-        className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-text-faint"
+        className="min-w-0 flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-muted"
         spellCheck={false}
         aria-label={kind === 'note' ? 'New note name' : 'New folder name'}
       />

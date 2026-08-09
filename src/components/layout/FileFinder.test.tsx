@@ -70,7 +70,7 @@ describe('FileFinder', () => {
     expect(screen.getByRole('option', { name: 'notes/ideas.md' })).toBeInTheDocument();
   });
 
-  it('renders matching files as full-width vertical rows and exposes long paths', () => {
+  it('renders matching files as accessible palette rows with names and paths', () => {
     useFileFinderStore.getState().show();
     render(<FileFinder />);
 
@@ -79,7 +79,9 @@ describe('FileFinder', () => {
     const longPathOption = screen.getByRole('option', { name: longRelativePath });
 
     expect(listbox).toHaveClass('flex', 'flex-col');
-    expect(option).toHaveClass('w-full', 'min-w-0', 'truncate', 'text-left');
+    expect(option).toHaveClass('w-full', 'min-w-0', 'text-left');
+    expect(option).toHaveTextContent('ideas.md');
+    expect(option).toHaveTextContent('notes/ideas.md');
     expect(longPathOption).toHaveAttribute('title', longRelativePath);
   });
 
@@ -96,12 +98,13 @@ describe('FileFinder', () => {
     expect(useFileFinderStore.getState().open).toBe(false);
   });
 
-  it('lists config files alongside vault notes, visually marked', () => {
+  it('lists config files alongside vault notes with inline metadata', () => {
     useFileFinderStore.getState().show();
     render(<FileFinder />);
 
-    const option = screen.getByRole('option', { name: 'config/settings.tomlconfig' });
+    const option = screen.getByRole('option', { name: 'config/settings.toml' });
     expect(option).toBeInTheDocument();
+    expect(option).toHaveTextContent('config');
   });
 
   it('opens a selected config file through openConfigFile, not openVaultFile', async () => {

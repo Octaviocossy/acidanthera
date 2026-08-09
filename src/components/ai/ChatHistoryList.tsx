@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { SectionLabel } from '@/components/ui/section-label';
 import { getModel } from '@/lib/agent/model-catalog';
 import { deriveChatTitle, parseChatFile } from '@/lib/chat/chat-file';
 import { cn } from '@/lib/utils';
@@ -77,40 +78,56 @@ export function ChatHistoryList() {
   const now = Date.now();
 
   if (loading && rows.length === 0) {
-    return <p className="px-4 py-3 font-mono text-text-faint text-xs uppercase tracking-caps">Loading…</p>;
+    return (
+      <div className="flex flex-col gap-2 px-[10px] py-2">
+        <SectionLabel>History</SectionLabel>
+        <p className="font-mono text-label uppercase tracking-label text-text-muted">Loading…</p>
+      </div>
+    );
   }
   if (rows.length === 0) {
-    return <p className="px-4 py-3 font-mono text-text-faint text-xs uppercase tracking-caps">No saved chats yet.</p>;
+    return (
+      <div className="flex flex-col gap-2 px-[10px] py-2">
+        <SectionLabel>History</SectionLabel>
+        <p className="font-mono text-label uppercase tracking-label text-text-muted">No saved chats yet.</p>
+      </div>
+    );
   }
 
   return (
-    <div ref={listRef} role="listbox" aria-label="Saved chats" className="flex flex-col py-1">
-      {rows.map((row) => {
-        const isCursor = row.id === cursorId;
-        const isActive = row.id === activeChatId;
-        return (
-          // biome-ignore lint/a11y/useFocusableInteractive: keyboard interaction is region-scoped via useChatHistoryKeymap (window-level, vim-style), not per-row DOM focus.
-          // biome-ignore lint/a11y/useKeyWithClickEvents: same as above — onClick is a mouse affordance alongside the keyboard path, not a replacement for it.
-          <div
-            key={row.id}
-            role="option"
-            aria-selected={isActive}
-            data-cursor={isCursor}
-            onClick={() => {
-              focusRegion('chat');
-              setCursor(row.id);
-              open(row.id);
-            }}
-            className={cn('relative flex cursor-pointer select-none flex-col gap-0.5 px-4 py-2 text-sm', isActive ? 'bg-surface-2 text-text' : 'text-text-dim hover:text-text')}
-          >
-            {isCursor && <span className="absolute inset-y-0 left-0 w-0.5 bg-border-active" aria-hidden="true" />}
-            <span className="truncate font-sans">{row.title}</span>
-            <span className="truncate font-mono text-text-faint text-xs">
-              {row.modelLabel} · {formatRelative(row.updatedMs, now)}
-            </span>
-          </div>
-        );
-      })}
+    <div className="flex flex-col gap-1 px-[10px] py-2">
+      <SectionLabel>History</SectionLabel>
+      <div ref={listRef} role="listbox" aria-label="Saved chats" className="flex flex-col gap-1">
+        {rows.map((row) => {
+          const isCursor = row.id === cursorId;
+          const isActive = row.id === activeChatId;
+          return (
+            // biome-ignore lint/a11y/useFocusableInteractive: keyboard interaction is region-scoped via useChatHistoryKeymap (window-level, vim-style), not per-row DOM focus.
+            // biome-ignore lint/a11y/useKeyWithClickEvents: same as above — onClick is a mouse affordance alongside the keyboard path, not a replacement for it.
+            <div
+              key={row.id}
+              role="option"
+              aria-selected={isActive}
+              data-cursor={isCursor}
+              onClick={() => {
+                focusRegion('chat');
+                setCursor(row.id);
+                open(row.id);
+              }}
+              className={cn(
+                'relative flex cursor-pointer select-none flex-col gap-0.5 rounded-item px-[10px] py-2 font-sans text-body',
+                isCursor ? 'bg-elevated text-text-primary' : 'text-text-secondary hover:text-text-primary'
+              )}
+            >
+              {isCursor && <span className="absolute inset-y-0 left-0 w-0.5 bg-border-strong" aria-hidden="true" />}
+              <span className="truncate font-sans">{row.title}</span>
+              <span className="truncate font-mono text-meta text-text-muted">
+                {row.modelLabel} · {formatRelative(row.updatedMs, now)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

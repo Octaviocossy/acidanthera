@@ -6,6 +6,7 @@ import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
+import { Titlebar } from '@/components/layout/Titlebar';
 import { ToastHost } from '@/components/layout/ToastHost';
 import { Viewer } from '@/components/layout/Viewer';
 
@@ -15,7 +16,8 @@ import { Viewer } from '@/components/layout/Viewer';
  */
 export function Layout() {
   return (
-    <div className="flex h-screen w-screen flex-col bg-bg text-text">
+    <div className="flex h-screen w-screen flex-col bg-canvas text-text-primary">
+      <Titlebar />
       <div className="relative flex flex-1 overflow-hidden">
         <Sidebar />
         <Viewer />

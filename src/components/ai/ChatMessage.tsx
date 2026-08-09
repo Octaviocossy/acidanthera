@@ -7,21 +7,27 @@ export interface ChatMessageProps {
   streaming?: boolean;
 }
 
-/**
- * A chat turn — the `agent_message` UI binding, plus the local user half (doc/v0-spec.md §5.6).
- * User turns stay quiet monochrome (no card, dim label, bone text); agent turns get the Feature
- * Card treatment (DESIGN.md): hairline border, no fill, `--radius-md` — the transcript's own
- * figure/ground move stays subtle instead of a wall of bright bone cards.
- */
+/** A chat turn — the agent's answer is the accented card; the user's prompt stays subordinate. */
 export function ChatMessage({ role, text, streaming = false }: ChatMessageProps) {
   const isAgent = role === 'agent';
   return (
-    <div className={cn('flex flex-col gap-1.5 px-4 py-4', isAgent ? 'items-start' : 'items-end')}>
-      <span className="font-mono text-text-faint text-xs uppercase tracking-caps">{isAgent ? 'Agent' : 'You'}</span>
-      <p className={cn('max-w-[85%] whitespace-pre-wrap font-sans text-sm text-text', isAgent && 'rounded-md border border-border-hairline px-3 py-2.5')}>
-        {text}
-        {streaming && <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-text-dim align-text-bottom" aria-hidden="true" />}
-      </p>
+    <div className={cn('flex px-4 py-3', isAgent ? 'items-start' : 'justify-end')}>
+      {isAgent ? (
+        <div className="flex max-w-[85%] gap-2 rounded-card border border-[var(--accent-border)] bg-[var(--accent-tint)] px-3 py-2.5">
+          <span className="shrink-0 text-accent" aria-hidden="true">
+            ✦
+          </span>
+          <p className="whitespace-pre-wrap font-sans text-ui leading-[var(--leading-ui)] text-text-body">
+            {text}
+            {streaming && <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-text-muted align-text-bottom" aria-hidden="true" />}
+          </p>
+        </div>
+      ) : (
+        <p className="max-w-[85%] whitespace-pre-wrap font-sans text-ui leading-[var(--leading-ui)] text-text-secondary">
+          {text}
+          {streaming && <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-text-muted align-text-bottom" aria-hidden="true" />}
+        </p>
+      )}
     </div>
   );
 }
