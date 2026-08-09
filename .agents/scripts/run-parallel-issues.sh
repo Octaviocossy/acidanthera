@@ -166,6 +166,8 @@ $_body_block
 Honor AGENTS.md and the relevant .agents/rules/* files. Edit the working tree ONLY.
 Do NOT run git commit, git push, or open a pull request — the runner does that.
 Do NOT use any GitHub tools. When done, stop. Report what you changed.
+Before reporting completion, run `pnpm check` when available and fix any formatter or
+import-order violations it finds. The runner enforces its own acceptance gate after you stop.
 EOF
 )
 
