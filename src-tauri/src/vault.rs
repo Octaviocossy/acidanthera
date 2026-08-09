@@ -39,6 +39,10 @@ pub enum VaultError {
     InvalidPath,
     #[error("an entry already exists at that path")]
     AlreadyExists,
+    #[error("no entry exists at that path")]
+    NotFound,
+    #[error("could not move the entry to the trash: {0}")]
+    Trash(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -173,6 +177,20 @@ fn create_directory_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
     let target = guarded_path(root, target)?;
     fs::create_dir(&target).map_err(creation_error)?;
     Ok(target)
+}
+
+fn delete_entry_in(root: &Path, target: &str) -> VaultResult<()> {
+    let path = guarded_path(root, target)?;
+    if path == root.canonicalize()? {
+        return Err(VaultError::InvalidPath);
+    }
+    match fs::symlink_metadata(&path) {
+        Ok(_) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Err(VaultError::NotFound),
+        Err(err) => return Err(err.into()),
+    }
+    trash::delete(&path).map_err(|err| VaultError::Trash(err.to_string()))?;
+    Ok(())
 }
 
 /// The agent-context pair scaffolded into every adopted vault root (#41). Both headless engines
@@ -407,6 +425,12 @@ pub fn create_directory(path: String, state: State<'_, VaultState>) -> VaultResu
     .log_err("create_directory")
 }
 
+#[tauri::command]
+pub fn delete_entry(path: String, state: State<'_, VaultState>) -> VaultResult<()> {
+    log::info!("delete_entry: path={path}");
+    (|| delete_entry_in(&current_root(&state)?, &path))().log_err("delete_entry")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -610,6 +634,80 @@ mod tests {
         );
 
         fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn delete_entry_in_should_remove_a_note_from_the_tree() {
+        let root = temp_root("delete-note");
+        let note = root.join("note.md");
+        fs::write(&note, "delete me").expect("writes note");
+
+        delete_entry_in(&root, &path_str(&note)).expect("moves note to trash");
+
+        assert!(build_tree(&root).expect("builds tree").is_empty());
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn delete_entry_in_should_remove_a_directory_and_its_contents() {
+        let root = temp_root("delete-directory");
+        let directory = root.join("archive");
+        fs::create_dir(&directory).expect("creates directory");
+        fs::write(directory.join("note.md"), "delete me").expect("writes note");
+
+        delete_entry_in(&root, &path_str(&directory)).expect("moves directory to trash");
+
+        assert!(!directory.exists());
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn delete_entry_in_should_reject_the_vault_root_itself() {
+        let root = temp_root("delete-root");
+
+        let error = delete_entry_in(&root, &path_str(&root)).expect_err("rejects root");
+
+        assert!(matches!(error, VaultError::InvalidPath));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn delete_entry_in_should_report_not_found_for_a_missing_target() {
+        let root = temp_root("delete-missing");
+
+        let error = delete_entry_in(&root, &path_str(&root.join("missing.md")))
+            .expect_err("reports missing target");
+
+        assert!(matches!(error, VaultError::NotFound));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn delete_entry_in_should_reject_a_target_outside_the_root() {
+        let root = temp_root("delete-escape");
+        let outside = root.join("..").join("outside.md");
+
+        let error = delete_entry_in(&root, &path_str(&outside)).expect_err("rejects escape");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn delete_entry_in_should_reject_a_leaf_symlink() {
+        let root = temp_root("delete-leaf-symlink");
+        let outside = temp_root("delete-leaf-symlink-outside");
+        let outside_note = outside.join("secret.md");
+        fs::write(&outside_note, "secret").expect("writes outside note");
+        let link = root.join("link.md");
+        std::os::unix::fs::symlink(&outside_note, &link).expect("creates symlink");
+
+        let error = delete_entry_in(&root, &path_str(&link)).expect_err("rejects symlink");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
     }
 
     #[test]
