@@ -9,25 +9,38 @@ describe('DeleteEntryDialog', () => {
 
   it('discloses Trash contents and dirty buffers before confirming', async () => {
     const user = userEvent.setup();
-    const decision = requestDeleteConfirmation('/vault/notes', { counts: { files: 2, directories: 1 }, dirtyBuffers: ['draft.md'] });
+    const decision = requestDeleteConfirmation('/vault/notes', { counts: { files: 2, directories: 1 }, openBuffers: 1, dirtyBuffers: ['draft.md'] });
     render(<DeleteEntryDialog />);
 
-    expect(screen.getByRole('dialog', { name: 'Move to Trash?' })).toHaveTextContent('/vault/notes will move to Trash, including 1 directory and 2 notes.');
+    expect(screen.getByRole('dialog', { name: 'Move to Trash?' })).toHaveTextContent('1 directory and 2 notes move to Trash.');
+    expect(screen.getByText('/vault/notes')).toBeInTheDocument();
+    expect(screen.getByText('Any open buffers in this entry will close.')).toBeInTheDocument();
     expect(screen.getByText('Unsaved changes will be discarded:')).toBeInTheDocument();
     expect(screen.getByText('draft.md')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Move to Trash' }));
+    await user.click(screen.getByRole('button', { name: /Move to Trash/ }));
 
     await expect(decision).resolves.toBe('confirm');
   });
 
-  it('cancels without confirming', async () => {
+  it('hides the buffers warning when none will close and cancels without confirming', async () => {
     const user = userEvent.setup();
-    const decision = requestDeleteConfirmation('/vault/note.md', { counts: { files: 1, directories: 0 }, dirtyBuffers: [] });
+    const decision = requestDeleteConfirmation('/vault/note.md', { counts: { files: 1, directories: 0 }, openBuffers: 0, dirtyBuffers: [] });
     render(<DeleteEntryDialog />);
 
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Any open buffers in this entry will close.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Cancel/ }));
 
+    await expect(decision).resolves.toBe('cancel');
+  });
+
+  it('collapses a home prefix in the displayed path', async () => {
+    const user = userEvent.setup();
+    const decision = requestDeleteConfirmation('/Users/someone/brain/note.md', { counts: { files: 1, directories: 0 }, openBuffers: 0, dirtyBuffers: [] });
+    render(<DeleteEntryDialog />);
+
+    expect(screen.getByText('~/brain/note.md')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Cancel/ }));
     await expect(decision).resolves.toBe('cancel');
   });
 });

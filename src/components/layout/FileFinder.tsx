@@ -60,12 +60,12 @@ export function FileFinder() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; the dialog receives keyboard input.
-    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center bg-[var(--scrim)] pt-[12vh]" onMouseDown={dismiss}>
+    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center bg-scrim pt-[12vh]" onMouseDown={dismiss}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Find file"
-        className="w-[min(600px,calc(100%-2rem))] overflow-hidden rounded-panel border border-border-strong bg-surface shadow-[var(--shadow-overlay-dark)]"
+        className="w-[min(600px,calc(100%-2rem))] overflow-hidden rounded-panel border border-hairline bg-surface shadow-modal"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">

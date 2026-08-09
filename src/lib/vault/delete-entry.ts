@@ -11,6 +11,8 @@ export interface DeletionSummary {
     files: number;
     directories: number;
   };
+  /** Every vault buffer at or under the path, dirty or not. */
+  openBuffers: number;
   dirtyBuffers: string[];
 }
 
@@ -40,11 +42,13 @@ function countEntry(entry: VaultEntry): DeletionSummary['counts'] {
   return counts;
 }
 
-/** Summarizes the cached vault subtree and open dirty vault buffers before a deletion is confirmed. */
+/** Summarizes the cached vault subtree and all affected vault buffers before a deletion is confirmed. */
 export function summarizeDeletion(path: string, tree: VaultEntry[], buffers: EditorBuffer[]): DeletionSummary {
+  const affected = buffers.filter((buffer) => buffer.source === 'vault' && isPathAtOrUnder(buffer.filePath, path));
   return {
     counts: countEntries(tree, path) ?? { files: 0, directories: 0 },
-    dirtyBuffers: buffers.filter((buffer) => buffer.source === 'vault' && buffer.dirty && isPathAtOrUnder(buffer.filePath, path)).map((buffer) => buffer.title),
+    openBuffers: affected.length,
+    dirtyBuffers: affected.filter((buffer) => buffer.dirty).map((buffer) => buffer.title),
   };
 }
 

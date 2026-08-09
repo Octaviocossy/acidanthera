@@ -29,6 +29,10 @@
   --color-accent: var(--accent);
   --color-accent-on: var(--accent-on);
   --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-on: var(--danger-on);
+  --color-danger-soft: var(--danger-soft);
+  --color-scrim: var(--scrim);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -58,6 +62,7 @@
   --radius-pill: var(--radius-pill);
 
   --ease-orbit: var(--ease);
+  --shadow-modal: var(--elevation-modal);
 }
 
 /* Toast entry fade (ToastHost) - fades only, no bounce (motion tokens, doc/v0-spec.md section 5.6). */

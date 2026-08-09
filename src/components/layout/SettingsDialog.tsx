@@ -89,14 +89,14 @@ export function SettingsDialog() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; Escape (window listener above) is the keyboard path and the panel is the real dialog.
-    <div role="presentation" className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)]" onClick={closeSettings}>
+    <div role="presentation" className="absolute inset-0 flex items-center justify-center bg-scrim" onClick={closeSettings}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="w-[760px] overflow-hidden rounded-modal border border-border-strong bg-surface shadow-[var(--shadow-overlay-dark)] outline-none"
+        className="w-[760px] overflow-hidden rounded-modal border border-hairline bg-surface shadow-modal outline-none"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           // Keep keystrokes inside the modal: without this, `:`/`Ctrl-w` typed while a

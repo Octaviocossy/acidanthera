@@ -120,6 +120,26 @@ export function FolderGlyph({ className }: GlyphProps) {
   );
 }
 
+/** The destructive dialog's trash glyph. Colored by its container, never hardcoded. */
+export function TrashGlyph({ className }: GlyphProps) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('h-[15px] w-[15px]', className)}
+      aria-hidden="true"
+    >
+      <path d="M3.5 4.5h9M6.25 4.5V3.25h3.5V4.5M5 4.5l.6 8.25h4.8L11 4.5M7 7v3.25M9 7v3.25" />
+    </svg>
+  );
+}
+
 export function SearchGlyph({ className }: GlyphProps) {
   return (
     <svg

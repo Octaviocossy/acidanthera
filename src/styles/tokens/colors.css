@@ -26,6 +26,11 @@
   --accent-tint: var(--accent-soft);
   --accent-border: var(--border);
 
+  /* Danger - "this click destroys" only (ADR 0015). NOT an error color: a failure stays monochrome. */
+  --danger: #d3453f;
+  --danger-on: #ffffff;
+  --danger-soft: rgba(211, 69, 63, 0.12);
+
   /* Diff - encodes change direction inside a diff; NOT the accent, NOT decoration. */
   --diff-add-bg: rgba(39, 166, 68, 0.08);
   --diff-add-fg: #7fa87b;
@@ -71,6 +76,10 @@
   --accent-soft: #fdeee6;
   --accent-tint: #fdf6f1; /* AI answer-card fill */
   --accent-border: #f0d9cc; /* AI answer-card edge */
+
+  --danger: #c8372e;
+  --danger-on: #ffffff;
+  --danger-soft: #fdecea;
 
   --surface-card: #ffffff;
   --surface-input: #ffffff;

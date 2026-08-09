@@ -29,8 +29,15 @@
 
   /* Elevation: dark = borders only; light = soft warm shadows. */
   --shadow-window-dark: 0 12px 40px rgba(0, 0, 0, 0.25);
-  --shadow-overlay-dark: 0 24px 64px rgba(0, 0, 0, 0.5);
   --shadow-window-light: 0 12px 40px rgba(38, 37, 30, 0.12);
   --shadow-popover-light: 0 8px 24px rgba(38, 37, 30, 0.25);
   --shadow-input-light: 0 2px 8px rgba(38, 37, 30, 0.05);
+
+  /* Modal panels use a hairline border plus a restrained overlay drop. */
+  --elevation-modal: 0 16px 40px rgba(0, 0, 0, 0.32);
+}
+
+/* Light elevation is warm, never cool-tinted. */
+:root[data-theme="light"] {
+  --elevation-modal: 0 12px 32px rgba(38, 37, 30, 0.14);
 }
