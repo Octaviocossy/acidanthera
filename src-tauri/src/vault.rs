@@ -179,6 +179,121 @@ fn create_directory_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
     Ok(target)
 }
 
+/// Renames an entry within its existing parent, preserving Markdown note extensions.
+fn rename_entry_in(root: &Path, target: &str, new_name: &str) -> VaultResult<PathBuf> {
+    let path = guarded_path(root, target)?;
+    if path == root.canonicalize()? {
+        return Err(VaultError::InvalidPath);
+    }
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Err(VaultError::NotFound),
+        Err(err) => return Err(err.into()),
+    };
+    let new_name = new_name.trim();
+    if new_name.is_empty() || new_name.contains('/') || new_name.contains('\\') {
+        return Err(VaultError::InvalidPath);
+    }
+    let parent = path.parent().ok_or(VaultError::InvalidPath)?;
+    let destination = if metadata.is_dir() {
+        parent.join(new_name)
+    } else {
+        with_md_extension(parent.join(new_name))
+    };
+
+    match fs::symlink_metadata(&destination) {
+        Ok(_) if destination.canonicalize().ok() != Some(path.clone()) => {
+            return Err(VaultError::AlreadyExists)
+        }
+        Ok(_) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => return Err(err.into()),
+    }
+
+    fs::rename(&path, &destination)?;
+    Ok(destination)
+}
+
+/// Returns the first available copy name in `parent`, preserving an existing extension.
+fn derive_copy_name(
+    parent: &Path,
+    stem: &std::ffi::OsStr,
+    extension: Option<&std::ffi::OsStr>,
+) -> VaultResult<PathBuf> {
+    for number in 1..=1000 {
+        let suffix = if number == 1 {
+            " copy".to_owned()
+        } else {
+            format!(" copy {number}")
+        };
+        let mut file_name = stem.to_os_string();
+        file_name.push(suffix);
+        if let Some(extension) = extension {
+            file_name.push(".");
+            file_name.push(extension);
+        }
+        let candidate = parent.join(file_name);
+        match fs::symlink_metadata(&candidate) {
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(candidate),
+            Ok(_) => {}
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Err(VaultError::AlreadyExists)
+}
+
+/// Copies a directory and its ordinary-file descendants without following symlinks.
+fn copy_dir_recursive(from: &Path, to: &Path) -> VaultResult<()> {
+    fs::create_dir(to)?;
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let destination = to.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &destination)?;
+        } else if file_type.is_file() {
+            // Copy all data, unlike the sidebar tree which deliberately filters hidden/non-Markdown entries.
+            fs::copy(entry.path(), destination)?;
+        }
+    }
+    Ok(())
+}
+
+/// Duplicates a file or directory within its existing parent under an available copy name.
+fn duplicate_entry_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
+    let path = guarded_path(root, target)?;
+    if path == root.canonicalize()? {
+        return Err(VaultError::InvalidPath);
+    }
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Err(VaultError::NotFound),
+        Err(err) => return Err(err.into()),
+    };
+    let parent = path.parent().ok_or(VaultError::InvalidPath)?;
+    let (stem, extension) = if metadata.is_dir() {
+        (path.file_name().ok_or(VaultError::InvalidPath)?, None)
+    } else if metadata.is_file() {
+        (
+            path.file_stem().ok_or(VaultError::InvalidPath)?,
+            path.extension(),
+        )
+    } else {
+        return Err(VaultError::InvalidPath);
+    };
+    let destination = derive_copy_name(parent, stem, extension)?;
+
+    if metadata.is_dir() {
+        copy_dir_recursive(&path, &destination)?;
+    } else {
+        fs::copy(&path, &destination)?;
+    }
+    Ok(destination)
+}
+
 fn delete_entry_in(root: &Path, target: &str) -> VaultResult<()> {
     let path = guarded_path(root, target)?;
     if path == root.canonicalize()? {
@@ -425,6 +540,35 @@ pub fn create_directory(path: String, state: State<'_, VaultState>) -> VaultResu
     .log_err("create_directory")
 }
 
+/// Renames a note or directory within its existing parent. Note names receive a `.md` extension
+/// when omitted. Returns the entry's new path.
+#[tauri::command]
+pub fn rename_entry(
+    path: String,
+    new_name: String,
+    state: State<'_, VaultState>,
+) -> VaultResult<String> {
+    log::info!("rename_entry: path={path} new_name={new_name}");
+    (|| {
+        let destination = rename_entry_in(&current_root(&state)?, &path, &new_name)?;
+        log::info!("rename_entry: renamed to {}", destination.display());
+        Ok(destination.to_string_lossy().into_owned())
+    })()
+    .log_err("rename_entry")
+}
+
+/// Duplicates a note or directory within its existing parent. Returns the copy's path.
+#[tauri::command]
+pub fn duplicate_entry(path: String, state: State<'_, VaultState>) -> VaultResult<String> {
+    log::info!("duplicate_entry: path={path}");
+    (|| {
+        let destination = duplicate_entry_in(&current_root(&state)?, &path)?;
+        log::info!("duplicate_entry: duplicated to {}", destination.display());
+        Ok(destination.to_string_lossy().into_owned())
+    })()
+    .log_err("duplicate_entry")
+}
+
 #[tauri::command]
 pub fn delete_entry(path: String, state: State<'_, VaultState>) -> VaultResult<()> {
     log::info!("delete_entry: path={path}");
@@ -633,6 +777,193 @@ mod tests {
             "the parent chain must not be materialized"
         );
 
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_rename_a_note_and_retain_its_md_extension() {
+        let root = temp_root("rename-note");
+        let note = root.join("Old.md");
+        fs::write(&note, "contents").expect("writes note");
+
+        let renamed = rename_entry_in(&root, &path_str(&note), "New").expect("renames note");
+
+        assert_eq!(renamed, root.join("New.md"));
+        assert!(!note.exists());
+        assert_eq!(
+            fs::read_to_string(&renamed).expect("reads renamed note"),
+            "contents"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_rename_a_directory_and_retain_its_children() {
+        let root = temp_root("rename-directory");
+        let directory = root.join("old");
+        fs::create_dir(&directory).expect("creates directory");
+        fs::write(directory.join("note.md"), "contents").expect("writes child note");
+
+        let renamed = rename_entry_in(&root, &path_str(&directory), "new").expect("renames dir");
+
+        assert_eq!(renamed, root.join("new"));
+        assert_eq!(
+            fs::read_to_string(renamed.join("note.md")).expect("reads child note"),
+            "contents"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_reject_names_with_path_separators() {
+        let root = temp_root("rename-separator");
+        let note = root.join("note.md");
+        fs::write(&note, "contents").expect("writes note");
+
+        let slash_error =
+            rename_entry_in(&root, &path_str(&note), "nested/name").expect_err("rejects slash");
+        let backslash_error = rename_entry_in(&root, &path_str(&note), "nested\\name")
+            .expect_err("rejects backslash");
+
+        assert!(matches!(slash_error, VaultError::InvalidPath));
+        assert!(matches!(backslash_error, VaultError::InvalidPath));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_reject_an_existing_destination() {
+        let root = temp_root("rename-collision");
+        let note = root.join("note.md");
+        fs::write(&note, "source").expect("writes source note");
+        fs::write(root.join("taken.md"), "destination").expect("writes destination note");
+
+        let error =
+            rename_entry_in(&root, &path_str(&note), "taken").expect_err("rejects collision");
+
+        assert!(matches!(error, VaultError::AlreadyExists));
+        assert_eq!(
+            fs::read_to_string(&note).expect("keeps source note"),
+            "source"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_reject_the_vault_root_itself() {
+        let root = temp_root("rename-root");
+
+        let error = rename_entry_in(&root, &path_str(&root), "new-root").expect_err("rejects root");
+
+        assert!(matches!(error, VaultError::InvalidPath));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_report_not_found_for_a_missing_target() {
+        let root = temp_root("rename-missing");
+
+        let error = rename_entry_in(&root, &path_str(&root.join("missing.md")), "new")
+            .expect_err("reports missing target");
+
+        assert!(matches!(error, VaultError::NotFound));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn rename_entry_in_should_reject_a_target_outside_the_root() {
+        let root = temp_root("rename-escape");
+        let outside = root.join("..").join("outside.md");
+
+        let error = rename_entry_in(&root, &path_str(&outside), "new").expect_err("rejects escape");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn duplicate_entry_in_should_copy_a_note_under_the_copy_name() {
+        let root = temp_root("duplicate-note");
+        let note = root.join("X.md");
+        fs::write(&note, "contents").expect("writes note");
+
+        let duplicate = duplicate_entry_in(&root, &path_str(&note)).expect("duplicates note");
+
+        assert_eq!(duplicate, root.join("X copy.md"));
+        assert_eq!(
+            fs::read_to_string(&duplicate).expect("reads duplicate"),
+            "contents"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn duplicate_entry_in_should_escalate_the_copy_name_suffix() {
+        let root = temp_root("duplicate-suffix");
+        let note = root.join("X.md");
+        fs::write(&note, "contents").expect("writes note");
+        fs::write(root.join("X copy.md"), "first copy").expect("writes first copy");
+
+        let duplicate = duplicate_entry_in(&root, &path_str(&note)).expect("duplicates note");
+
+        assert_eq!(duplicate, root.join("X copy 2.md"));
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
+    fn duplicate_entry_in_should_recursively_copy_all_directory_contents() {
+        let root = temp_root("duplicate-directory");
+        let directory = root.join("archive");
+        fs::create_dir(&directory).expect("creates directory");
+        fs::create_dir(directory.join("nested")).expect("creates nested directory");
+        fs::write(directory.join(".hidden"), "hidden").expect("writes hidden file");
+        fs::write(directory.join("image.png"), "image").expect("writes non-note file");
+        fs::write(directory.join("nested").join("note.md"), "contents").expect("writes note");
+
+        let duplicate = duplicate_entry_in(&root, &path_str(&directory)).expect("duplicates dir");
+
+        assert_eq!(duplicate, root.join("archive copy"));
+        assert_eq!(
+            fs::read_to_string(duplicate.join(".hidden")).expect("reads hidden file"),
+            "hidden"
+        );
+        assert_eq!(
+            fs::read_to_string(duplicate.join("image.png")).expect("reads image"),
+            "image"
+        );
+        assert_eq!(
+            fs::read_to_string(duplicate.join("nested").join("note.md"))
+                .expect("reads nested note"),
+            "contents"
+        );
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn duplicate_entry_in_should_skip_symlinks_within_a_directory() {
+        let root = temp_root("duplicate-symlink");
+        let outside = temp_root("duplicate-symlink-outside");
+        let directory = root.join("archive");
+        fs::create_dir(&directory).expect("creates directory");
+        fs::write(outside.join("secret.md"), "secret").expect("writes outside note");
+        std::os::unix::fs::symlink(outside.join("secret.md"), directory.join("linked.md"))
+            .expect("creates symlink");
+
+        let duplicate = duplicate_entry_in(&root, &path_str(&directory)).expect("duplicates dir");
+
+        assert!(!duplicate.join("linked.md").exists());
+        fs::remove_dir_all(&root).expect("cleans up");
+        fs::remove_dir_all(&outside).expect("cleans up outside");
+    }
+
+    #[test]
+    fn duplicate_entry_in_should_reject_a_target_outside_the_root() {
+        let root = temp_root("duplicate-escape");
+        let outside = root.join("..").join("outside.md");
+
+        let error = duplicate_entry_in(&root, &path_str(&outside)).expect_err("rejects escape");
+
+        assert!(matches!(error, VaultError::PathEscapesRoot));
         fs::remove_dir_all(&root).expect("cleans up");
     }
 
