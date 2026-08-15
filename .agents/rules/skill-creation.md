@@ -29,7 +29,7 @@ The reasoning and the rejected alternatives are in
 `.agents/adr/0001-skills-canonical-in-agents-skills.md`.
 
 The symlink must be **relative** (`../../.agents/skills/<name>`), never absolute — it has to
-resolve in any clone and in a project bootstrapped by `/custom-init`.
+resolve in any clone and in a project set up by `/install-scaffold`.
 
 ## Frontmatter
 
@@ -79,8 +79,14 @@ A skill that must never auto-load — because it needs a human in the loop, as
 ## Vendoring a skill from elsewhere
 
 Keep the upstream body **verbatim** and put local grounding in a trailing
-`## In this repository` section, then credit the source at the foot of the file. An upstream
-update then reads as a clean diff against the top of the file instead of a rewrite.
+`## In this repository` section. An upstream update then reads as a clean diff against the top of
+the file instead of a rewrite.
+
+A vendored body carries **no attribution footer**. Where the artifact diverges from upstream — a
+rename, a replaced line, an omitted section — record the divergence in an **ADR**, together with
+the upstream path and the pinned commit. That record is the only thing that makes a later upstream
+update reconcilable: without it there is no way to tell what we changed on purpose from what
+upstream changed. See `.agents/adr/0019-vendored-artifacts-carry-no-attribution.md`.
 
 ## Rules
 

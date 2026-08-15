@@ -313,16 +313,3 @@ Different axes: one is **continuity over time**, the other is **parallelism over
 | Idempotent | no | yes — done children detected and skipped |
 | Supervision | `claude agents` (the user) | the runner waits, collects, cleans up |
 | Ends with | a running job | one `epic → main` pull request |
-
----
-
-*Vendored from [`mattpocock/skills`](https://github.com/mattpocock/skills) —
-`skills/in-progress/claude-handoff/SKILL.md` (upstream marks it **in-progress**, i.e. unstable).
-Upstream ships it as a skill with `disable-model-invocation: true`; per
-`.agents/rules/skill-creation.md` ("A skill that must never auto-load … belongs in
-`.agents/commands/` with `disable-model-invocation: true`, not here") it is a **command** in this
-repo, and the `claude-` prefix is dropped for cross-agent parity. Upstream's instructions —
-summary-becomes-prompt, mandatory `--name`, a suggested-skills section, reference-don't-duplicate,
-redaction, `$ARGUMENTS` as the next session's focus — are preserved above. The `## Launcher` table,
-the argument-order invariants, the two guards (unfinished interrogation; GitHub capability), the
-sandboxed default, the confirmation step, and the `/execute-epic` boundary are local.*

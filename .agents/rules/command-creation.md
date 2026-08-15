@@ -14,6 +14,23 @@ that references it — the same bridge pattern used for rules and the domain glo
 
 Invoke in either agent with `/<name>`.
 
+The three files are a **command triad**: they carry the same `<name>` and always move
+together. Renaming, adding, or deleting a command touches all three in the same change —
+`.agents/scripts/verify-scaffold.sh` §2 fails on a partial triad.
+
+## Naming
+
+- Lowercase kebab-case, identical across all three paths above, and identical to the
+  `# Command: <name>` heading on line 1 of the canonical spec.
+- Name the **action**, not a flavor. `custom-`, `my-`, and `auto-` prefixes carry no
+  information. Prefer verb-object (`create-issue`, `install-scaffold`) or a plain noun
+  phrase (`commit-message`, `ship-note`).
+- Do not borrow a lifecycle word the command does not honor. `init` and `bootstrap` promise
+  a one-shot first run — use them only when re-running is genuinely unsupported.
+- When a command exists to run one script under `.agents/scripts/`, the two names must match
+  (`/install-scaffold` ↔ `install-scaffold.sh`). A command whose name disagrees with its
+  script is the same drift the wrapper-body parity check exists to prevent.
+
 ## Shared feature set
 
 Claude Code and OpenCode both support:

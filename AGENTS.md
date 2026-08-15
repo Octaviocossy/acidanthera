@@ -67,9 +67,17 @@ _None documented yet._
 - App-specific skills: `apps/<app>/.agents/skills/`
 - Package-specific skills: `packages/<pkg>/.agents/skills/`
 - Prefer the narrowest ownership boundary that still matches real usage.
+- Vendored bodies carry no attribution footer; divergences from upstream live in
+  `.agents/adr/0019-vendored-artifacts-carry-no-attribution.md`.
 - Available: `resolving-merge-conflicts` — fires on an in-progress git merge/rebase conflict.
   Finds the intent behind each side, resolves every hunk without inventing behavior, runs the
-  project's checks, and finishes the merge. Vendored from `mattpocock/skills`.
+  project's checks, and finishes the merge.
+- Available: `standards-and-spec-review` — fires when a branch needs checking on two axes:
+  **Standards** (does it follow `AGENTS.md`, `.agents/rules/`, the glossary, and the ADRs?) and
+  **Spec** (does it implement the issue/plan/spec it came from?). Runs the axes as parallel
+  sub-agents and reports them side by side without reranking. Deduces the fixed point from the
+  branch (epic branch for a child, else `main`). Not a correctness-bug hunt — that is
+  `/code-review`.
 - Available: `rust-best-practices` — fires when writing, reviewing, or refactoring Rust in
   `src-tauri/`: ownership and borrowing choices, `Result` error handling, performance. Based on
   Apollo GraphQL's handbook.
@@ -87,15 +95,16 @@ _None documented yet._
 - Available: `commit-message` — generate a Conventional-Commits message from the current diff.
 - Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens the glossary inline, and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
 - Available: `planning` — create a thorough implementation plan and persist it in `.agents/plans/`.
-- Available: `custom-init` — bootstrap the full cross-agent governance scaffold in the current project.
+- Available: `install-scaffold` — install the cross-agent governance scaffold into a target project directory; never overwrites, safe to re-run.
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.
 - Available: `update-issue` — correct the body (and optionally the title) of the current branch's GitHub issue when the initial generation was inaccurate.
 - Available: `execute-issue` — execute the current branch's GitHub issue in two phases (confirm, implement); uses the linked `.agents/plans/` file as primary plan source if one exists.
 - Available: `comment-issue` — add a comment to the thread of the GitHub issue for the current branch.
 - Available: `ship-note` — post a ship-note of the executed work to the current branch's issue (does not close it).
 - Available: `spec-breakdown` — decompose a large spec into an epic issue + N child issues with a dependency graph.
-- Available: `execute-epic` — execute an epic's child issues in parallel, auto-merging each wave into the epic integration branch, then open one epic PR.
-- Available: `spec` — one-shot: break a spec into an epic + children, then execute them in parallel.
+- Available: `execute-epic` — execute an epic's child issues wave-by-wave: each one is pushed, passed through an agentic review, reworked automatically on a hard violation, then integrated into the epic branch; nobody is asked anything. Opens one epic PR at completion.
+- Available: `supervise-epic` — the same staged pipeline as `execute-epic`, plus a human approve/reject decision per child at the review gate before it can integrate. User-invocable only — there is no headless equivalent.
+- Available: `spec` — one-shot: break a spec into an epic + children, then execute them; `--supervised` at the call site routes execution through `/supervise-epic` instead of the `/execute-epic` default.
 - Available: `handoff` — hand this conversation off to a fresh background agent (`claude --bg`) seeded with a summary as its prompt; one detached continuation in this working tree, sandboxed from GitHub unless `with-github`. Claude Code only — OpenCode has no background mode and prints the summary instead.
 
 ## GitHub MCP server
@@ -127,19 +136,36 @@ branch names `<issue#>-<kebab-title>` and branch off the epic branch, not `main`
 3. Ensure `Build:` and `Test:` in `## Commands` above are filled in — child agents read them.
 
 **Runner:** `.agents/scripts/run-parallel-issues.sh` — one worktree + headless agent per child,
-concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). The runner commits and pushes each
-successful branch, then (given `--epic <branch>`) auto-merges it into the epic integration
-branch — the orchestrating agent only reads epic-branch state and opens the final PR via MCP.
+concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). A plain run only commits and pushes each
+child; it never integrates. Given `--epic <branch>`, three further action flags drive a child
+through the rest of the pipeline: `--review` (fans out an agentic `standards-and-spec-review` per
+child), `--rework` (re-dispatches a rejected child with feedback), and `--integrate` (the only
+action that merges into the epic branch). The orchestrating agent only reads epic-branch state
+and opens the final PR via MCP — the runner is the epic branch's sole writer throughout.
 `GITHUB_TOKEN` is never sourced by the runner — headless agents have no GitHub access by design.
 
-**Wave flow:** `/execute-epic` creates an epic integration branch `epic/<epic#>-<slug>`, runs
-each runnable wave in turn, and the runner **auto-merges each child branch into the epic
-branch** — waves advance with no manual merge. Each integrated child issue is **closed** and
-its branch **deleted** (opt out with `KEEP_CHILD_BRANCHES=1`). At completion it opens a single
-`epic → main` PR. Re-running is idempotent (done children are detected from the epic branch).
+**The review gate:** every child passes an agentic review before it can integrate, on both
+execution paths. `/execute-epic` (auto) resolves it alone — a hard violation blocks integration
+and triggers automatic rework, a judgement call never blocks; nobody is asked anything.
+`/supervise-epic` runs the identical pipeline plus a human approve/reject decision per child,
+informed by the diff, the agent log, and the same agentic report; a hard violation pre-selects
+"reject" but the human has the final say. `/spec` defaults to the auto path; pass `--supervised`
+at the call site to route it through `/supervise-epic` instead. The runner pre-builds a
+**corpus pack** (`.worktrees/.corpus-pack.md`) once per `--review` invocation so the
+standards sources are read once rather than once per context, and the caller pre-writes
+`.worktrees/.epic-issue.md` so the Spec axis sees the epic's scope headless. Full contract
+(the runner's action flags, the rework loop, `REVIEW_AGENT_EXEC_CMD`, `MAX_REWORK_ROUNDS`)
+in `.agents/rules/parallel-orchestration.md`.
+
+**Wave flow:** either command creates an epic integration branch `epic/<epic#>-<slug>` and runs
+each runnable wave through the full pipeline — push → review → optional rework → integrate — in
+one invocation; waves advance with no manual merge step. Each integrated child issue is
+**closed** and its branch **deleted** (opt out with `KEEP_CHILD_BRANCHES=1`). At completion it
+opens a single `epic → main` PR. Re-running is idempotent (done children are detected from the
+epic branch).
 
 **Safety caps:** `MAX_CHILDREN=12`, `AGENT_TIMEOUT=1800s`, `PARALLEL_MAX_CONCURRENCY=3`,
-`KEEP_CHILD_BRANCHES=0`. Override in `.agents/parallel.config`.
+`MAX_REWORK_ROUNDS=2`, `KEEP_CHILD_BRANCHES=0`. Override in `.agents/parallel.config`.
 
 ## Code Structure
 <!-- TODO: document the framework, router style, key directories, and any import conventions -->

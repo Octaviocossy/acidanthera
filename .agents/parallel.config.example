@@ -9,8 +9,18 @@
 #   OpenCode    : opencode run --agent <name>  (agent must be allowed to edit/run)
 AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 
+# Headless agent CLI used for the agentic review the runner's '--review' action fans
+# out over each child (standards-and-spec-review). Same COMMAND PREFIX vocabulary as
+# AGENT_EXEC_CMD above. Empty means "inherit AGENT_EXEC_CMD" — NOT "skip the review":
+# the review gate is never skipped by omission. Set this to a different command prefix
+# to give the reviewer a different model than the implementer.
+# REVIEW_AGENT_EXEC_CMD="opencode run --agent build -m openai/gpt-5.6-luna --variant high --auto"
+REVIEW_AGENT_EXEC_CMD=""
+
 PARALLEL_MAX_CONCURRENCY=3     # issues running at once (each is a full agent process)
 MAX_CHILDREN=12                # hard cap per wave; runner refuses beyond this
+MAX_REWORK_ROUNDS=2            # cap on automatic rework rounds per rejected child;
+                                # 0 disables rework so a rejection simply blocks the child
 WORKTREES_DIR=.worktrees       # gitignored
 BASE_BRANCH=main               # the branch the epic integration branch is cut from
                                 # (children branch off the epic branch, not directly off this)

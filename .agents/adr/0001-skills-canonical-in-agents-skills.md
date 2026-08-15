@@ -19,7 +19,7 @@ than a second copy.
 ## Consequences
 
 The link must be relative, never absolute, so it resolves in any clone and in a project
-bootstrapped by `/custom-init` — `.agents/scripts/init-scaffold.sh` copies it with `cp -P` and the
+set up by `/install-scaffold` — `.agents/scripts/install-scaffold.sh` copies it with `cp -P` and the
 manifest reproduces the same tree on the other side. `.agents/scripts/verify-scaffold.sh` enforces
 the invariant: every `.agents/skills/*/SKILL.md` must exist, declare a `description`, carry a
 `name` matching its directory, and be symlinked into `.claude/skills/`.

@@ -26,13 +26,23 @@ section() { printf '\n%s\n' "$1"; }
 
 # ---- 1. Required root and governance files exist ----
 section "Required files"
-for f in AGENTS.md CLAUDE.md README.md .gitignore .agents/ubiquitous-language.md; do
+for f in AGENTS.md CLAUDE.md .gitignore .agents/ubiquitous-language.md; do
   if [ -f "$f" ]; then
     pass "$f exists"
   else
     fail "$f is missing"
   fi
 done
+# README.md documents this scaffold, not a scaffolded project, so it is deliberately absent
+# from the manifest. Requiring it unconditionally would make every fresh /install-scaffold produce
+# a tree that fails its own acceptance gate. Same source-repo discriminator as section 7.
+if [ -f .agents/scaffold.manifest ]; then
+  if [ -f README.md ]; then
+    pass "README.md exists"
+  else
+    fail "README.md is missing"
+  fi
+fi
 
 # ---- 2. Every canonical command spec has a Claude + OpenCode wrapper ----
 # .agents/rules/command-creation.md: .agents/commands/<name>.md is the source of truth;
@@ -49,6 +59,15 @@ if [ -d .agents/commands ]; then
     else
       [ -f "$claude_wrapper" ] || fail "$claude_wrapper is missing"
       [ -f "$opencode_wrapper" ] || fail "$opencode_wrapper is missing"
+    fi
+    # .agents/rules/command-creation.md (Naming): the `# Command: <name>` heading must match
+    # the filename. Nothing else catches a rename that moved the files but not the heading.
+    slug=${name%.md}
+    heading=$(head -n 1 "$spec")
+    if [ "$heading" = "# Command: $slug" ]; then
+      pass "$name heading matches its filename"
+    else
+      fail "$spec first line is '$heading', expected '# Command: $slug'"
     fi
   done
 else
@@ -184,6 +203,28 @@ if [ -d .agents/skills ]; then
       fail ".claude/skills/$name must be a symlink to the canonical skill directory"
     fi
   done
+fi
+
+# ---- 9. Manifest coverage: shippable artifacts are actually listed ----
+# Section 6 checks manifest -> repo. This checks repo -> manifest, for the two roots the
+# manifest enumerates file by file instead of copying recursively: ADRs and .example
+# templates. Without it a new file lands referenced-but-not-shipped — how
+# .agents/adr/0019-*.md and .agents/parallel.config.example both drifted, each cited by an
+# AGENTS.md or rules file that *is* shipped. plans/ and specs/ are deliberately excluded:
+# only their .gitkeep ships.
+section "Manifest coverage"
+if [ -f "$manifest" ]; then
+  for f in .agents/adr/*.md .agents/*.example; do
+    [ -f "$f" ] || continue
+    # -Fx: literal, whole-line — so one entry never matches another by substring.
+    if grep -Fxq "$f" "$manifest"; then
+      pass "$f is listed in the manifest"
+    else
+      fail "$f exists but is not listed in $manifest"
+    fi
+  done
+else
+  pass "$manifest not present — skipped"
 fi
 
 # ---- Summary ----

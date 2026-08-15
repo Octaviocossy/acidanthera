@@ -98,16 +98,37 @@ Invoke identically as `/<name>` in either agent.
 | `/grill` | Settling a design by interrogation before any artifact is written. |
 | `/planning` | Producing a reviewable implementation plan before writing code. |
 | `/commit-message` | Generating a Conventional-Commits message from the current diff. |
-| `/custom-init` | Bootstrapping this scaffold into a target project (see below). |
+| `/install-scaffold` | Installing this scaffold into a target project (see below). |
 | `/create-issue` | Turning a requirement description into a GitHub issue with a full plan in its body. |
 | `/update-issue` | Correcting an issue's body/title when the first generation was off. |
 | `/execute-issue` | Executing the current branch's linked issue, two phases: confirm, then implement. |
 | `/comment-issue` | Adding a comment to the current branch's issue thread without touching state. |
 | `/ship-note` | Posting a comment describing what actually shipped, once work is done. |
 | `/spec-breakdown` | Decomposing a large spec into an epic issue + dependency-graphed child issues. |
-| `/execute-epic` | Running an epic's children wave-by-wave in parallel worktrees, then opening one PR. |
-| `/spec` | One-shot: `/spec-breakdown` then `/execute-epic`, chained. |
+| `/execute-epic` | Running an epic's children wave-by-wave in parallel worktrees — push, agentic review, automatic rework on a hard violation, integrate — with nobody watching, then opening one PR. |
+| `/supervise-epic` | The same staged pipeline as `/execute-epic`, with your explicit approve/reject decision per child at the review gate before it integrates. User-invocable only. |
+| `/spec` | One-shot: `/spec-breakdown` then, by default, `/execute-epic`, chained. Add `--supervised` to route execution through `/supervise-epic` instead. |
 | `/handoff` | Passing this conversation to a fresh background agent that picks the work up immediately. |
+
+## Skills
+
+A command is something *you* start. A **skill** is something the *agent* starts — a
+procedure it loads on its own the moment the situation matches the skill's
+`description`. You never type its name; you just find the agent already following it.
+
+Each skill keeps one canonical body at `.agents/skills/<name>/SKILL.md`, which OpenCode
+reads natively, plus a relative symlink at `.claude/skills/<name>`, which is the only
+place Claude Code looks. One real file, two agents, no drift possible
+(`.agents/rules/skill-creation.md`; the reasoning and the rejected alternatives are in
+`.agents/adr/0001-skills-canonical-in-agents-skills.md`).
+
+| Skill | Fires when |
+|---|---|
+| `resolving-merge-conflicts` | A git merge or rebase is mid-conflict. Reconstructs the intent behind each side, resolves every hunk without inventing behavior, runs the project's checks, and finishes the merge. |
+| `standards-and-spec-review` | A branch needs checking on two axes at once — **Standards** (does it follow `AGENTS.md`, `.agents/rules/`, the glossary, and the ADRs?) and **Spec** (does it implement the issue, plan, or spec it came from?). Each axis runs in its own sub-agent and the two reports are presented side by side, never reranked against each other. Not a correctness-bug hunt — that is `/code-review`. |
+
+One caveat worth knowing before you add your own: a skills directory that did not exist
+when the agent started is not watched. Restart the agent after adding the first one.
 
 ## The GitHub issue workflow
 
@@ -136,33 +157,59 @@ an **epic/child** model: an epic issue holds a child task-list and a
 `> Epic: #<n>` and `> Depends on: #…`. Children branch off a real, long-lived
 **epic integration branch** (`epic/<n>-<slug>`) — never off `main` directly — and
 `.agents/scripts/run-parallel-issues.sh` runs one git worktree + one headless agent
-per child, auto-merging each success back into the epic branch as soon as it's
-pushed. Waves advance automatically; there is no manual merge checkpoint between
-them. `main` only receives the work once, through a single `epic → main` PR opened
-after every child is integrated.
+per child. `main` only receives the work once, through a single `epic → main` PR
+opened after every child is integrated.
+
+A child no longer merges the instant it's pushed. It passes through a **review
+gate** first: the runner fans out an agentic `standards-and-spec-review` against the
+epic branch as the fixed point, and only a child that clears the gate gets
+integrated. Two commands run the identical pipeline — push → agentic review →
+optional rework → integrate — and differ only in who resolves what the review
+finds:
+
+- **`/execute-epic`** (auto) — runs end to end with nobody watching. A **hard
+  violation** (a breach of the glossary or an ADR) blocks integration and triggers
+  automatic rework instead of a prompt; a **judgement call** never blocks — it lands
+  only in the child's ship-note.
+- **`/supervise-epic`** — the same pipeline, plus your explicit approve/reject
+  decision per child, informed by the diff, the agent log, and the same agentic
+  report. A hard violation pre-selects "reject," but you can approve anyway.
+  User-invocable only — like `/grill`, it needs somebody there to answer, so it must
+  never run inside a headless parallel-runner child.
+
+A rejected child is re-dispatched automatically — up to `MAX_REWORK_ROUNDS` (default
+2) — with the review's findings as feedback, then re-reviewed before it gets another
+shot at the gate, since a rework can break something the previous round passed.
+Waves still advance with no manual merge checkpoint between them.
 
 ```
-/spec path/to/big-spec.md    # spec-breakdown, review, then execute-epic — chained
+/spec path/to/big-spec.md               # spec-breakdown, review, then execute-epic — chained
+/spec path/to/big-spec.md --supervised  # same, but execution routes through supervise-epic
 ```
 
-or drive the two phases yourself with `/spec-breakdown` followed by `/execute-epic`
-when you want to review the decomposition before any execution starts.
+or drive the phases yourself with `/spec-breakdown` followed by `/execute-epic` or
+`/supervise-epic` when you want to review the decomposition before any execution
+starts.
 
-One-time setup before the first `/execute-epic`: copy
+One-time setup before the first `/execute-epic` or `/supervise-epic`: copy
 `.agents/parallel.config.example` → `.agents/parallel.config` and set
 `AGENT_EXEC_CMD` (defaults to `claude -p --dangerously-skip-permissions`; Codex and
-OpenCode adapters are documented in the same file). Fill in `## Commands` ›
-`Build:` / `Test:` in `AGENTS.md` so child agents have real acceptance checks to run.
+OpenCode adapters are documented in the same file). Optionally set
+`REVIEW_AGENT_EXEC_CMD` to give the agentic reviewer a different model than the
+implementer — empty inherits `AGENT_EXEC_CMD`, it never means "skip the review."
+Fill in `## Commands` › `Build:` / `Test:` in `AGENTS.md` so child agents have real
+acceptance checks to run.
 
 Safety caps live in the same rule file: `MAX_CHILDREN=12`,
-`PARALLEL_MAX_CONCURRENCY=3`, `AGENT_TIMEOUT=1800s`. `GITHUB_TOKEN` is never sourced
-by the runner — headless child agents have no GitHub access by design; all GitHub
-API calls are made by the orchestrating agent's own session via MCP.
+`PARALLEL_MAX_CONCURRENCY=3`, `AGENT_TIMEOUT=1800s`, `MAX_REWORK_ROUNDS=2` (`0`
+disables rework, so a rejection simply blocks the child). `GITHUB_TOKEN` is never
+sourced by the runner — headless child agents have no GitHub access by design; all
+GitHub API calls are made by the orchestrating agent's own session via MCP.
 
 ## Installing this scaffold elsewhere
 
-`/custom-init [target-dir]` runs the manifest-driven copier
-(`.agents/scripts/init-scaffold.sh`), which reads `.agents/scaffold.manifest` —
+`/install-scaffold [target-dir]` runs the manifest-driven copier
+(`.agents/scripts/install-scaffold.sh`), which reads `.agents/scaffold.manifest` —
 a flat list of files and recursive directories — and copies every entry into the
 target, skipping (never overwriting) anything that already exists there. It is
 always safe to re-run. To add something new to what every adopting project
@@ -172,21 +219,39 @@ gets installed.
 
 ## Verifying the scaffold itself
 
-If you are working on this scaffold's own source (not a project that adopted it),
 `sh .agents/scripts/verify-scaffold.sh` is the zero-dependency acceptance gate. It
-checks: required root/governance files exist; every command spec has both a Claude
-and an OpenCode wrapper; every wrapper declares a `description:` field; every script
-under `.agents/scripts/` parses cleanly with `sh -n` and is executable; every
-`.agents/scaffold.manifest` entry resolves to a real path; and no stack-specific
-artifacts (`src/`, `src-tauri/`, `package.json`) are tracked. Exit status is the
-number of failed checks — `0` means clean.
+checks, in nine groups: required root/governance files exist; every command spec has
+both a Claude and an OpenCode wrapper *and* a `# Command: <name>` heading matching its
+filename; the two wrappers are byte-identical below their frontmatter; every wrapper
+declares a `description:` field; every script under `.agents/scripts/` parses cleanly
+with `sh -n` and is executable; every `.agents/scaffold.manifest` entry resolves to a
+real path; no stack-specific artifacts (`src/`, `src-tauri/`, `package.json`) are
+tracked; every skill has a `SKILL.md` whose `name` matches its directory, declares a
+`description`, and is symlinked into `.claude/skills/`; and — the reverse of the
+manifest check — every ADR and `*.example` file is actually listed in the manifest, so
+nothing lands referenced-but-not-shipped. Exit status is the number of failed checks —
+`0` means clean.
+
+Run it in an adopted project too, not just here. The four checks that only make sense
+in the scaffold's own source tree are gated on `.agents/scaffold.manifest` being
+present, and the manifest is deliberately not listed in itself — so it never reaches an
+adopting project, where those checks report as skipped and the rest still run.
 
 ## After adopting the scaffold in a real project
 
 Fill in the placeholders this scaffold ships with `_not yet documented_` markers:
-`AGENTS.md` › `## Workspace`, `## Commands`, `## Verification Quirks`, `## Skills`,
+`AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
 `## Code Structure`; `.agents/ubiquitous-language.md`'s `Last updated` date and
 canonical domain code path; and the canonical domain paths in
-`.agents/rules/domain-glossary.md`. None of the workflow above changes once you do
-— it's the same plan → implement → verify → ship loop, now pointed at your stack's
-real lint/build/test commands instead of placeholders.
+`.agents/rules/domain-glossary.md`. Leave `AGENTS.md` › `## Skills` alone — it is
+already populated, and it describes skills you inherit rather than a blank to fill.
+
+Two things carry over rather than starting fresh. ADRs `0001`–`0007` ship with the
+scaffold, recording decisions your project inherits, so your own first ADR starts at
+`0008`. And your agent must be restarted once after the install, or it will not
+discover `.claude/skills/` — a skills directory that did not exist at startup is not
+watched.
+
+None of the workflow above changes once you do — it's the same plan → implement →
+verify → ship loop, now pointed at your stack's real lint/build/test commands instead
+of placeholders.

@@ -112,16 +112,40 @@ Cada comando se define una sola vez como una especificación agnóstica del agen
 | `/grill` | Definir un diseño mediante interrogación antes de escribir ningún artefacto. |
 | `/planning` | Producir un plan de implementación revisable antes de escribir código. |
 | `/commit-message` | Generar un mensaje de Conventional Commits a partir del diff actual. |
-| `/custom-init` | Instalar este andamiaje en un proyecto destino (ver más abajo). |
+| `/install-scaffold` | Instalar este andamiaje en un proyecto destino (ver más abajo). |
 | `/create-issue` | Convertir una descripción de requerimiento en un issue de GitHub con un plan completo en el cuerpo. |
 | `/update-issue` | Corregir el cuerpo/título de un issue cuando la primera generación fue inexacta. |
 | `/execute-issue` | Ejecutar el issue vinculado a la rama actual, en dos fases: confirmar, luego implementar. |
 | `/comment-issue` | Añadir un comentario al hilo del issue de la rama actual sin tocar su estado. |
 | `/ship-note` | Publicar un comentario que describe lo que realmente se entregó, una vez terminado el trabajo. |
 | `/spec-breakdown` | Descomponer una especificación grande en un issue epic + issues hijos con un grafo de dependencias. |
-| `/execute-epic` | Ejecutar los hijos de un epic ola por ola en worktrees paralelos, y luego abrir un solo PR. |
-| `/spec` | Todo en uno: `/spec-breakdown` seguido de `/execute-epic`, encadenados. |
+| `/execute-epic` | Ejecutar los hijos de un epic ola por ola en worktrees paralelos — push, revisión agéntica, retrabajo automático ante una violación dura, integración — sin que nadie esté mirando, y luego abrir un solo PR. |
+| `/supervise-epic` | El mismo pipeline por etapas que `/execute-epic`, con tu decisión explícita de aprobar/rechazar cada hijo en la puerta de revisión antes de que se integre. Solo invocable por el usuario. |
+| `/spec` | Todo en uno: `/spec-breakdown` seguido, por defecto, de `/execute-epic`, encadenados. Agrega `--supervised` para que la ejecución pase por `/supervise-epic` en su lugar. |
 | `/handoff` | Pasar esta conversación a un agente en segundo plano que retoma el trabajo de inmediato. |
+
+## Habilidades (skills)
+
+Un comando es algo que *tú* inicias. Una **skill** es algo que inicia el *agente*: un
+procedimiento que carga por su cuenta en cuanto la situación coincide con la
+`description` de esa skill. Nunca escribes su nombre; simplemente encuentras al agente
+ya siguiéndola.
+
+Cada skill mantiene un único cuerpo canónico en `.agents/skills/<nombre>/SKILL.md`, que
+OpenCode lee de forma nativa, más un symlink relativo en `.claude/skills/<nombre>`, que
+es el único lugar donde mira Claude Code. Un solo archivo real, dos agentes, sin
+posibilidad de divergencia (`.agents/rules/skill-creation.md`; el razonamiento y las
+alternativas descartadas están en
+`.agents/adr/0001-skills-canonical-in-agents-skills.md`).
+
+| Skill | Se dispara cuando |
+|---|---|
+| `resolving-merge-conflicts` | Hay un merge o rebase de git en conflicto. Reconstruye la intención detrás de cada lado, resuelve cada hunk sin inventar comportamiento, corre las verificaciones del proyecto y termina el merge. |
+| `standards-and-spec-review` | Una rama necesita revisión en dos ejes a la vez: **Standards** (¿sigue `AGENTS.md`, `.agents/rules/`, el glosario y los ADR?) y **Spec** (¿implementa el issue, plan o especificación del que salió?). Cada eje corre en su propio sub-agente y los dos informes se presentan lado a lado, sin reordenarse uno contra el otro. No es una cacería de bugs de corrección — para eso está `/code-review`. |
+
+Una salvedad que conviene conocer antes de agregar las tuyas: un directorio de skills
+que no existía cuando arrancó el agente no queda bajo observación. Reinicia el agente
+después de agregar la primera.
 
 ## El flujo de trabajo de issues de GitHub
 
@@ -153,36 +177,66 @@ epic contiene una lista de tareas hijas y un bloque de grafo de dependencias
 `> Epic: #<n>` y `> Depends on: #…`. Los hijos ramifican desde una **rama de
 integración del epic** real y duradera (`epic/<n>-<slug>`) — nunca directamente
 desde `main` — y `.agents/scripts/run-parallel-issues.sh` ejecuta un worktree de
-git + un agente headless por cada hijo, fusionando automáticamente cada éxito de
-vuelta a la rama del epic tan pronto como se hace push. Las olas avanzan
-automáticamente; no hay punto de control de fusión manual entre ellas. `main` solo
-recibe el trabajo una vez, mediante un único PR `epic → main` abierto después de
-que todos los hijos estén integrados.
+git + un agente headless por cada hijo. `main` solo recibe el trabajo una vez,
+mediante un único PR `epic → main` abierto después de que todos los hijos estén
+integrados.
+
+Un hijo ya no se fusiona en el instante en que se hace push. Primero pasa por una
+**puerta de revisión (review gate)**: el runner despacha una revisión agéntica
+`standards-and-spec-review` contra la rama del epic como punto fijo, y solo un hijo
+que la supera se integra. Dos comandos ejecutan el mismo pipeline —
+push → revisión agéntica → retrabajo opcional → integración — y solo difieren en
+quién resuelve lo que encuentra la revisión:
+
+- **`/execute-epic`** (auto) — corre de principio a fin sin que nadie esté
+  mirando. Una **violación dura** (un incumplimiento del glosario o de un ADR)
+  bloquea la integración y dispara un retrabajo automático en lugar de una
+  pregunta; un **juicio de valor** nunca bloquea — solo queda registrado en el
+  ship-note del hijo.
+- **`/supervise-epic`** — el mismo pipeline, más tu decisión explícita de
+  aprobar/rechazar cada hijo, informada por el diff, el log del agente y el mismo
+  informe agéntico. Una violación dura preselecciona "rechazar", pero puedes
+  aprobar igual. Solo invocable por el usuario — igual que `/grill`, necesita a
+  alguien presente para responder, así que nunca debe ejecutarse dentro de un hijo
+  headless del runner paralelo.
+
+Un hijo rechazado se vuelve a despachar automáticamente — hasta
+`MAX_REWORK_ROUNDS` (por defecto 2) — con los hallazgos de la revisión como
+retroalimentación, y luego se vuelve a revisar antes de tener otra oportunidad en
+la puerta, ya que un retrabajo puede romper algo que la ronda anterior había
+aprobado. Las olas siguen avanzando sin ningún punto de control de fusión manual
+entre ellas.
 
 ```
-/spec ruta/a/especificacion-grande.md    # spec-breakdown, revisión, luego execute-epic — encadenados
+/spec ruta/a/especificacion-grande.md               # spec-breakdown, revisión, luego execute-epic — encadenados
+/spec ruta/a/especificacion-grande.md --supervised  # lo mismo, pero la ejecución pasa por supervise-epic
 ```
 
-o ejecuta las dos fases tú mismo con `/spec-breakdown` seguido de `/execute-epic`
-cuando quieras revisar la descomposición antes de que empiece cualquier ejecución.
+o ejecuta las fases tú mismo con `/spec-breakdown` seguido de `/execute-epic` o
+`/supervise-epic` cuando quieras revisar la descomposición antes de que empiece
+cualquier ejecución.
 
-Configuración única antes del primer `/execute-epic`: copia
+Configuración única antes del primer `/execute-epic` o `/supervise-epic`: copia
 `.agents/parallel.config.example` → `.agents/parallel.config` y establece
 `AGENT_EXEC_CMD` (por defecto `claude -p --dangerously-skip-permissions`; los
-adaptadores de Codex y OpenCode están documentados en el mismo archivo). Completa
-`## Commands` › `Build:` / `Test:` en `AGENTS.md` para que los agentes hijos tengan
-verificaciones de aceptación reales que ejecutar.
+adaptadores de Codex y OpenCode están documentados en el mismo archivo).
+Opcionalmente, establece `REVIEW_AGENT_EXEC_CMD` para darle al revisor agéntico un
+modelo distinto al del implementador — vacío hereda `AGENT_EXEC_CMD`, nunca
+significa "saltar la revisión". Completa `## Commands` › `Build:` / `Test:` en
+`AGENTS.md` para que los agentes hijos tengan verificaciones de aceptación reales
+que ejecutar.
 
 Los límites de seguridad están en el mismo archivo de reglas: `MAX_CHILDREN=12`,
-`PARALLEL_MAX_CONCURRENCY=3`, `AGENT_TIMEOUT=1800s`. El runner nunca obtiene
-`GITHUB_TOKEN` — los agentes hijos headless no tienen acceso a GitHub por diseño;
-todas las llamadas a la API de GitHub las realiza la sesión propia del agente
-orquestador a través de MCP.
+`PARALLEL_MAX_CONCURRENCY=3`, `AGENT_TIMEOUT=1800s`, `MAX_REWORK_ROUNDS=2` (`0`
+desactiva el retrabajo, así que un rechazo simplemente bloquea al hijo). El runner
+nunca obtiene `GITHUB_TOKEN` — los agentes hijos headless no tienen acceso a
+GitHub por diseño; todas las llamadas a la API de GitHub las realiza la sesión
+propia del agente orquestador a través de MCP.
 
 ## Instalar este andamiaje en otro lugar
 
-`/custom-init [directorio-destino]` ejecuta el copiador basado en manifiesto
-(`.agents/scripts/init-scaffold.sh`), que lee `.agents/scaffold.manifest` — una
+`/install-scaffold [directorio-destino]` ejecuta el copiador basado en manifiesto
+(`.agents/scripts/install-scaffold.sh`), que lee `.agents/scaffold.manifest` — una
 lista plana de archivos y directorios recursivos — y copia cada entrada al destino,
 omitiendo (nunca sobrescribiendo) lo que ya exista ahí. Siempre es seguro volver a
 ejecutarlo. Para agregar algo nuevo a lo que recibe cada proyecto que lo adopte,
@@ -192,24 +246,43 @@ instala.
 
 ## Verificar el andamiaje mismo
 
-Si estás trabajando en el código fuente propio de este andamiaje (y no en un
-proyecto que lo adoptó), `sh .agents/scripts/verify-scaffold.sh` es la puerta de
-aceptación de dependencia cero. Verifica: que existan los archivos raíz/de
-gobernanza requeridos; que cada especificación de comando tenga tanto un wrapper de
-Claude como uno de OpenCode; que cada wrapper declare un campo `description:`; que
-cada script bajo `.agents/scripts/` compile limpiamente con `sh -n` y sea
-ejecutable; que cada entrada de `.agents/scaffold.manifest` resuelva a una ruta
-real; y que no haya artefactos específicos de stack (`src/`, `src-tauri/`,
-`package.json`) rastreados. El código de salida es el número de verificaciones
-fallidas — `0` significa limpio.
+`sh .agents/scripts/verify-scaffold.sh` es la puerta de aceptación de dependencia
+cero. Verifica, en nueve grupos: que existan los archivos raíz/de gobernanza
+requeridos; que cada especificación de comando tenga tanto un wrapper de Claude como
+uno de OpenCode *y* un encabezado `# Command: <nombre>` que coincida con su nombre de
+archivo; que los dos wrappers sean idénticos byte a byte por debajo de su frontmatter;
+que cada wrapper declare un campo `description:`; que cada script bajo
+`.agents/scripts/` compile limpiamente con `sh -n` y sea ejecutable; que cada entrada
+de `.agents/scaffold.manifest` resuelva a una ruta real; que no haya artefactos
+específicos de stack (`src/`, `src-tauri/`, `package.json`) rastreados; que cada skill
+tenga un `SKILL.md` cuyo `name` coincida con su directorio, declare una `description` y
+esté enlazado por symlink en `.claude/skills/`; y —a la inversa de la verificación del
+manifiesto— que cada ADR y cada archivo `*.example` figure realmente en el manifiesto,
+para que nada quede referenciado pero sin instalarse. El código de salida es el número
+de verificaciones fallidas — `0` significa limpio.
+
+Córrela también en un proyecto que adoptó el andamiaje, no solo aquí. Las cuatro
+verificaciones que solo tienen sentido en el código fuente propio del andamiaje
+dependen de que `.agents/scaffold.manifest` esté presente, y el manifiesto
+deliberadamente no se lista a sí mismo — así que nunca llega a un proyecto adoptante,
+donde esas verificaciones se reportan como omitidas y el resto igual se ejecuta.
 
 ## Después de adoptar el andamiaje en un proyecto real
 
 Completa los marcadores que este andamiaje trae con `_not yet documented_`:
-`AGENTS.md` › `## Workspace`, `## Commands`, `## Verification Quirks`, `## Skills`,
+`AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
 `## Code Structure`; la fecha `Last updated` y la ruta canónica de código de
 dominio de `.agents/ubiquitous-language.md`; y las rutas canónicas de dominio en
-`.agents/rules/domain-glossary.md`. Nada del flujo de trabajo anterior cambia una
-vez que lo hagas — es el mismo ciclo planificar → implementar → verificar →
-entregar, ahora apuntando a los comandos reales de lint/build/test de tu stack en
-lugar de marcadores.
+`.agents/rules/domain-glossary.md`. Deja `AGENTS.md` › `## Skills` como está — ya
+viene poblada, y describe skills que heredas en lugar de un espacio en blanco por
+completar.
+
+Hay dos cosas que se heredan en vez de empezar de cero. Los ADR `0001`–`0007` vienen
+con el andamiaje y registran decisiones que tu proyecto hereda, así que tu primer ADR
+propio arranca en `0008`. Y tienes que reiniciar el agente una vez después de la
+instalación, o no descubrirá `.claude/skills/` — un directorio de skills que no existía
+al arrancar no queda bajo observación.
+
+Nada del flujo de trabajo anterior cambia una vez que lo hagas — es el mismo ciclo
+planificar → implementar → verificar → entregar, ahora apuntando a los comandos reales
+de lint/build/test de tu stack en lugar de marcadores.

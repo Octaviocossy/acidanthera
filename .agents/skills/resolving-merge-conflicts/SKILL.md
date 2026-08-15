@@ -54,9 +54,3 @@ attempt is clean and the single-writer invariant holds:
    children are detected from the epic branch's commit history and skipped.
 
 Never resolve by pushing directly to the epic integration branch.
-
----
-
-*Vendored from [`mattpocock/skills`](https://github.com/mattpocock/skills) —
-`skills/engineering/resolving-merge-conflicts`. Steps 1–5 are upstream wording; the
-`## In this repository` section is local.*

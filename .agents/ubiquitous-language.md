@@ -3,7 +3,7 @@
 > Single source of truth for current domain and technical terminology.
 > Read this before changing canonical types, states, processes, or data contracts.
 >
-> **Last updated:** 2026-08-09
+> **Last updated:** 2026-08-15
 > **Canonical code:** `src/` (TypeScript), `src-tauri/src/` (Rust)
 >
 ---
@@ -167,6 +167,48 @@
 
 ---
 
+## Scaffold
+
+Vocabulary of the cross-agent governance scaffold itself — what `/install-scaffold` installs and
+`.agents/scripts/verify-scaffold.sh` enforces.
+
+| Term | Canonical type | Aliases to avoid | Notes |
+|------|----------------|------------------|-------|
+| Command triad | invariant | *wrapper pair*, *command files* | The three files a slash command must have: `.agents/commands/<name>.md` plus its `.claude/commands/` and `.opencode/commands/` wrappers. All three carry the same `<name>` and always move together. Enforced by `verify-scaffold.sh` §2. |
+
+---
+
+## Branch review
+
+Vocabulary of `standards-and-spec-review` (`.agents/skills/standards-and-spec-review/SKILL.md`).
+
+| Term | Canonical type | Aliases to avoid | Notes |
+|------|----------------|------------------|-------|
+| Standards axis | review axis | *rules review*, *conventions review* | Asks whether the diff follows what this repo documents. `.agents/rules/*.md` is **one source** of the axis, alongside `AGENTS.md`, the glossary, and the ADRs — never the axis itself. |
+| Spec axis | review axis | *issue review* | Asks whether the diff implements what was asked. Its source is whichever of issue → plan → design spec resolves first; naming it after any one of them hides the other two. |
+| Fixed point | git revision | *base branch*, *target branch* | The revision a review diffs `HEAD` against, always three-dot (`git diff <fixed-point>...HEAD`). For an epic child it is the epic integration branch, not `main` — see `.agents/rules/parallel-orchestration.md`. |
+| Hard violation | finding severity | *error* | A breach of an invariant the repo committed to: `.agents/ubiquitous-language.md` or an ADR. |
+| Judgement call | finding severity | *warning*, *nit* | A labelled heuristic the reviewer flags for a human to weigh. Every Fowler smell in the baseline is one, without exception. |
+
+---
+
+## Parallel orchestration
+
+Vocabulary of the two epic execution paths (`.agents/rules/parallel-orchestration.md`,
+`.agents/scripts/run-parallel-issues.sh`).
+
+| Term | Canonical type | Aliases to avoid | Notes |
+|------|----------------|------------------|-------|
+| Auto execution | execution path (`/execute-epic`) | *vibecode mode* | Runs end to end with no prompt. A child is integrated only after passing the agentic review; a hard violation blocks it and triggers rework instead. The default. |
+| Supervised execution | execution path (`/supervise-epic`) | *review mode*, *integration mode* | The same pipeline plus a human decision per child, taken on the diff, the log and the agentic report. User-invocable only — there must be somebody answering. |
+| Review gate | the pause itself | *code review* | The point between a child's push and its merge into the epic branch where supervised execution waits for a decision. It decides *integration*; it always runs both an agentic and a human review over the same child. |
+| Agentic review | `standards-and-spec-review` run over a child | *automated review*, *pre-check* | The Standards + Spec pass the runner fans out under `--review`, one per child, writing `.worktrees/<branch>.review.md`. Runs on **both** execution paths. Its reviewer is always a fresh headless invocation, never the agent that wrote the code, and runs under `REVIEW_AGENT_EXEC_CMD` — a model deliberately allowed to differ from the implementer's. |
+| Human review | the developer's decision at the gate | *approval*, *sign-off* | Approve or reject, per child, informed by the diff, the agent log and the agentic report. Exists only on the supervised path; it is what `/supervise-epic` adds and `/execute-epic` never has. |
+| Rework round | a re-dispatch of the child's agent | *retry*, *fix pass* | One re-execution of the agent over a rejected child's branch, with the developer's written feedback as input. Counted from `rework(#N): ronda K` commits on that branch; capped by `MAX_REWORK_ROUNDS`. |
+| Corpus pack | review input file (`.worktrees/.corpus-pack.md`) | *cache*, *digest* | The verbatim concatenation of the standards sources (`AGENTS.md`, `.agents/rules/*.md`, the glossary, `.agents/adr/*.md`) the runner rebuilds at the start of every `--review` invocation and hands to each child's Standards sub-agent — never to the Spec one, whose sources are per-child. Lossless and per-invocation: not a summary, not durable state. |
+
+---
+
 ## Invariants and relationships
 
 1. Focus regions remain reachable only while their corresponding region is *usable*: the chat while it is open, the sidebar while it is **expanded** — not merely visible (see invariant 24).
@@ -199,6 +241,19 @@
 28. Renaming a **note** rewrites every `[[wikilink]]` whose target is its old stem, unless that stem is ambiguous — two notes sharing it means nothing is rewritten and the user is told (ADR 0016). Renaming a **directory** rewrites nothing, because a wikilink target is a basename and carries no path. The rename lands first and is never rolled back; the rewrite that follows is best-effort and reports what it could not do.
 29. A rename never closes a buffer. Every buffer at or under the old path has its `filePath` rewritten in place, dirty ones included — the mirror of invariant 26, where deletion closes them, because deletion removes the file and a rename does not.
 30. Every drawn icon comes from Lucide through the `Icon` primitive (ADR 0017), which is the only place `strokeWidth={1.2}`/`absoluteStrokeWidth` is set. Hand-drawn SVG survives in exactly one component, `OrbitMarkGlyph`; the *Unicode glyph vocabulary* stays characters inside text and is not an exception to this, because it is typography.
+
+### Scaffold and orchestration
+
+31. **A command triad moves as a unit.** Renaming, adding, or deleting a slash command touches all three of its files in the same change; a partial triad fails the acceptance gate.
+32. **A review finding is a hard violation only if it breaches the glossary or an ADR.** Everything the Fowler smell baseline surfaces is a judgement call, no matter how confident the reviewer is. A documented repo standard overrides the baseline where the two disagree.
+33. **The Standards axis and the Spec axis are never merged or reranked against each other.** A change can pass one and fail the other; combining them lets the passing axis mask the failing one.
+34. **Axis isolation is blindness between findings, never exclusivity over sources.** The Standards and Spec sub-agents may be handed the same pre-read source material; what they must never see is each other's findings or a merged ranking of them.
+35. **The runner is the sole writer of the epic integration branch, on both execution paths** (ADR 0020). A review gate changes *when* a child is merged, never *who* merges it — the agent only reads epic branch state and opens the final PR.
+36. **Review state is derived from git, never stored** (ADR 0021). A child awaits review if its remote branch exists and the epic branch carries no `Merge child #N` for it; rework rounds are counted from commit markers. There is no durable state file to disagree with the repository.
+37. **Every child passes an agentic review before it can be integrated, on both execution paths.** What differs is who resolves a finding: on the supervised path a hard violation pre-selects rejection and the human decides; on the auto path it blocks integration and triggers rework directly. Never whether the review runs.
+38. **Both execution paths run one pipeline** (ADR 0023). Run → review → optional rework → integrate. No path has a shortcut that merges without review — that is what removing the inline merge bought.
+39. **A rejection triggers rework; a merge conflict does not.** A conflict is an integration problem and goes to guided recovery in the child's direction; rework is for "this is not what I asked for."
+40. **The shape of a session is chosen at the call site, never in `.agents/parallel.config`** (ADR 0022). That file is gitignored and per-machine, so it may hold operational knobs (concurrency, timeouts, caps) but nothing that decides whether a human is required.
 
 ---
 
@@ -287,3 +342,4 @@
 | 2026-08-09 | Added *destructive color* (`--danger`) and *modal shell* (`Modal`); amended *AI accent* (the second colored fill), *`Button` variant and key hint* (a `danger` variant), *design primitive* (`Modal` joins, and is the one primitive with a side effect), *delete confirmation* (a fixed presentation contract), *vault display path* (a fourth consumer) and invariant 25 (registration is the shell's job); added invariant 27 | Design interrogation for the destructive-dialog rework — `.agents/specs/2026-08-09-destructive-dialog-rework.md`, ADR 0015. Reverses decision 15 of the sidebar-context-menu spec: the confirm button becomes a filled red on a new color role kept strictly disjoint from the ember, because "the AI acted here" and "this click destroys" are the only two things worth spending color on. Extracting the shared shell also closes the invariant-25 gap that spec left open as known-and-deferred. Terminology is settled ahead of implementation; two sections carry a marker until the work lands |
 | 2026-08-09 | Added *vault entry duplication* (`duplicate_entry` / `duplicateVaultEntry`); extended the sidebar command catalog with `sidebar.rename` and `sidebar.duplicate`; rewrote the sidebar context menu into applicability-based command groups with live key hints | Sidebar context menu and duplicate wiring (#128): duplicate keeps the watcher as the sole tree-refresh path, moves only the cursor to its returned path, and does not open the duplicate. Rename is registered but deliberately has no behavior yet. |
 | 2026-08-09 | Added `WikilinkScan`/`WikilinkRewrite` and backend `scan_wikilink_targets`/`rewrite_wikilinks` commands with their TypeScript IPC wrappers | Wikilink scan and target-only rewrite (#127): visible Markdown notes are scanned with duplicate target-stem detection before writes; aliases and anchors remain verbatim |
+| 2026-08-15 | Added the Scaffold, Branch review and Parallel orchestration areas (command triad; Standards/Spec axis, fixed point, hard violation, judgement call; auto/supervised execution, review gate, agentic review, human review, rework round, corpus pack) and invariants 31–40 | Scaffold update from `ai-harness` via `/install-scaffold`: the review gate, `/supervise-epic`, and the corpus pack arrived with no vocabulary in this repo. The scaffold ADRs were renumbered 0019–0024 on install to clear a collision with this project's own 0003–0008 |

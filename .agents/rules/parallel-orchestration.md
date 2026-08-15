@@ -55,18 +55,20 @@ Omit `> Depends on:` when the child has no dependencies.
 ## Epic Integration Branch
 
 Each epic has a real, long-lived branch — `epic/<epic#>-<slug>` — cut from `main`.
-Every child branches off the epic branch (not `main` directly) and is **merged back
-into it automatically by the runner** once the child's own branch is pushed
-(`.agents/scripts/run-parallel-issues.sh --epic <branch>`). The runner is the epic
-branch's **single writer**, serialized through a `.worktrees/.merge.lock` `mkdir` lock
-and a dedicated `__epic__` worktree — same-wave children merge one at a time, in
-whatever order they finish.
+Every child branches off the epic branch (not `main` directly). A child reaches the
+epic branch only after it clears the **review gate** (below) — the runner merges it
+in only when re-invoked with `--integrate`, never automatically on push. The runner is
+the epic branch's **single writer** across every action, serialized through a
+`.worktrees/.merge.lock` `mkdir` lock and a dedicated `__epic__` worktree —
+same-wave children merge one at a time, in whatever order they clear the gate. See
+ADR-0020.
 
 `main` receives the epic's work only once, through the final `epic → main` pull
 request `/execute-epic` opens after every child is integrated. There is no per-child
-PR and no manual merge step between waves — `/execute-epic` loops every runnable wave
-in a single invocation, advancing as soon as the runner reports each wave's children
-merged.
+PR and no manual merge step between waves — a single `/execute-epic` invocation loops
+every runnable wave through the full pipeline (run → `--review` → optional
+`--rework` → `--integrate`), advancing as soon as each wave's children are integrated
+or blocked.
 
 ---
 
@@ -153,63 +155,183 @@ invocation** — it does not stop after a single wave.
 
 ## Runner Contract
 
-**Input:** an optional `--epic <branch>` flag, as the **first** argument, followed by
-one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`:
+**Input:** an optional `--epic <branch>` flag, then an optional **action flag** —
+`--review`, `--rework`, or `--integrate` — both in the **first** positions, followed by
+one quoted positional arg per child, encoded as `"<issue>:<branch>:<title>"`. A run
+with no action flag is a **plain run**: it implements, commits, and pushes each child,
+and never integrates. The action flags are later, separate invocations over the same
+children — one pipeline, four stages:
 
-- `--epic <branch>` — optional. When present, children are cut from and auto-merged
-  into `<branch>` (the epic integration branch) instead of `BASE_BRANCH`. Also honored
-  from the `EPIC_BRANCH` environment variable as a fallback. Must come first so the
-  invocation still starts with `sh .agents/scripts/run-parallel-issues.sh …` (keeps the
-  Claude wrapper's `Bash(sh .agents/scripts/run-parallel-issues.sh:*)` allow-pattern
-  matching).
+```
+plain run  →  --review  →  --rework (optional, may repeat)  →  --integrate
+```
+
+- `--epic <branch>` — optional. When present, children are cut from `<branch>` (the
+  epic integration branch) instead of `BASE_BRANCH`, and every action flag below acts
+  against it. Also honored from the `EPIC_BRANCH` environment variable as a fallback.
+  Must come first so the invocation still starts with
+  `sh .agents/scripts/run-parallel-issues.sh …` (keeps the Claude wrapper's
+  `Bash(sh .agents/scripts/run-parallel-issues.sh:*)` allow-pattern matching).
+- `--review` — requires `--epic`. Runs the **agentic review** (see The Review Gate)
+  over each named child not already reviewed this session and writes its report.
+- `--rework` — requires `--epic`. Re-dispatches the agent on each named **rejected**
+  child (see The Rework Loop), feedback and report included.
+- `--integrate` — requires `--epic`. Merges each named **approved** child into the
+  epic branch and deletes its branch (unless `KEEP_CHILD_BRANCHES=1`). This is the
+  **only** action that writes to the epic branch — see Epic Integration Branch above.
 - `<issue>` — numeric GitHub issue number (no spaces).
 - `<branch>` — git branch name (no spaces, e.g. `12-keystroke-capture`).
 - `<title>` — human title (may contain spaces and `:`); split is on the **first two colons only**.
 
-**Issue body hand-off (required):** the runner has no GitHub access, so it cannot fetch
-an issue's body itself. Before invoking it for a wave, the orchestrating agent — which
-does have GitHub access — must call `mcp__github__issue_read` (`method: "get"`) for
-**every child issue in that wave** and write each raw `body` to
-`.worktrees/.bodies/<issue>.md` (`mkdir -p .worktrees/.bodies` first; the runner also
-creates it, but writing before invocation is what makes the content available). The
-runner embeds that file's contents verbatim into the child's prompt as authoritative
-when no matching `.agents/plans/` file exists. Skipping this step leaves the child
-agent to guess scope from the title alone — this caused a real divergence in practice
-(a foundation slice rebuilt from inference instead of its actual acceptance criteria)
-and must not be skipped for any wave, not just the first.
+**Output, by action:**
 
-**Output:**
+*Plain run:*
 
-- Pushes a branch per successful child (commit + push). Never pushes a broken/empty branch.
+- Reads `.worktrees/<branch>.issue.md` per child, if the caller wrote it beforehand —
+  the issue body, so the implementing agent has it without GitHub access (Adapter
+  Contract). Without it, the agent falls back to the linked plan file alone.
+- Pushes a branch per successful child (commit + push). Never pushes a broken/empty
+  child.
 - Appends `<issue> <branch>` to `.worktrees/.pushed` on success.
 - Appends `<issue>` to `.worktrees/.failed` on agent/worktree/push failure.
-- When `--epic` is set: after a child's own push succeeds, the runner merges it into
-  the epic branch (serialized — see Epic Integration Branch above) and appends
-  `<issue> <branch>` to `.worktrees/.merged` on success, or `<issue>` to
-  `.worktrees/.mergefail` on a merge conflict (the child branch stays pushed; only the
-  merge failed). A merge conflict counts as a failure for this run.
-- When `--epic` is set and a child integrates cleanly, the runner then **deletes that
-  child's branch from origin** (`git push origin --delete`, unless
-  `KEEP_CHILD_BRANCHES=1`) — the child is fully contained in the epic branch. A merge
-  conflict never deletes the branch (it stays pushed for a human to resolve).
-- Exit code = number of `.failed` + `.mergefail` entries (0 = all succeeded and, when
-  `--epic` is set, integrated).
+- Never merges — `.worktrees/.merged` and `.worktrees/.mergefail` are untouched.
 
-**Invoke via the Bash tool:**
+*`--review`:*
+
+- Builds the **corpus pack** first — `$WORKTREES_DIR/.corpus-pack.md`, a verbatim,
+  path-separated concatenation of the standards sources (list hardcoded in the runner,
+  mirroring the skill's grounding) — rebuilt from scratch on every `--review`
+  invocation, and names it in each child's review prompt.
+- Writes `.worktrees/<branch>.review.md` per child — the agentic review's report (The
+  Review Gate).
+- Reads the same `.worktrees/<branch>.issue.md` the caller wrote before the plain run —
+  the issue body, so the headless reviewer has it without GitHub access (Adapter
+  Contract).
+- Reads `$WORKTREES_DIR/.epic-issue.md` if the caller wrote it — the epic issue's body,
+  named in the prompt for the Spec axis's scope; the runner itself never writes it (no
+  GitHub access).
+
+*`--rework`:*
+
+- Reads `.worktrees/<branch>.feedback` (The Rework Loop), re-dispatches the agent, and
+  appends a `rework(#<issue>): ronda <n>` commit to the child's branch on success.
+- Appends `<issue>` to `.worktrees/.failed` if the rework attempt itself fails
+  (agent/worktree/push failure) — the same outcome as a plain-run failure.
+
+*`--integrate`:*
+
+- Merges the named child into the epic branch (serialized — see Epic Integration
+  Branch above) and appends `<issue> <branch>` to `.worktrees/.merged` on success, or
+  `<issue>` to `.worktrees/.mergefail` on a merge conflict (the child branch stays
+  pushed; only the merge failed). A merge conflict counts as a failure for this run.
+- On a clean merge, deletes the child's branch from origin (`git push origin
+  --delete`, unless `KEEP_CHILD_BRANCHES=1`) — the child is fully contained in the
+  epic branch. A merge conflict never deletes the branch (it stays pushed for a human
+  to resolve).
+
+**Exit code** = number of `.failed` + `.mergefail` entries produced by the action just
+run (0 = everything that action touched succeeded).
+
+**Invoke via the Bash tool, one action per call, in pipeline order:**
 
 ```sh
-sh .agents/scripts/run-parallel-issues.sh "<issue>:<branch>:<title>" "<issue>:<branch>:<title>" ...
-# or, with an epic integration branch:
+# 1. plain run — implement, commit, push each child
 sh .agents/scripts/run-parallel-issues.sh --epic epic/55-checkout-redesign "<issue>:<branch>:<title>" ...
+# 2. review the pushed children
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-checkout-redesign --review "<issue>:<branch>:<title>" ...
+# 3. rework any rejected children (repeat up to MAX_REWORK_ROUNDS)
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-checkout-redesign --rework "<issue>:<branch>:<title>" ...
+# 4. integrate the approved children
+sh .agents/scripts/run-parallel-issues.sh --epic epic/55-checkout-redesign --integrate "<issue>:<branch>:<title>" ...
 ```
+
+Without `--epic`, only the plain run is meaningful: `--review`, `--rework`, and
+`--integrate` all require an epic branch to review and merge against.
+
+---
+
+## The Review Gate
+
+Every child passes an **agentic review** before `--integrate` will touch it, on both
+execution paths (`/execute-epic` and `/supervise-epic`). The gate is what sits between
+a pushed child and its merge into the epic branch.
+
+- **What runs.** `standards-and-spec-review`
+  (`.agents/skills/standards-and-spec-review/SKILL.md`), fanned out one per child
+  through the same `PARALLEL_MAX_CONCURRENCY` semaphore the plain run uses. The fixed
+  point is the **epic integration branch**, not `main` — the documented rule for an
+  epic child (`.agents/ubiquitous-language.md` › Branch review). The reviewer is
+  always a fresh headless invocation, never the agent that wrote the code, run under
+  `REVIEW_AGENT_EXEC_CMD` (Adapter Contract).
+- **What it needs.** The child's worktree, **retained** through the review and cleaned
+  only on `--integrate` (never by a plain run or `--review`), so a human can also read
+  the diff, the log, and run the code. Its Spec axis reads
+  `.worktrees/<branch>.issue.md`, written by the caller before the plain run — a
+  headless reviewer has no GitHub access by design (Adapter Contract), so without this
+  file the Spec axis would silently fall back to the plan file and miss a case where
+  the issue and the plan diverged. The Standards axis reads the corpus pack the runner
+  just built rather than re-reading the standards sources per context; the orchestrating
+  reviewer passes paths without reading contents (ADR-0024).
+- **What it produces.** `.worktrees/<branch>.review.md` — the Standards + Spec report,
+  distinguishing **hard violations** (a breach of the glossary or an ADR) from
+  **judgement calls** (everything else, including the whole Fowler smell baseline) —
+  see `.agents/ubiquitous-language.md` › Branch review.
+- **Its authority differs by execution path:**
+  - **`/supervise-epic`** — a hard violation **pre-selects** "reject", with the reason
+    loaded; a human may still approve anyway. A judgement call never pre-selects
+    anything — the human weighs it.
+  - **`/execute-epic`** — a hard violation **blocks** integration and triggers
+    automatic rework (The Rework Loop); a judgement call never blocks, and lands only
+    in the ship-note. There is no human to weigh it, so only the objective criterion
+    decides.
+- **It re-runs every rework round**, not just once: a rework can break something the
+  previous round passed, and skipping the re-review would let that regression reach
+  the epic branch. `MAX_REWORK_ROUNDS` already caps the cost.
+
+The agentic review never decides alone on the supervised path — it informs a human
+decision. On the auto path a hard violation does decide alone, because there is nobody
+else to ask.
+
+---
+
+## The Rework Loop
+
+A rejected child — a human "reject" on the supervised path, or a hard violation on the
+auto path — is re-dispatched, not discarded: the agent already holds the context, and
+the branch is already pushed.
+
+- **Feedback carrier:** `.worktrees/<branch>.feedback`, written before `--rework`
+  runs. On `/supervise-epic` it holds the human's written text plus the full agentic
+  report; on `/execute-epic` it holds the report alone, since there is no human text
+  to add. `--rework` reads it and builds the re-dispatch prompt from the issue, the
+  feedback, and the child's current diff.
+- **Cap:** `MAX_REWORK_ROUNDS` in `.agents/parallel.config` (default `2`). `0`
+  disables rework entirely — a rejection then simply blocks the child, exactly like a
+  mergefail. Exhausting the cap has the same effect.
+- **Concurrency:** rework runs automatically and in parallel within the same
+  invocation, under `PARALLEL_MAX_CONCURRENCY` — the wave cannot advance until its
+  rejected children resolve, since dependents wait on those merges.
+- **Counting rounds:** derived from git, never stored (ADR-0021) — the number of
+  `rework(#<issue>): ronda <n>` commits already on the child's branch. Quitting
+  mid-rework and re-running resumes exactly where it stopped; there is no state file
+  to disagree with the repository.
+- **History:** rework always **appends** commits; it never rewrites history, since the
+  branch is already pushed and amending would force a force-push.
+- **Not a conflict handler:** a merge conflict at `--integrate` time goes to the
+  existing guided recovery (merge the epic branch *into* the child;
+  `resolving-merge-conflicts` takes over) — never into the rework loop. A conflict is
+  an integration problem; rework is for "this is not what was asked for."
+- **What GitHub sees:** only the final ship-note on the integrated child, stating how
+  many rework rounds ran and the last reason. No comment is posted per rejection.
 
 ---
 
 ## Adapter Contract
 
-`$AGENT_EXEC_CMD` is a **command prefix**. The runner appends the issue prompt as the
-**final quoted positional argument**. All three CLIs accept a prompt as the last positional
-arg in headless mode:
+`$AGENT_EXEC_CMD` and `$REVIEW_AGENT_EXEC_CMD` are both **command prefixes**. The
+runner appends the issue prompt (or, under `--review`, the review prompt) as the
+**final quoted positional argument**. All three CLIs accept a prompt as the last
+positional arg in headless mode:
 
 | Agent CLI | `AGENT_EXEC_CMD` |
 |-----------|-----------------|
@@ -217,7 +339,14 @@ arg in headless mode:
 | Codex (not installed on this machine) | `codex exec --full-auto` |
 | OpenCode | `opencode run --agent <name>` |
 
-Override in `.agents/parallel.config` (copy from `.agents/parallel.config.example`).
+`REVIEW_AGENT_EXEC_CMD` follows the same vocabulary and defaults to inheriting
+`AGENT_EXEC_CMD` when unset. The agentic review is part of the review gate's invariant
+and must never be skipped by omission — this deliberately departs from the
+`ACCEPTANCE_CMD=""` convention in the same config, where empty means "skip this step".
+Setting it to a different command prefix gives the reviewer a different model than the
+implementer: a reviewer that shares the implementer's blind spots is a weaker check.
+
+Override both in `.agents/parallel.config` (copy from `.agents/parallel.config.example`).
 
 **Security:** `GITHUB_TOKEN` from `.env` is **never** sourced by the runner. Headless agents
 have no GitHub access by design — all GitHub API work is done by the orchestrating agent
@@ -231,20 +360,33 @@ via MCP in the normal session.
 |----------|---------|---------|
 | `PARALLEL_MAX_CONCURRENCY` | 3 | Max issues running concurrently |
 | `MAX_CHILDREN` | 12 | Hard cap per wave; runner refuses if exceeded |
+| `MAX_REWORK_ROUNDS` | 2 | Cap on automatic rework rounds per child (The Rework Loop); `0` disables rework so a rejection just blocks |
 | `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap (seconds); 0 disables |
+| `REVIEW_AGENT_EXEC_CMD` | inherits `AGENT_EXEC_CMD` | Command prefix for the agentic reviewer (Adapter Contract); empty means "same model as the implementer", never "skip the review" |
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
 | `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
 | `KEEP_CHILD_BRANCHES` | 0 | 1 = keep a child's branch after it merges into the epic branch (default deletes it from origin) |
 
-Worktrees are removed on success (unless `KEEP_WORKTREES=1`) and retained on failure so
-the agent log can be inspected at `.worktrees/<branch>.log`. The epic branch itself is
-written only through `.worktrees/.merge.lock` (an atomic `mkdir` lock) plus a dedicated
-`.worktrees/__epic__` checkout, so concurrent child merges never race. A merge conflict
-leaves the child branch pushed and intact, records the child in `.worktrees/.mergefail`,
-blocks its dependents, and is safely retried once a human resolves the conflict and
-re-runs `/execute-epic` (already-integrated children are re-detected as done). Manual
-cleanup:
+Worktrees are removed only on a successful `--integrate` (unless `KEEP_WORKTREES=1`).
+A plain run, `--review`, and `--rework` all **retain** the worktree — through the
+whole review gate — so a human or the next action can read the diff, the agent log at
+`.worktrees/<branch>.log`, the review report `--review` wrote, and the issue body the
+caller wrote before the plain run. A worktree is also retained on failure, for the
+same inspection. The epic branch itself
+is written only through `.worktrees/.merge.lock` (an atomic `mkdir` lock) plus a
+dedicated `.worktrees/__epic__` checkout, so concurrent child merges never race. A
+merge conflict leaves the child branch pushed and intact, records the child in
+`.worktrees/.mergefail`, blocks its dependents, and is safely retried once a human
+resolves the conflict and re-runs `--integrate` (already-integrated children are
+re-detected as done).
+
+`.corpus-pack.md` and `.epic-issue.md` live in `$WORKTREES_DIR` alongside the state
+files: the pack is rebuilt from scratch by every `--review` invocation (never stale,
+nothing to invalidate); the epic issue file is the caller's to write and refresh. Both
+disappear with `rm -rf .worktrees/`.
+
+Manual cleanup:
 
 ```sh
 git worktree prune
@@ -271,19 +413,31 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 
 ---
 
-## Auto-Merge Integration Model
+## Staged Integration Model
 
 Children branch off the **epic integration branch** (not `main` directly — see Epic
-Integration Branch above). `/execute-epic` runs each runnable wave in turn; the runner
-auto-merges every successful child into the epic branch as soon as its own push
-succeeds, then **deletes that child's now-redundant branch** (unless
-`KEEP_CHILD_BRANCHES=1`), so the next wave's frontier becomes runnable with **no manual
-merge step**. Per child, `/execute-epic` also **closes the integrated child issue**. A
-single `/execute-epic` invocation loops this wave-by-wave until the epic is fully
-integrated or blocked, then opens **one `epic → main` PR**. The **epic** issue is closed
-by that PR's `Closes #<epic>`; neither the epic issue nor the epic branch is
-closed/deleted mid-flow. Re-running is idempotent: done children are detected from the
-epic branch's commit history, so only the remaining frontier runs.
+Integration Branch above). A child no longer merges the moment its own push succeeds —
+the old inline merge is gone (ADR-0023). Instead, `/execute-epic` runs each runnable
+wave through the full pipeline in a single invocation, per child: plain run (push) →
+`--review` → optional `--rework` → `--integrate`. Once a child integrates, the runner
+**deletes its now-redundant branch** (unless `KEEP_CHILD_BRANCHES=1`), so the next
+wave's frontier becomes runnable with **no manual merge step**. Per child,
+`/execute-epic` also **closes the integrated child issue**. A single `/execute-epic`
+invocation loops this wave-by-wave until the epic is fully integrated or blocked, then
+opens **one `epic → main` PR**. The **epic** issue is closed by that PR's
+`Closes #<epic>`; neither the epic issue nor the epic branch is closed/deleted
+mid-flow. Re-running is idempotent: done children are detected from the epic branch's
+commit history, so only the remaining frontier runs.
+
+`/supervise-epic` runs the identical pipeline with one addition: before
+`--integrate`, a human decides each child's outcome instead of the hard-violation rule
+deciding it alone (The Review Gate).
+
+Because the review stage waits for the whole wave to finish pushing before anything
+integrates, a wave's children no longer overlap their merges with still-running
+siblings the way the old inline merge did — an epic now takes longer in wall-clock
+than before. That cost is paid on both execution paths; it is the price of reviewing
+before integrating.
 
 ### Documented opt-ins (NOT built — describe trade-offs only)
 
@@ -291,6 +445,8 @@ epic branch's commit history, so only the remaining frontier runs.
   instead of the epic branch directly. Enables faster iteration but requires sequential
   merge order and rebase coordination. Built only on explicit request.
 - **`--per-wave`:** stop after each wave (instead of auto-advancing) so a human can
-  review the epic branch's state before the runner integrates the next wave. Restores
-  the old manual-merge-checkpoint cadence for teams that want a review gate mid-epic,
-  at the cost of requiring a re-run per wave. Built only on explicit request.
+  inspect the epic branch's state before the runner integrates the next wave — a
+  checkpoint *after* the merge, distinct from the per-child review gate above, which
+  always runs *before* it. Restores the old manual-merge-checkpoint cadence for teams
+  that want a pause mid-epic, at the cost of requiring a re-run per wave. Built only on
+  explicit request.

@@ -1,7 +1,7 @@
 #!/bin/sh
-# init-scaffold.sh — manifest-driven copier for the cross-agent governance scaffold.
+# install-scaffold.sh — manifest-driven copier for the cross-agent governance scaffold.
 #
-# Usage: init-scaffold.sh [target-dir]
+# Usage: install-scaffold.sh [target-dir]
 #
 # Reads .agents/scaffold.manifest relative to this script's own repo root (resolved from
 # the script's own path, so it works whether run in-place or from a cloned/degit'd copy)
@@ -82,6 +82,6 @@ while IFS="$tab" read -r src rel; do
 done < "$file_list"
 
 echo ""
-echo "Scaffold initialized."
+echo "Scaffold installed."
 echo "Created: $created files"
 echo "Skipped: $skipped files (already existed)"
