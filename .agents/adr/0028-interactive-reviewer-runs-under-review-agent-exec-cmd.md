@@ -24,5 +24,18 @@ on the headless path in the first place.
 ## Consequences
 
 The report arrives as one blob at the end of an external process rather than streaming into the
-session. `GITHUB_TOKEN` is not sourced by the script, so the reviewer has no GitHub access — the
-caller must fetch any issue body first and pass it by path, exactly as the runner does.
+session.
+
+`run-review-agent.sh` does not source `GITHUB_TOKEN`, and the caller must fetch any issue body
+first and pass it by path, exactly as the runner does. That is **not** the same as the reviewer
+having no GitHub access, which this ADR originally claimed: a reviewer CLI that reads
+`opencode.json` or `.mcp.json` launches the GitHub MCP server through
+`.agents/scripts/run-github-mcp.sh`, and *that* script sources `.env` itself. So the token reaches
+the reviewer by a path this script does not control, and no CLI flag reliably suppresses it
+(opencode's `--pure` disables plugins, not MCP servers).
+
+Passing sources by path therefore has to be enforced by the prompt, not assumed from the
+environment: an external reviewer with GitHub reachable and no pre-fetched issue will go hunting
+through it, which is exactly how a review of three files ran past forty minutes. `/review-branch`
+step 3 states the prohibition explicitly, and `REVIEW_TIMEOUT` (ADR-0030) bounds what happens when
+a reviewer ignores it.

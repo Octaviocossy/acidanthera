@@ -145,6 +145,9 @@ Repeat until no progress:
    This writes `.worktrees/<branch>.review.md` per child (the Standards + Spec report
    from `standards-and-spec-review`, run against `<EPIC_BRANCH>` as the fixed point);
    reads the `.worktrees/<branch>.issue.md` already written in the push stage above.
+   A child that lands in `.worktrees/.failed` here — a review axis failed, timed out
+   (`REVIEW_TIMEOUT`), or wrote nothing — is **blocked** (sub-step 11), not presented
+   at the gate: a half-reviewed child must never be decided as if both axes had seen it.
 6. **The review gate — one decision per child.** For each reviewed child, present:
    - Diffstat: `git -C .worktrees/<branch> diff --stat <EPIC_BRANCH>...HEAD`
    - Full diff: `git -C .worktrees/<branch> diff <EPIC_BRANCH>...HEAD`

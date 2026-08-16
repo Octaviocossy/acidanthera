@@ -89,6 +89,30 @@ interactive path; that is expected, not an error.
 
 **Guard:** if the diff is empty, stop and say so. Do not spawn sub-agents against nothing.
 
+**Write the diff to a file** and hand the reviewers that path — never the diff command alone.
+Redirect **whichever form you selected above**; the file and the comparison you name in the
+prompt must be the same one, or the reviewer reasons about a diff it was not given:
+
+```sh
+mkdir -p .worktrees
+# default — working tree
+git diff $(git merge-base <fixed-point> HEAD) > .worktrees/<branch>.diff
+# with committed-only
+git diff <fixed-point>...HEAD > .worktrees/<branch>.diff
+```
+
+Sanitize `/` to `-` in the branch name, the same convention as the review report (step 6). The
+`mkdir` is not ceremonial: a clone where the parallel runner has never run has no `.worktrees/`,
+and the directory is already gitignored. This is not an optimization. A reviewer handed a
+*command* pages the diff through its own tool calls, and the observed failure mode is the one the
+runner already documents where it does the same thing
+(`.agents/scripts/run-parallel-issues.sh`, `process_review`): it reads *less* of the diff, reports
+more shallowly, and can burn the entire wall-clock cap without emitting anything. It is the same
+argument as the corpus pack (ADR-0029), applied to the other large input.
+
+Still state the exact comparison form in the prompt, so a reviewer that needs context around a
+hunk knows which comparison produced the file.
+
 The intent-to-add is the **only** index mutation this command makes. It stages no content, and
 it is deliberately left in place so the user's `git status` and a later `/ship-note` see a
 consistent picture. Do not "clean it up" with a `git reset` — that would unstage whatever the
@@ -96,58 +120,93 @@ user had staged on purpose.
 
 ### 3 — Run the agentic review
 
-**Dispatch the reviewer under `REVIEW_AGENT_EXEC_CMD`**, not in this session:
+**Dispatch one reviewer process per axis, concurrently** — never one process that forks the two
+axes internally (ADR-0030):
 
 ```sh
-sh .agents/scripts/run-review-agent.sh "<review prompt>"
+sh .agents/scripts/run-review-agent.sh "<Standards prompt>"   # dispatch A
+sh .agents/scripts/run-review-agent.sh "<Spec prompt>"        # dispatch B
 ```
+
+Issue **both calls in a single message** so they actually run concurrently. Each is an
+independent process with its own wall-clock cap, and each one's stdout **is** that axis's report.
 
 The script sources `.agents/parallel.config`, resolves `REVIEW_AGENT_EXEC_CMD` (falling back to
 `AGENT_EXEC_CMD` when empty — never to "skip the review"), and appends the prompt as the final
-positional argument. Its stdout **is** the report.
+positional argument. The reviewer runs outside this session for one reason: **you wrote this
+code**. A reviewer running on your model inherits your blind spots, so the config deliberately
+allows a different model than the implementer's (ADR-0028). An in-session sub-agent gets a fresh
+*context* but not a fresh *model*, which is the weaker half of the guarantee.
 
-This is the same contract the runner's `--review` action uses, and for the same reason: **you
-wrote this code**. A reviewer running on your model inherits your blind spots, so the config
-deliberately allows the reviewer to be a different model than the implementer (ADR-0028). An
-in-session sub-agent gets a fresh *context* but not a fresh *model*, which is the weaker half
-of the guarantee.
+#### Prepare the inputs before dispatching
 
-Build the prompt from **paths and refs only** — never your own account of what you just
-implemented. That summary is precisely the contamination a fresh reviewer exists to avoid. The
-prompt must carry:
-
-- the fixed point from step 1 and the **exact** diff command from step 2, so the reviewer does
-  not re-derive the comparison form and silently fall back to three-dot;
-- the instruction to run the `standards-and-spec-review` process
-  (`.agents/skills/standards-and-spec-review/SKILL.md`) and dispatch its two axes as its own
-  sub-agents;
-- the spec sources by path: the branch's issue, the linked `.agents/plans/` file if one exists,
-  and any `.agents/specs/` file they reference. The reviewer has **no GitHub access** — if the
-  Spec axis needs the issue body, fetch it yourself first with
-  `gh issue view <n> --repo <owner>/<repo> --json body -q .body` and pass the resulting file's
-  path. Do not use `mcp__github__issue_read` for this: it returns the body HTML-sanitized and
-  deletes every `<...>` placeholder, which silently corrupts paths and git commands in the very
-  document the Spec axis reviews against;
-- the instruction that its entire final message is the report, saved verbatim.
-
-**Build the corpus pack first** and name it in the prompt (ADR-0029):
+Every source each axis needs must be **on disk before its prompt is written**. A reviewer that has
+to go find a source is a reviewer with an unbounded search space.
 
 ```sh
-sh .agents/scripts/build-corpus-pack.sh .worktrees/.corpus-pack.md
+sh .agents/scripts/build-corpus-pack.sh .worktrees/.corpus-pack.md          # Standards
+gh issue view <n> --repo <owner>/<repo> --json body -q .body > .worktrees/<branch>.issue.md
 ```
 
-An external reviewer pulls every standards source through its own tool calls, and the observed
-failure mode is not that it costs more but that it reads *less* and reports shallowly. Hand the
-pack to the **Standards** sub-agent as its complete standards sources — **never** to the Spec
-one, whose sources are per-change. Axis isolation is blindness between findings, never
-exclusivity over sources (ADR-0024).
+- **Corpus pack** (ADR-0029) — the verbatim concatenation of every standards source. Hand it to
+  the **Standards** dispatch as its complete standards sources, and **never** to the Spec one,
+  whose sources are per-change. Axis isolation is blindness between findings, never exclusivity
+  over sources (ADR-0024).
+- **Issue body** — fetch it with `gh`, not `mcp__github__issue_read`: the MCP tool returns the
+  body HTML-sanitized and deletes every `<...>` placeholder, silently corrupting paths and git
+  commands in the very document the Spec axis reviews against. If the branch resolves to no
+  issue, say so and let the Spec dispatch work from the plan alone.
+- **Plan and design spec** — the linked `.agents/plans/` file, and any `.agents/specs/` file it
+  or the issue references. Pass paths; they are already on disk.
+- **The diff** — the file written in step 2, for **both** axes.
 
-**Fallback.** If the script exits `3` (no `.agents/parallel.config`, or no command configured)
-or `4` (the configured CLI is not on PATH), say so plainly and run the two axes as fresh
-in-session sub-agents instead, handed the same paths and refs. Degrading to a same-model
-reviewer is worse than an external one and must be stated; skipping the review is not an
-option — *work is not done until an agentic review has seen it*
-(`.agents/ubiquitous-language.md` › invariants).
+#### What both prompts must carry
+
+Build them from **paths and refs only** — never your own account of what you just implemented.
+That summary is precisely the contamination a fresh reviewer exists to avoid. Beyond the
+per-axis sources, both prompts state:
+
+- the fixed point from step 1 and the **exact** comparison form from step 2, so the reviewer
+  never re-derives it and silently falls back to three-dot;
+- that the pre-materialized diff is the change under review, and it should **read that file
+  rather than re-running git**;
+- that it is **one axis of the two**, working alone: it must not dispatch sub-agents, and must
+  not report on the other axis. Its brief and the hard-violation vs judgement-call split are in
+  `.agents/skills/standards-and-spec-review/SKILL.md` — the Standards prompt also points at the
+  smell baseline there;
+- that **every source it needs is already on disk at the named paths**: it must not use GitHub
+  tools and must not go looking for sources it was not given. The reviewer may well *have* GitHub
+  reachable — a CLI that registers the MCP server from `opencode.json` or `.mcp.json` gets it via
+  `.agents/scripts/run-github-mcp.sh`, which sources `.env` itself. Reaching for it is what turns
+  a bounded review into an open-ended hunt;
+- that this is a **non-interactive run**: it must never stop to ask. If something cannot be
+  resolved, note it in the report and continue;
+- that its **entire final message is the report**, saved verbatim, under 400 words — without a
+  leading `## Standards` / `## Spec` heading, since the presenter adds those when composing.
+
+#### Handling the outcome
+
+| Exit | Meaning | What to do |
+|------|---------|------------|
+| `0` | report on stdout | use it |
+| `124` | exceeded `REVIEW_TIMEOUT` and was killed | report that axis as **timed out**, say so at the gate, and offer to re-run it with a larger `REVIEW_TIMEOUT`. Never present a timed-out axis as a pass |
+| `3` / `4` | no reviewer configured / CLI not on `PATH` | fall back (below) |
+| other | the reviewer failed | surface its stderr; treat the axis as unreviewed, not as a pass |
+
+Because the axes are separate processes, one can time out while the other returns a full report.
+Present what you have and name what you do not — that per-axis visibility is the point of
+dispatching them separately.
+
+You do **not** need to stagger the two dispatches or retry them yourself. Agent CLIs keep per-user
+state that two simultaneous launches can collide on — opencode fails instantly with
+`database is locked` on its one global session store — and `run-review-agent.sh` already absorbs
+that: a failure that is fast, non-zero *and* silent is retried once (ADR-0030). What reaches you
+is the outcome after that retry.
+
+**Fallback.** On exit `3` or `4`, say so plainly and run the two axes as fresh in-session
+sub-agents instead, handed the same paths and refs. Degrading to a same-model reviewer is worse
+than an external one and must be stated; skipping the review is not an option — *work is not done
+until an agentic review has seen it* (`.agents/ubiquitous-language.md` › invariants).
 
 ### 4 — Present the gate
 
@@ -173,9 +232,10 @@ option — *work is not done until an agentic review has seen it*
   the same way the runner re-dispatches the child's own agent rather than a stranger.
 - Input: the user's written feedback (if any) plus the full aggregated report.
 - Working tree only. No commits, no pushes, no GitHub writes.
-- After each rework round, **return to step 3 with fresh sub-agents** and re-present the gate.
-  A rework can break something the previous round passed; skipping the re-review is how that
-  regression survives.
+- After each rework round, **return to step 3 with fresh dispatches** — including rebuilding the
+  diff file from step 2, which the rework just invalidated — and re-present the gate. A rework can
+  break something the previous round passed; skipping the re-review is how that regression
+  survives.
 - There is **no round cap**. `MAX_REWORK_ROUNDS` exists because the auto path has nobody to stop
   it; here there is a human, and they end the loop by approving or by walking away.
 
@@ -241,6 +301,12 @@ user wants the report on it, point them at `/comment-issue`; after an approved r
 - **The reviewer runs under `REVIEW_AGENT_EXEC_CMD`**, dispatched through
   `.agents/scripts/run-review-agent.sh` — a different model from the implementer's whenever the
   config says so (ADR-0028). In-session sub-agents are the stated fallback, never the default.
+- **One dispatch per axis, concurrently** (ADR-0030) — never one process that forks the two axes
+  internally. Each axis gets its own wall-clock cap and its own visible outcome.
+- **Every source arrives by path, pre-materialized** — the corpus pack, the issue body, the plan,
+  the design spec, and the diff. A reviewer sent to *find* a source has an unbounded search space,
+  and that is what a wall-clock cap exists to catch rather than to permit.
+- **A timed-out or failed axis is never presented as a pass.** Say which axis did not report.
 - **The report appends, never overwrites** — one `## Round N` per review pass.
 - **No rework cap.** The human present ends the loop.
 - **Never run inside a headless parallel-runner child** — see User-invocable only, above.

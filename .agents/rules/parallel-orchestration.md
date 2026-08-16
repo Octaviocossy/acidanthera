@@ -198,18 +198,26 @@ plain run  →  --review  →  --rework (optional, may repeat)  →  --integrate
 
 *`--review`:*
 
-- Builds the **corpus pack** first — `$WORKTREES_DIR/.corpus-pack.md`, a verbatim,
-  path-separated concatenation of the standards sources (list hardcoded in the runner,
-  mirroring the skill's grounding) — rebuilt from scratch on every `--review`
-  invocation, and names it in each child's review prompt.
-- Writes `.worktrees/<branch>.review.md` per child — the agentic review's report (The
-  Review Gate).
+- Builds the **corpus pack** first — `$WORKTREES_DIR/.corpus-pack.md`, built by
+  `.agents/scripts/build-corpus-pack.sh` (shared with the interactive gate, ADR-0029) —
+  rebuilt from scratch on every `--review` invocation, and names it in each child's
+  **Standards** prompt.
+- Dispatches **two single-axis reviewer processes per child** — Standards and Spec,
+  concurrent, each through `.agents/scripts/run-review-agent.sh` from inside the
+  child's worktree (ADR-0030). Each axis is capped per attempt by `REVIEW_TIMEOUT`,
+  not `AGENT_TIMEOUT`, and pre-materializes nothing itself: the runner writes the
+  child's diff to `.worktrees/<branch>.diff` and names it in both prompts.
+- Composes `.worktrees/<branch>.review.md` per child — header plus the two axis
+  reports under `## Standards` / `## Spec` (The Review Gate). An axis that fails,
+  times out, or writes nothing gets an explicit `AXIS DID NOT REPORT` marker **and
+  fails the child** (appended to `.worktrees/.failed`) — a half-reviewed child never
+  passes the gate.
 - Reads the same `.worktrees/<branch>.issue.md` the caller wrote before the plain run —
-  the issue body, so the headless reviewer has it without GitHub access (Adapter
-  Contract).
+  the issue body, named in the **Spec** prompt, so the headless reviewer has it without
+  GitHub access (Adapter Contract).
 - Reads `$WORKTREES_DIR/.epic-issue.md` if the caller wrote it — the epic issue's body,
-  named in the prompt for the Spec axis's scope; the runner itself never writes it (no
-  GitHub access).
+  named in the **Spec** prompt for the child's intended scope; the runner itself never
+  writes it (no GitHub access).
 
 *`--rework`:*
 
@@ -257,21 +265,25 @@ execution paths (`/execute-epic` and `/supervise-epic`). The gate is what sits b
 a pushed child and its merge into the epic branch.
 
 - **What runs.** `standards-and-spec-review`
-  (`.agents/skills/standards-and-spec-review/SKILL.md`), fanned out one per child
-  through the same `PARALLEL_MAX_CONCURRENCY` semaphore the plain run uses. The fixed
+  (`.agents/skills/standards-and-spec-review/SKILL.md`), as **two single-axis reviewer
+  processes per child** — one per axis, concurrent, dispatched through
+  `.agents/scripts/run-review-agent.sh` (ADR-0030) — with children fanned out through
+  the same `PARALLEL_MAX_CONCURRENCY` semaphore the plain run uses (so `--review` may
+  run up to twice that many reviewer processes at once). The fixed
   point is the **epic integration branch**, not `main` — the documented rule for an
   epic child (`.agents/ubiquitous-language.md` › Branch review). The reviewer is
   always a fresh headless invocation, never the agent that wrote the code, run under
   `REVIEW_AGENT_EXEC_CMD` (Adapter Contract).
 - **What it needs.** The child's worktree, **retained** through the review and cleaned
   only on `--integrate` (never by a plain run or `--review`), so a human can also read
-  the diff, the log, and run the code. Its Spec axis reads
+  the diff, the log, and run the code. Every source arrives **pre-materialized, by
+  path**: the runner writes the child's diff to `.worktrees/<branch>.diff` and names
+  it in both prompts. The Spec axis reads
   `.worktrees/<branch>.issue.md`, written by the caller before the plain run — a
   headless reviewer has no GitHub access by design (Adapter Contract), so without this
   file the Spec axis would silently fall back to the plan file and miss a case where
   the issue and the plan diverged. The Standards axis reads the corpus pack the runner
-  just built rather than re-reading the standards sources per context; the orchestrating
-  reviewer passes paths without reading contents (ADR-0024).
+  just built rather than re-reading the standards sources per context (ADR-0024).
 - **What it produces.** `.worktrees/<branch>.review.md` — the Standards + Spec report,
   distinguishing **hard violations** (a breach of the glossary or an ADR) from
   **judgement calls** (everything else, including the whole Fowler smell baseline) —
@@ -329,18 +341,21 @@ the branch is already pushed.
 ## Adapter Contract
 
 `$AGENT_EXEC_CMD` and `$REVIEW_AGENT_EXEC_CMD` are both **command prefixes**. The
-runner appends the issue prompt (or, under `--review`, the review prompt) as the
-**final quoted positional argument**. All three CLIs accept a prompt as the last
-positional arg in headless mode:
+dispatching script appends the prompt as the **final quoted positional argument**. All
+three CLIs accept a prompt as the last positional arg in headless mode:
 
-| Agent CLI | `AGENT_EXEC_CMD` |
-|-----------|-----------------|
-| Claude Code (default, installed) | `claude -p --dangerously-skip-permissions` |
-| Codex (not installed on this machine) | `codex exec --full-auto` |
-| OpenCode | `opencode run --agent <name>` |
+| Agent CLI | `AGENT_EXEC_CMD` | `REVIEW_AGENT_EXEC_CMD` |
+|-----------|-----------------|--------------------------|
+| Claude Code (default) | `claude -p --dangerously-skip-permissions` | `claude -p` |
+| Codex | `codex exec --full-auto` | `codex exec -s read-only --ephemeral -m <model> -c model_reasoning_effort=high` |
+| OpenCode | `opencode run --agent <name>` | `opencode run --agent <read-only agent> -m <provider/model> --auto` |
 
 `REVIEW_AGENT_EXEC_CMD` follows the same vocabulary and defaults to inheriting
-`AGENT_EXEC_CMD` when unset. The agentic review is part of the review gate's invariant
+`AGENT_EXEC_CMD` when unset. Every reviewer dispatch, on both review paths, is **one
+single-axis process** through `.agents/scripts/run-review-agent.sh` (ADR-0030) — the
+adapter never needs the reviewer CLI to support sub-agent fan-out, and a review is
+read-only by definition, so prefer an invocation that enforces that (codex's
+`-s read-only`). The agentic review is part of the review gate's invariant
 and must never be skipped by omission — this deliberately departs from the
 `ACCEPTANCE_CMD=""` convention in the same config, where empty means "skip this step".
 Setting it to a different command prefix gives the reviewer a different model than the
@@ -348,9 +363,13 @@ implementer: a reviewer that shares the implementer's blind spots is a weaker ch
 
 Override both in `.agents/parallel.config` (copy from `.agents/parallel.config.example`).
 
-**Security:** `GITHUB_TOKEN` from `.env` is **never** sourced by the runner. Headless agents
-have no GitHub access by design — all GitHub API work is done by the orchestrating agent
-via MCP in the normal session.
+**Security:** `GITHUB_TOKEN` from `.env` is **never** sourced by the runner or the review
+dispatcher — all GitHub API work is done by the orchestrating agent via MCP in the normal
+session. That denies headless agents the token, not necessarily GitHub itself: a CLI that
+loads a project MCP config (`.mcp.json`, `opencode.json`) can still reach GitHub through
+`run-github-mcp.sh`, which sources `.env` on its own. So every headless prompt both
+pre-materializes its sources by path **and** prohibits GitHub tools outright — the
+prohibition is enforced by the prompt, never assumed from the environment (ADR-0028).
 
 ---
 
@@ -358,11 +377,13 @@ via MCP in the normal session.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PARALLEL_MAX_CONCURRENCY` | 3 | Max issues running concurrently |
+| `PARALLEL_MAX_CONCURRENCY` | 3 | Max issues running concurrently; under `--review` each issue dispatches two axis processes, so up to twice this many reviewer processes run at once |
 | `MAX_CHILDREN` | 12 | Hard cap per wave; runner refuses if exceeded |
 | `MAX_REWORK_ROUNDS` | 2 | Cap on automatic rework rounds per child (The Rework Loop); `0` disables rework so a rejection just blocks |
-| `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap (seconds); 0 disables |
+| `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap for implementing and rework agents (seconds); 0 disables. Review dispatches are capped by `REVIEW_TIMEOUT` instead |
 | `REVIEW_AGENT_EXEC_CMD` | inherits `AGENT_EXEC_CMD` | Command prefix for the agentic reviewer (Adapter Contract); empty means "same model as the implementer", never "skip the review" |
+| `REVIEW_TIMEOUT` | 900 | Wall-clock cap on one reviewer **attempt**, on both review paths (`.agents/scripts/run-review-agent.sh` exits `124` when it fires); `0` disables. An axis may run to `REVIEW_RETRY_WINDOW + REVIEW_RETRY_DELAY + REVIEW_TIMEOUT + REVIEW_KILL_GRACE` (955s) because of the one startup-collision retry (ADR-0030). `AGENT_TIMEOUT` caps implementing and rework agents only |
+| `REVIEW_RETRIES` / `REVIEW_RETRY_WINDOW` / `REVIEW_RETRY_DELAY` | 1 / 30 / 15 | The startup-collision retry in `run-review-agent.sh` (ADR-0030): retry this many times when an attempt fails non-zero, silent, and within the window; wait this long first. Env-only — set `REVIEW_RETRIES=0` to disable |
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
 | `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |

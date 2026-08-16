@@ -12,13 +12,17 @@
 #                    present, children are cut from (and, on --integrate, merged into) this
 #                    epic integration branch instead of BASE_BRANCH. Required by every
 #                    action flag below. Must come first.
-# --review           requires --epic. Fans out one standards-and-spec-review agent per
-#                    named child (via REVIEW_AGENT_EXEC_CMD) against the epic branch and
-#                    writes its report to .worktrees/<branch>.review.md. Reads the same
+# --review           requires --epic. Fans out the standards-and-spec-review over each
+#                    named child as TWO single-axis reviewer processes (Standards, Spec),
+#                    dispatched concurrently through run-review-agent.sh (ADR-0030) against
+#                    the epic branch, then composes both axis reports into
+#                    .worktrees/<branch>.review.md. Each axis is capped per attempt by
+#                    REVIEW_TIMEOUT (not AGENT_TIMEOUT); an axis that fails, times out, or
+#                    writes nothing fails the child. Reads the same
 #                    .worktrees/<branch>.issue.md the caller wrote before the plain run.
 #                    Builds .worktrees/.corpus-pack.md (verbatim concatenation of the
-#                    standards sources) first and names it — plus .worktrees/.epic-issue.md,
-#                    if the caller wrote it — in each child's review prompt.
+#                    standards sources) first and names it in the Standards prompt — plus
+#                    .worktrees/.epic-issue.md, if the caller wrote it, in the Spec prompt.
 # --rework           requires --epic. Reads .worktrees/<branch>.feedback (written by the
 #                    caller), re-dispatches the implementing agent, and on success appends
 #                    a `rework(#<issue>): ronda <n>` commit to the child's branch. Refuses
@@ -287,68 +291,148 @@ process_review() {
     echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
 
-  if [ -f "$_issuef" ]; then
-    _issue_note="The issue body is at $_issuef — read it as the Spec axis's source before falling back to the plan file."
+  # Resolve the linked plan file to an exact path here, so the Spec prompt names it instead
+  # of sending the reviewer to search — every source arrives by path, already materialized
+  # (the glossary invariant this stage exists to honor).
+  _planf=$(grep -l "^> Issue: #$_issue\$" "$_wt"/.agents/plans/*.md 2>/dev/null | head -1)
+  if [ -n "$_planf" ]; then
+    _plan_note="The linked plan file is at $_planf — it sharpens the intent."
   else
-    _issue_note="No issue body was made available at $_issuef (the runner has no GitHub access) — fall back to the linked plan file or note that none is available."
+    _plan_note="No linked plan file exists for #$_issue."
+  fi
+  if [ -f "$_issuef" ]; then
+    _issue_note="The child issue body is at $_issuef — read it as your primary Spec source. $_plan_note"
+  else
+    _issue_note="No issue body was made available at $_issuef (the runner has no GitHub access). $_plan_note If neither source exists, report \"no spec available\"."
   fi
   if [ -f "$_packf" ]; then
-    _pack_note="A corpus pack — the verbatim, path-separated concatenation of every standards source — is at $_packf. Hand that ONE file to the Standards sub-agent as its complete standards sources. Do not read the pack or the raw standards sources yourself, and never give the pack to the Spec sub-agent."
+    _pack_note="Your complete standards sources are the corpus pack at $_packf — the verbatim, path-separated concatenation of every standards source. Read that ONE file rather than the raw sources individually."
   else
-    _pack_note="No corpus pack exists at $_packf — fall back to the skill's grounding: the Standards sub-agent reads the raw standards sources itself."
+    _pack_note="No corpus pack exists at $_packf — read the raw standards sources as the skill's grounding describes."
   fi
   if [ -f "$_epicf" ]; then
-    _epic_note="The epic issue body is at $_epicf — pass its path to the Spec sub-agent so it knows this child's intended scope and which sibling work is legitimately visible."
+    _epic_note="The epic issue body is at $_epicf — it scopes what this child was supposed to own."
   else
-    _epic_note="No epic issue body is available (the runner has no GitHub access) — the Spec sub-agent works from the child issue's header lines alone."
+    _epic_note="No epic issue body is available (the runner has no GitHub access) — work from the child issue's header lines alone."
   fi
 
   # Pre-materialize the child's diff, for the same reason the corpus pack exists: a reviewer
   # that has to page a large diff through its own tool calls reads less of it, reports more
-  # shallowly, and can burn the whole AGENT_TIMEOUT without emitting anything. Handing it one
-  # file is measurably cheaper than making it re-derive the same bytes.
+  # shallowly, and can burn its whole wall-clock cap without emitting anything. This never
+  # degrades to "run git yourself" — every source arrives by path (glossary invariant), so a
+  # diff that cannot be materialized fails the child instead of sending the reviewer on an
+  # unbounded read. An empty diff fails too: a pushed child with no changes against the epic
+  # branch has nothing to review and something already went wrong upstream.
   _difff="$PROJECT_ROOT/$WORKTREES_DIR/$_branch.diff"
-  if git -C "$_wt" diff "$EPIC_BRANCH...HEAD" > "$_difff" 2>>"$_logf" && [ -s "$_difff" ]; then
-    _diff_note="That exact diff is pre-materialized at $_difff — read that file rather than re-running git."
-  else
-    _diff_note="No pre-materialized diff is available — run the diff command yourself."
+  if ! git -C "$_wt" diff "$EPIC_BRANCH...HEAD" > "$_difff" 2>>"$_logf" || [ ! -s "$_difff" ]; then
+    log "[#$_issue] FAILED: could not pre-materialize a non-empty diff against $EPIC_BRANCH (see $_logf)"
+    echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
+  _diff_note="The exact diff under review is pre-materialized at $_difff — read that file rather than re-running git."
 
-  _review_prompt=$(cat <<EOF
-You are a headless reviewer working inside a git worktree for ONE epic child.
+  # One reviewer process per axis, dispatched concurrently through the shared dispatcher
+  # (ADR-0030) — the same mechanism the interactive gate uses, so the two paths cannot
+  # drift. Each process runs inside the child's worktree, is capped per attempt by
+  # REVIEW_TIMEOUT (resolved by the dispatcher, not AGENT_TIMEOUT), and reports one axis
+  # only; this function composes the two reports into the review record.
+  #
+  # Prompts go through files, not $(cat <<EOF): macOS /bin/sh is bash 3.2, whose
+  # command-substitution scanner chokes on unbalanced apostrophes inside a heredoc.
+  _stpromptf="$WORKTREES_DIR/$_branch.review-standards.prompt"
+  _sppromptf="$WORKTREES_DIR/$_branch.review-spec.prompt"
+  cat > "$_stpromptf" <<EOF
+You are the STANDARDS axis of a two-axis review of ONE epic child, running headless
+inside the child's git worktree. You work ALONE: a separate process is running the
+Spec axis. Do NOT dispatch sub-agents, and do NOT report on the Spec axis.
 
-Run the standards-and-spec-review process (.agents/skills/standards-and-spec-review/SKILL.md)
-over this child's diff.
+Your brief, the Fowler smell baseline you must apply, and the hard-violation vs
+judgement-call split are in .agents/skills/standards-and-spec-review/SKILL.md — read
+that file and follow its "single-axis invocation" grounding.
 
-Fixed point: $EPIC_BRANCH — this is an epic child, so diff three-dot against the epic
-integration branch, never against main.
+Fixed point: $EPIC_BRANCH — an epic child diffs three-dot against the epic integration
+branch, never against main.
+$_diff_note
+$_pack_note
+
+Every source you need is already on disk at the paths above. Do NOT use GitHub tools
+and do NOT go looking for sources you were not given. This is a headless run and must
+never stop to ask — if something cannot be resolved, note it in the report and continue.
+
+Your ENTIRE final message is the Standards report, saved verbatim. Under 400 words.
+Do not begin it with a "## Standards" heading — the runner adds that when composing.
+EOF
+  cat > "$_sppromptf" <<EOF
+You are the SPEC axis of a two-axis review of ONE epic child, running headless inside
+the child's git worktree. You work ALONE: a separate process is running the Standards
+axis. Do NOT dispatch sub-agents, and do NOT report on the Standards axis.
+
+Your brief and the hard-violation vs judgement-call split are in
+.agents/skills/standards-and-spec-review/SKILL.md — read that file and follow its
+"single-axis invocation" grounding.
+
+Fixed point: $EPIC_BRANCH — an epic child diffs three-dot against the epic integration
+branch, never against main.
 $_diff_note
 Child issue: #$_issue — $_title
 $_issue_note
-
-Follow the skill's "In this repository" grounding for the hard-violation vs
-judgement-call split and the two-subagent dispatch. You orchestrate WITHOUT reading
-source contents: verify the files below exist, build the two sub-agent prompts from
-their paths, and aggregate the two reports.
-$_pack_note
 $_epic_note
-This is a headless run and must never stop to ask — if the fixed point or a spec
-source cannot be resolved, note that and continue.
+Sibling work named by the child's "> Depends on:" header is legitimately visible in
+the diff base and must not be reported as scope creep. You have NO corpus pack — the
+standards sources belong to the Standards axis, not to you.
 
-Output ONLY the final aggregated Standards + Spec report as your entire final message —
-it is saved verbatim as the review record.
+Do NOT use GitHub tools and do NOT go looking for sources you were not given. This is
+a headless run and must never stop to ask — if something cannot be resolved, note it
+in the report and continue.
+
+Your ENTIRE final message is the Spec report, saved verbatim. Under 400 words.
+Do not begin it with a "## Spec" heading — the runner adds that when composing.
 EOF
-)
 
+  _stf="$WORKTREES_DIR/$_branch.review-standards.part"
+  _spf="$WORKTREES_DIR/$_branch.review-spec.part"
   (
     cd "$_wt" || exit 91
-    # shellcheck disable=SC2086
-    run_with_timeout "$AGENT_TIMEOUT" $REVIEW_AGENT_EXEC_CMD "$_review_prompt"
-  ) >"$_reviewf" 2>>"$_logf" </dev/null
-  _rc=$?
+    sh "$PROJECT_ROOT/.agents/scripts/run-review-agent.sh" "$(cat "$PROJECT_ROOT/$_stpromptf")"
+  ) >"$_stf" 2>>"$_logf" </dev/null &
+  _st_pid=$!
+  (
+    cd "$_wt" || exit 91
+    sh "$PROJECT_ROOT/.agents/scripts/run-review-agent.sh" "$(cat "$PROJECT_ROOT/$_sppromptf")"
+  ) >"$_spf" 2>>"$_logf" </dev/null &
+  _sp_pid=$!
+  wait "$_st_pid"; _st_rc=$?
+  wait "$_sp_pid"; _sp_rc=$?
+  # A reviewer that exits 0 without writing a report did not review anything — treat it
+  # exactly like a failed axis rather than composing an empty section that reads as a pass.
+  [ "$_st_rc" -eq 0 ] && [ ! -s "$_stf" ] && _st_rc=96
+  [ "$_sp_rc" -eq 0 ] && [ ! -s "$_spf" ] && _sp_rc=96
 
-  if [ "$_rc" -ne 0 ] || [ ! -s "$_reviewf" ]; then
-    log "[#$_issue] FAILED: review agent exited $_rc or produced no report (see $_logf)"
+  # Compose the review record — overwrite, never append: under the runner the history
+  # already lives in git and the child log (ADR-0027). A failed or timed-out axis gets an
+  # explicit marker instead of a report, and fails the child: a half-reviewed child must
+  # never pass the gate as if both axes had seen it.
+  axis_section() {
+    if [ "$1" -eq 0 ]; then cat "$2"; return; fi
+    case "$1" in
+      124) printf '**AXIS DID NOT REPORT** — REVIEW_TIMEOUT exceeded. See %s.\n' "$_logf" ;;
+      96)  printf '**AXIS DID NOT REPORT** — reviewer exited 0 but wrote nothing. See %s.\n' "$_logf" ;;
+      *)   printf '**AXIS DID NOT REPORT** — reviewer exited %s. See %s.\n' "$1" "$_logf" ;;
+    esac
+  }
+  {
+    printf '# Review report — #%s %s\n\n' "$_issue" "$_branch"
+    printf '> Fixed point: `%s` (three-dot, committed work)\n' "$EPIC_BRANCH"
+    printf '> Reviewer: `%s`, one process per axis (ADR-0030)\n\n' "$REVIEW_AGENT_EXEC_CMD"
+    printf '## Standards\n\n'
+    axis_section "$_st_rc" "$_stf"
+    printf '\n\n## Spec\n\n'
+    axis_section "$_sp_rc" "$_spf"
+    printf '\n'
+  } > "$_reviewf"
+  rm -f "$_stf" "$_spf" "$_stpromptf" "$_sppromptf"
+
+  if [ "$_st_rc" -ne 0 ] || [ "$_sp_rc" -ne 0 ]; then
+    log "[#$_issue] FAILED: review axis did not report (standards rc=$_st_rc, spec rc=$_sp_rc — 124 means REVIEW_TIMEOUT; see $_logf)"
     echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
 

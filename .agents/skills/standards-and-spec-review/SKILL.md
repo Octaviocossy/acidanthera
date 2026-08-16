@@ -161,6 +161,24 @@ dispatch sub-agents.
 Running the two axes sequentially in the main context defeats the design: once you have read the
 smell baseline, you cannot look at the diff without it.
 
+**Step 4 — single-axis invocation.** Neither external review path invokes this skill once and
+lets it fork: the interactive gate and the runner's `--review` action both dispatch **one
+reviewer process per axis** (ADR-0030), so each process executes this skill for *its own axis
+only*. When the invoker names an axis:
+
+- Run steps 1–3 for that axis alone, then produce that axis's report directly. **Do not dispatch
+  sub-agents** — you *are* the sub-agent — and do not report on the other axis; a second process
+  is already doing it, and duplicating its work is how a review reruns the same reading twice.
+- The report is your entire final message: no preamble, no aggregation, no gate line. Whoever
+  dispatched you owns step 5 — the session interactively, the runner headless.
+- Everything else here is unchanged — the smell baseline still binds the Standards axis, and the
+  hard-violation vs judgement-call split still applies.
+
+This is the *same* division of labour as the sub-agent fan-out; only the process boundary moved
+outward. Axis isolation is unaffected, and in fact strengthened: two processes cannot see each
+other's findings at all. The in-session sub-agent fan-out above remains for a whole-skill
+invocation in a session — the interactive fallback, or the skill invoked directly.
+
 **Headless runs are allowed, and must never block.** Unlike `/grill`, this skill may run inside a
 child of `.agents/scripts/run-parallel-issues.sh` — a child checking its own diff against its own
 issue before the runner integrates it into the epic branch is the highest-value use of this skill.
@@ -175,13 +193,18 @@ path-separated concatenation of `AGENTS.md`,
 `.agents/rules/*.md`, `.agents/ubiquitous-language.md`, and `.agents/adr/*.md`), skip the
 source reading in steps 2–3 entirely: verify the named files exist, hand the pack to the
 **Standards** sub-agent as its complete standards sources, and hand the **Spec**
-sub-agent its per-child sources (`.worktrees/.issue.md`, the linked plan, and
+sub-agent its per-change sources (`.worktrees/<branch>.issue.md`, the linked plan, and
 `.worktrees/.epic-issue.md` when named) — all by path, reading none of them yourself.
 Never give the pack to the Spec sub-agent: each axis gets only its own sources. Axis
 isolation is blindness between findings, never exclusivity over sources
 (`.agents/ubiquitous-language.md`; ADR-0024). The smell baseline still travels as
 always — pasted into the Standards prompt from this file. Without a pack — an invocation
 that names none — nothing changes: read the sources as steps 2–3 describe.
+
+The paragraph above describes the **orchestrating** role, which hands sources onward without
+reading them. Under a **single-axis invocation** you hold no such role: the pack named to a
+Standards process is *your own* complete standards sources, and you read it. The rule that never
+bends either way is which axis may see it — the pack goes to Standards, never to Spec.
 
 **Step 5 — the report goes to the chat only.** This skill reads; it does not write files, commit,
 or touch GitHub. To put a report on the branch's issue, hand off to `/comment-issue`.
