@@ -99,7 +99,7 @@ _None documented yet._
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.
 - Available: `update-issue` — correct the body (and optionally the title) of the current branch's GitHub issue when the initial generation was inaccurate.
 - Available: `execute-issue` — execute the current branch's GitHub issue in three phases (confirm, implement, review); uses the linked `.agents/plans/` file as primary plan source if one exists. Phase 3 runs the procedure in `.agents/commands/review-branch.md`; only `skip review` bypasses it.
-- Available: `review-branch` — run the two-axis review gate over the current branch's work, committed or not; presents Standards and Spec side by side under a gate line, then loops rework rounds until you approve. The reviewer is dispatched under `REVIEW_AGENT_EXEC_CMD` via `.agents/scripts/run-review-agent.sh`, so it can be a different model than the implementer. The canonical interactive gate — `/execute-issue` Phase 3 runs its procedure. User-invocable only.
+- Available: `review-branch` — run the two-axis review gate over the current branch's work, committed or not; presents Standards and Spec side by side under a gate line, then loops rework rounds until you approve. The reviewer is dispatched under `REVIEW_AGENT_EXEC_CMD` via `.agents/scripts/run-review-agent.sh`, so it can be a different model than the implementer — **one process per axis**, run concurrently and capped individually by `REVIEW_TIMEOUT` (default 900s), each handed its sources as files rather than as commands to re-run. The canonical interactive gate — `/execute-issue` Phase 3 runs its procedure. User-invocable only.
 - Available: `comment-issue` — add a comment to the thread of the GitHub issue for the current branch.
 - Available: `ship-note` — post a ship-note of the executed work to the current branch's issue (does not close it).
 - Available: `spec-breakdown` — decompose a large spec into an epic issue + N child issues with a dependency graph.
@@ -139,7 +139,8 @@ branch names `<issue#>-<kebab-title>` and branch off the epic branch, not `main`
 **Runner:** `.agents/scripts/run-parallel-issues.sh` — one worktree + headless agent per child,
 concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). A plain run only commits and pushes each
 child; it never integrates. Given `--epic <branch>`, three further action flags drive a child
-through the rest of the pipeline: `--review` (fans out an agentic `standards-and-spec-review` per
+through the rest of the pipeline: `--review` (fans out an agentic `standards-and-spec-review` —
+two single-axis reviewer processes per child via `run-review-agent.sh`, ADR-0030 — per
 child), `--rework` (re-dispatches a rejected child with feedback), and `--integrate` (the only
 action that merges into the epic branch). The orchestrating agent only reads epic-branch state
 and opens the final PR via MCP — the runner is the epic branch's sole writer throughout.

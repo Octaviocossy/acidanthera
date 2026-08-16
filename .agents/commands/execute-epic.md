@@ -126,7 +126,10 @@ Repeat until no progress:
       ```
       Writes `.worktrees/<branch>.review.md` (the agentic Standards + Spec report) per
       child; reads the `.worktrees/<branch>.issue.md` already written in the push stage
-      above.
+      above. A child that lands in `.worktrees/.failed` here — a review axis failed,
+      timed out (`REVIEW_TIMEOUT`), or wrote nothing — is **blocked**, exactly like a
+      plain-run failure: its `.review.md` marks the axis that did not report, and an
+      unreviewed child never reaches the decide step. Drop it from the unresolved set.
    2. **Decide** — read each child's `.review.md`. Any finding explicitly marked a
       **hard violation** (Standards or Spec axis) → **reject** it. Otherwise (judgement
       calls only, or no findings) → **approve** it. This is the whole authority the

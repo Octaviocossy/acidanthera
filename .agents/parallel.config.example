@@ -5,18 +5,23 @@
 # Headless agent CLI used to implement each child issue. COMMAND PREFIX: the runner
 # appends the issue prompt as the final quoted positional argument.
 #   Claude Code : claude -p --dangerously-skip-permissions
-#   Codex       : codex exec --full-auto       (note: 'codex' not installed on this box)
+#   Codex       : codex exec --full-auto
 #   OpenCode    : opencode run --agent <name>  (agent must be allowed to edit/run)
 AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 
-# Headless agent CLI used for the agentic review the runner's '--review' action fans
-# out over each child (standards-and-spec-review), AND by the interactive gate
-# (/review-branch, /execute-issue Phase 3) via .agents/scripts/run-review-agent.sh.
-# Same COMMAND PREFIX vocabulary as
+# Headless agent CLI used for every single-axis agentic reviewer dispatch, on both
+# review paths (ADR-0030): the runner's '--review' action (two dispatches per child)
+# and the interactive gate (/review-branch, /execute-issue Phase 3), all through
+# .agents/scripts/run-review-agent.sh. Same COMMAND PREFIX vocabulary as
 # AGENT_EXEC_CMD above. Empty means "inherit AGENT_EXEC_CMD" — NOT "skip the review":
 # the review gate is never skipped by omission. Set this to a different command prefix
-# to give the reviewer a different model than the implementer.
-# REVIEW_AGENT_EXEC_CMD="opencode run --agent build -m openai/gpt-5.6-luna --variant high --auto"
+# to give the reviewer a different model than the implementer (ADR-0028). A review is
+# read-only by definition — prefer a CLI invocation that enforces that, like codex's
+# '-s read-only'; '--ephemeral' also keeps concurrent dispatches from colliding on
+# shared per-user state (the opencode failure mode the dispatcher's retry absorbs).
+#   Codex    : codex exec -s read-only --ephemeral -m <model> -c model_reasoning_effort=high
+#   OpenCode : opencode run --agent <read-only agent> -m <provider/model> --auto
+# REVIEW_AGENT_EXEC_CMD="codex exec -s read-only --ephemeral -m gpt-5.6-luna -c model_reasoning_effort=high"
 REVIEW_AGENT_EXEC_CMD=""
 
 PARALLEL_MAX_CONCURRENCY=3     # issues running at once (each is a full agent process)
@@ -39,5 +44,13 @@ ACCEPTANCE_CMD=""
 
 KEEP_WORKTREES=0               # 1 = keep worktrees on success (debug)
 AGENT_TIMEOUT=1800             # per-issue wall-clock cap (seconds); 0 disables
+REVIEW_TIMEOUT=900             # wall-clock cap on ONE reviewer attempt (seconds), on BOTH
+                                # review paths — every dispatch goes through
+                                # run-review-agent.sh (ADR-0030); 0 disables. Tighter than
+                                # AGENT_TIMEOUT on purpose: a review is one axis over
+                                # pre-materialized inputs. An axis can reach 955s once the
+                                # single startup-collision retry is counted; tune it with the
+                                # env-only REVIEW_RETRIES / REVIEW_RETRY_WINDOW /
+                                # REVIEW_RETRY_DELAY. AGENT_TIMEOUT caps implement/rework only.
 KEEP_CHILD_BRANCHES=0          # 1 = keep a child's branch after it merges into the epic
                                 # branch (default 0 deletes the merged child branch from origin)
