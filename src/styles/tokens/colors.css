@@ -37,11 +37,6 @@
   --diff-del-bg: rgba(235, 87, 87, 0.07);
   --diff-del-fg: #8a5b56;
 
-  /* Traffic lights (11px circles) */
-  --mac-red: #f5645a;
-  --mac-yellow: #f5b93c;
-  --mac-green: #4fc463;
-
   /* Overlay scrim - no backdrop blur. */
   --scrim: rgba(5, 6, 7, 0.55);
 
