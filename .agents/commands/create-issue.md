@@ -9,6 +9,8 @@ adapted for GitHub Markdown (no YAML frontmatter, no Status/Created/Updated line
 The wrapper injects:
 - **Repository remote URL** — parse `owner` and `repo` from the injected `git remote get-url origin` output.
 
+The command also reads `.agents/labels.md` — the label taxonomy it must pick from in step 7.
+
 ## Instructions
 
 When invoked with a requirement description (`$ARGUMENTS`):
@@ -60,8 +62,23 @@ When invoked with a requirement description (`$ARGUMENTS`):
    implementation to create a persisted plan in `.agents/plans/`.*
    ```
 
-7. **Create the issue** by calling `mcp__github__issue_write` (`method: "create"`) with `owner`, `repo`, `title`, and `body`.
-8. **Report** the created issue URL to the user.
+7. **Derive the labels** (read `.agents/labels.md` first; maximum 3, exactly one `type:`):
+   - **`type:`** — the closed-facet value matching the Conventional Commits prefix of the title
+     you just generated. Pick only from the `labels` block in `.agents/labels.md`. Step 5 makes
+     that prefix optional ("when appropriate"), so when the title carries none, derive the value
+     from the issue's own content instead — never skip `type:`, and never invent a value outside
+     the block. Every issue gets exactly one.
+   - **`area:`** — derived from the `## Affected Files` section you just wrote. **Reuse before
+     invent:** run `gh label list --limit 200` and reuse an existing `area:` value when one
+     covers the issue. Only when none does, create it first:
+     `gh label create "area:NAME" --color ededed --description "ONE LINE"`.
+   - **Best-effort.** If `gh` is unavailable, unauthenticated, or the create fails, carry on with
+     whatever labels you have — including none — and say so in step 9. A label must never block
+     the issue from being created.
+8. **Create the issue** by calling `mcp__github__issue_write` (`method: "create"`) with `owner`,
+   `repo`, `title`, `body`, and `labels` (omit `labels` entirely if step 7 produced none).
+9. **Report** the created issue URL and the labels applied. If any label could not be applied,
+   say which and why — the issue still exists.
 
 ## Rules
 
@@ -71,3 +88,5 @@ When invoked with a requirement description (`$ARGUMENTS`):
 - List every import a new file will need.
 - Flag blockers (env vars, external actions, user decisions) explicitly.
 - Never create a duplicate — check open issues via `mcp__github__list_issues` first.
+- Maximum 3 labels, exactly one `type:`. Reuse an existing `area:` before inventing one.
+- Labels are informational — never assume anything downstream reads them (ADR-0031).

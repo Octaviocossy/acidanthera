@@ -97,7 +97,7 @@ _None documented yet._
 - Available: `planning` — create a thorough implementation plan and persist it in `.agents/plans/`.
 - Available: `install-scaffold` — install the cross-agent governance scaffold into a target project directory; never overwrites, safe to re-run.
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.
-- Available: `update-issue` — correct the body (and optionally the title) of the current branch's GitHub issue when the initial generation was inaccurate.
+- Available: `update-issue` — correct the body (and optionally the title) of the current branch's GitHub issue when the initial generation was inaccurate; re-derives the issue's labels alongside the body.
 - Available: `execute-issue` — execute the current branch's GitHub issue in three phases (confirm, implement, review); uses the linked `.agents/plans/` file as primary plan source if one exists. Phase 3 runs the procedure in `.agents/commands/review-branch.md`; only `skip review` bypasses it.
 - Available: `review-branch` — run the two-axis review gate over the current branch's work, committed or not; presents Standards and Spec side by side under a gate line, then loops rework rounds until you approve. The reviewer is dispatched under `REVIEW_AGENT_EXEC_CMD` via `.agents/scripts/run-review-agent.sh`, so it can be a different model than the implementer — **one process per axis**, run concurrently and capped individually by `REVIEW_TIMEOUT` (default 900s), each handed its sources as files rather than as commands to re-run. The canonical interactive gate — `/execute-issue` Phase 3 runs its procedure. User-invocable only.
 - Available: `comment-issue` — add a comment to the thread of the GitHub issue for the current branch.
@@ -120,6 +120,23 @@ _None documented yet._
 - Set `GITHUB_TOKEN` in `.env` (a GitHub Personal Access Token with `repo` scope). The script
   exposes it to the server as `GITHUB_PERSONAL_ACCESS_TOKEN`.
 - Restart the agent after first configuring the token so the MCP server is picked up.
+
+## Issue Labels
+
+- Issues created by `/create-issue` and `/spec-breakdown` carry labels from the taxonomy in
+  `.agents/labels.md`. `/update-issue` re-derives them; `/ship-note`, `/comment-issue`,
+  `/execute-issue` and `/handoff` never touch them.
+- **Two facets.** `type:` is closed — the Conventional Commits prefixes, enumerated in the
+  taxonomy. `area:` is open — declared but not enumerated, because its values are
+  project-specific and this scaffold is stack-neutral. Maximum 3 labels, exactly one `type:`.
+- **Reuse before invent.** An `area:` value is reused from the repo's existing labels whenever
+  one covers the issue; a genuinely new one is created on demand with `gh label create`.
+- **Labels are informational.** Nothing in either execution path, the runner, or the review gate
+  reads one back — see `.agents/adr/0031-issue-labels-are-informational.md`. Applying one is
+  best-effort and never blocks issue creation.
+- **Provisioning:** run `sh .agents/scripts/sync-labels.sh` once per repository (and again when
+  the taxonomy changes) to create the closed facet in GitHub. `/install-scaffold` does not call
+  it — that copier stays local and offline.
 
 ## Parallel Orchestration
 

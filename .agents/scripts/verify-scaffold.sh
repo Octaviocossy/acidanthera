@@ -227,6 +227,27 @@ else
   pass "$manifest not present — skipped"
 fi
 
+# ---- 10. Label taxonomy is present and declares its closed facet ----
+# .agents/labels.md is the single source of truth for sync-labels.sh and the three
+# issue-writing commands. Section 6 catches it going missing; this catches it going empty,
+# which would silently stop every issue from being labelled.
+section "Label taxonomy"
+if [ -f .agents/labels.md ]; then
+  pass ".agents/labels.md exists"
+  if grep -q '^```labels$' .agents/labels.md; then
+    pass ".agents/labels.md declares a labels block"
+  else
+    fail ".agents/labels.md has no labels block — sync-labels.sh would find nothing"
+  fi
+  if grep -Eq '^type:[a-z-]+[[:space:]]+[0-9a-fA-F]{6}[[:space:]]' .agents/labels.md; then
+    pass ".agents/labels.md declares at least one type: value"
+  else
+    fail ".agents/labels.md declares no type: value in name/color/description form"
+  fi
+else
+  fail ".agents/labels.md is missing"
+fi
+
 # ---- Summary ----
 section "Summary"
 if [ "$FAILS" -eq 0 ]; then

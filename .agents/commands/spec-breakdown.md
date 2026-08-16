@@ -11,6 +11,9 @@ After this command completes, run `/execute-epic` to execute the children in par
 - **Spec** — `$ARGUMENTS` is either a path to a spec file (read it) or the spec text
   directly; if empty, ask the user to provide one.
 
+The command also reads `.agents/labels.md` — the label taxonomy the epic and every child must
+pick from (steps 5 and 6).
+
 ## Instructions
 
 ### 1 — Ingest the spec
@@ -58,7 +61,9 @@ placeholder numbers; update to real numbers in step 7).
 
 ### 5 — Create the epic issue
 
-Call `mcp__github__issue_write` (`method: "create"`) with `owner`, `repo`, and:
+Call `mcp__github__issue_write` (`method: "create"`) with `owner`, `repo`, `labels`, and the
+title/body below. The epic's labels are `type:epic` plus at most one `area:` covering the epic
+as a whole — same derivation and same best-effort handling as `/create-issue` step 7.
 
 ```
 title: "epic: <short title>"
@@ -87,7 +92,9 @@ Record the created epic issue number as `<epic>`.
 
 ### 6 — Create each child issue
 
-For each slice, call `mcp__github__issue_write` (`method: "create"`). The body must follow the full
+For each slice, call `mcp__github__issue_write` (`method: "create"`) with `owner`, `repo`,
+`title`, `body`, and `labels` — the child's own labels, derived per the **Labels** paragraph
+below (omit `labels` entirely if none were derived). The body must follow the full
 `/create-issue` house style (Goal, Context, Affected Files, Step-by-Step Implementation,
 Architecture Decisions, Acceptance Criteria, Open Questions), with two additional header
 lines prepended:
@@ -98,6 +105,11 @@ lines prepended:
 ```
 
 (Omit `> Depends on:` for the foundation slice or any child with no dependencies.)
+
+**Labels.** Label every child from **its own** `## Affected Files`, exactly as `/create-issue`
+step 7 does — maximum 3, exactly one `type:`, reusing an existing `area:` before inventing one.
+A child **never inherits the epic's labels**: propagating them would give every child an
+identical set and destroy the filter's value. The `> Epic: #N` header is what groups them.
 
 **Acceptance Criteria** must use the project's actual acceptance commands from
 `AGENTS.md` › Commands (e.g. `xcodebuild -scheme KeyCount build` for a Swift project,
@@ -150,6 +162,8 @@ Respond with:
 - The integration branch name (`epic/<epic>-<slug>`) that `/execute-epic` will create
   and auto-merge each wave's children into
 - Each child issue URL, number, branch, and assigned wave
+- The labels applied to the epic and to each child. If any label could not be applied, say
+  which and why — the issues still exist, since labelling is best-effort.
 - The computed waves table
 - A reminder to run `/execute-epic` (or `/spec` if this was called stand-alone)
 
@@ -160,3 +174,4 @@ Respond with:
 - Never create a duplicate — check open issues first (step 3).
 - Use project-derived acceptance commands in child issues, not hardcoded `pnpm`.
 - If fewer than 3 slices result, stop and recommend `/create-issue` instead.
+- Label the epic `type:epic`; label each child from its own content, never by inheritance.

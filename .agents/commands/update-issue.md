@@ -1,11 +1,11 @@
 # Command: update-issue
 
-Correct the body (and optionally the title) of the GitHub issue that corresponds to the
-**current branch**, when the initial generation by `/create-issue` was inaccurate. Writes
+Correct the body and labels (and optionally the title) of the GitHub issue that corresponds to
+the **current branch**, when the initial generation by `/create-issue` was inaccurate. Writes
 to GitHub via `mcp__github__issue_write` (`method: "update"`).
 
 Use this for **correcting generation errors** in the issue — wrong scope, bad file paths,
-missing steps. For evolving the implementation plan during execution, edit the linked
+missing steps, a mislabelled `type:` or `area:`. For evolving the implementation plan during execution, edit the linked
 `.agents/plans/` file directly instead.
 
 ## Context injected by the wrapper
@@ -13,6 +13,8 @@ missing steps. For evolving the implementation plan during execution, edit the l
 The wrapper injects:
 - **Repository remote URL** — parse `owner`/`repo` from the injected `git remote get-url origin` output (HTTPS or SSH).
 - **Current branch** — the injected `git rev-parse --abbrev-ref HEAD` output.
+
+The command also reads `.agents/labels.md` — the label taxonomy it re-derives from in step 4.
 
 ## Instructions
 
@@ -35,12 +37,18 @@ When invoked (`$ARGUMENTS` = the corrections to apply):
      Conventional Commits style); otherwise leave the title unchanged.
    - Inspect source files with Read/Bash when the corrections require accurate file paths,
      function signatures, or step details.
+   - **Re-derive the labels** from the corrected body, exactly as `/create-issue` step 7 does
+     (maximum 3, exactly one `type:`, reuse an existing `area:` before inventing one). This
+     replaces the issue's labels rather than merging with them — a `type:` corrected here must
+     not leave the old one behind.
 5. **Preview and confirm** — show the resolved issue (`#<number> — <title>`), the corrected
-   body (and new title if changed), and wait for explicit confirmation before writing.
+   body (and new title if changed), and the re-derived labels, then wait for explicit
+   confirmation before writing.
    Skip confirmation only if `$ARGUMENTS` says so (e.g. `no confirm`).
 6. **Write the update** via `mcp__github__issue_write` (`method: "update"`) — always send `body`; send `title`
-   only if it changed. Never send `state` or `labels`.
-7. **Report** the issue URL to the user.
+   only if it changed; send `labels` with the re-derived set. Never send `state`.
+7. **Report** the issue URL and the labels now on the issue. If any label could not be applied,
+   say which and why — the update still landed, since labelling is best-effort.
 
 ## Rules
 
@@ -48,5 +56,5 @@ When invoked (`$ARGUMENTS` = the corrections to apply):
 - Corrections only — edit surgically, do not rewrite the whole body unless entirely wrong.
 - Preserve any `## Ship Note` section at the bottom of the body.
 - Preview + confirm before writing (default); `no confirm` skips the wait.
-- Never change issue state, labels, or add comments. This command only updates body/title.
+- Never change issue state or add comments. This command updates body, title and labels only.
 - If the branch resolves to no issue and the user can't name one, stop.

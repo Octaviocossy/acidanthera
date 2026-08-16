@@ -1,7 +1,7 @@
 ---
 description: Correct the body (and optionally the title) of the current branch's GitHub issue
 argument-hint: [correction instructions]
-allowed-tools: Bash(git:*), mcp__github__list_issues, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__issue_write
+allowed-tools: Bash(git:*), Bash(gh label:*), mcp__github__list_issues, mcp__github__issue_read, mcp__github__list_pull_requests, mcp__github__issue_write
 ---
 
 Repository remote (parse owner/repo from this):
