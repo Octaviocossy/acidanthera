@@ -1,5 +1,5 @@
 ---
-description: Execute the current branch's GitHub issue in two phases — confirm, then implement
+description: Execute the current branch's GitHub issue in three phases — confirm, implement, review
 ---
 
 Repository remote (parse owner/repo from this):

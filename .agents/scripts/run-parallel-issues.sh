@@ -179,21 +179,11 @@ ensure_child_worktree() {
 
 # Build the corpus pack: a verbatim, path-separated concatenation of the standards
 # sources, rebuilt from scratch on every --review invocation. Lossless and
-# per-invocation — never a cache, never a digest (ADR-0024). The source list is a
-# hardcoded mirror of the skill's "In this repository" grounding (Step 3 — standards
-# sources) in .agents/skills/standards-and-spec-review/SKILL.md — keep both in sync.
+# per-invocation — never a cache, never a digest (ADR-0024). The source list lives in
+# build-corpus-pack.sh, shared with the interactive gate (ADR-0029) so the two review
+# paths cannot drift apart.
 build_corpus_pack() {
-  : > "$CORPUS_PACK"
-  for _src in \
-    "AGENTS.md" \
-    .agents/rules/*.md \
-    ".agents/ubiquitous-language.md" \
-    .agents/adr/*.md
-  do
-    [ -f "$_src" ] || continue
-    printf '\n\n===== SOURCE: %s =====\n\n' "$_src" >> "$CORPUS_PACK"
-    cat "$_src" >> "$CORPUS_PACK"
-  done
+  sh "$PROJECT_ROOT/.agents/scripts/build-corpus-pack.sh" "$CORPUS_PACK"
 }
 
 # ---- plain run: implement, commit, push. Never merges; retains the worktree. ----
@@ -230,8 +220,9 @@ You are a headless coding agent working inside a git worktree for ONE GitHub iss
 
 Issue: #$_issue — $_title
 
-Follow the procedure in .agents/commands/execute-issue.md (Phase 2 — Execution only;
-there is NO human to confirm, treat Phase 1 as pre-approved). Use the linked plan file
+Follow the procedure in .agents/commands/execute-issue.md (Phase 2 — Execution ONLY).
+There is NO human here: treat Phase 1 as pre-approved, and do NOT run Phase 3 — the
+runner performs the review itself, later, under --review. Use the linked plan file
 in .agents/plans/ whose header contains "> Issue: #$_issue" as the primary source of
 truth; if none exists, $_issue_note
 
@@ -245,7 +236,7 @@ EOF
     cd "$_wt" || exit 91
     # shellcheck disable=SC2086
     run_with_timeout "$AGENT_TIMEOUT" $AGENT_EXEC_CMD "$_prompt"
-  ) >>"$_logf" 2>&1
+  ) >>"$_logf" 2>&1 </dev/null
   _agent_rc=$?
 
   if [ "$_agent_rc" -ne 0 ]; then
@@ -312,6 +303,17 @@ process_review() {
     _epic_note="No epic issue body is available (the runner has no GitHub access) — the Spec sub-agent works from the child issue's header lines alone."
   fi
 
+  # Pre-materialize the child's diff, for the same reason the corpus pack exists: a reviewer
+  # that has to page a large diff through its own tool calls reads less of it, reports more
+  # shallowly, and can burn the whole AGENT_TIMEOUT without emitting anything. Handing it one
+  # file is measurably cheaper than making it re-derive the same bytes.
+  _difff="$PROJECT_ROOT/$WORKTREES_DIR/$_branch.diff"
+  if git -C "$_wt" diff "$EPIC_BRANCH...HEAD" > "$_difff" 2>>"$_logf" && [ -s "$_difff" ]; then
+    _diff_note="That exact diff is pre-materialized at $_difff — read that file rather than re-running git."
+  else
+    _diff_note="No pre-materialized diff is available — run the diff command yourself."
+  fi
+
   _review_prompt=$(cat <<EOF
 You are a headless reviewer working inside a git worktree for ONE epic child.
 
@@ -320,6 +322,7 @@ over this child's diff.
 
 Fixed point: $EPIC_BRANCH — this is an epic child, so diff three-dot against the epic
 integration branch, never against main.
+$_diff_note
 Child issue: #$_issue — $_title
 $_issue_note
 
@@ -341,7 +344,7 @@ EOF
     cd "$_wt" || exit 91
     # shellcheck disable=SC2086
     run_with_timeout "$AGENT_TIMEOUT" $REVIEW_AGENT_EXEC_CMD "$_review_prompt"
-  ) >"$_reviewf" 2>>"$_logf"
+  ) >"$_reviewf" 2>>"$_logf" </dev/null
   _rc=$?
 
   if [ "$_rc" -ne 0 ] || [ ! -s "$_reviewf" ]; then
@@ -406,7 +409,7 @@ EOF
     cd "$_wt" || exit 91
     # shellcheck disable=SC2086
     run_with_timeout "$AGENT_TIMEOUT" $AGENT_EXEC_CMD "$_prompt"
-  ) >>"$_logf" 2>&1
+  ) >>"$_logf" 2>&1 </dev/null
   _agent_rc=$?
 
   if [ "$_agent_rc" -ne 0 ]; then

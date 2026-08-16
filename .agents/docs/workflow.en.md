@@ -101,7 +101,8 @@ Invoke identically as `/<name>` in either agent.
 | `/install-scaffold` | Installing this scaffold into a target project (see below). |
 | `/create-issue` | Turning a requirement description into a GitHub issue with a full plan in its body. |
 | `/update-issue` | Correcting an issue's body/title when the first generation was off. |
-| `/execute-issue` | Executing the current branch's linked issue, two phases: confirm, then implement. |
+| `/execute-issue` | Executing the current branch's linked issue, three phases: confirm, implement, then review. |
+| `/review-branch` | Reviewing the current branch's work on two axes (Standards + Spec) and looping rework rounds until you approve. Sees uncommitted work. |
 | `/comment-issue` | Adding a comment to the current branch's issue thread without touching state. |
 | `/ship-note` | Posting a comment describing what actually shipped, once work is done. |
 | `/spec-breakdown` | Decomposing a large spec into an epic issue + dependency-graphed child issues. |
@@ -145,7 +146,7 @@ A typical single-issue flow:
 ```
 /create-issue "add CSV export to the reports page"   # creates the issue + plan
 git checkout -b 42-csv-export                          # branch name carries the issue number
-/execute-issue                                          # Phase 1 confirm, Phase 2 implement
+/execute-issue                                          # Phase 1 confirm, Phase 2 implement, Phase 3 review
 /ship-note                                               # record what happened, issue stays open
 ```
 

@@ -1,11 +1,12 @@
 # Command: execute-issue
 
-Execute the implementation described in the **current branch's** GitHub issue, in two explicit
-phases: **Confirmation → Execution**. The issue body is the plan; this command carries it out.
-To record the outcome afterwards, run `/ship-note`.
+Execute the implementation described in the **current branch's** GitHub issue, in three explicit
+phases: **Confirmation → Execution → Review**. The issue body is the plan; this command carries
+it out, then puts the result through the interactive review gate before calling it done. To
+record the outcome afterwards, run `/ship-note`.
 
 `$ARGUMENTS` is **optional** — extra execution notes or overrides, e.g. `skip confirm`
-(auto-approve Phase 1).
+(auto-approve Phase 1) or `skip review` (bypass Phase 3).
 
 ## Context injected by the wrapper
 
@@ -55,19 +56,39 @@ A Linear-style token like `sdp-375` is **not** a GitHub issue number. Fetch the 
    `AGENTS.md` › Commands (e.g. `pnpm lint && pnpm build` for Node, or
    `xcodebuild -scheme KeyCount build` for Swift/Xcode). Fix failures introduced by this work.
    Report results **honestly**: if something fails or is skipped, say so with the output.
+   If the checks still fail after your fixes, **stop here** — report the failure with its
+   output and do **not** enter Phase 3.
 5. **Do not commit or push** unless the user explicitly asks (follow the global git guidance).
    This command edits the working tree only.
-6. When the work is done, point the user to `/ship-note` to record what changed on the issue.
+
+## Phase 3 — Review
+
+**Goal:** the work is not done until a fresh reviewer has seen it.
+
+1. Enter Phase 3 only if the Phase 2 acceptance checks **passed**. If they failed, stop and
+   report — reviewing code the build already condemned spends context on findings nobody needs.
+2. If `$ARGUMENTS` contains `skip review`, say so explicitly in the final report and go to
+   step 4. This is the only way to finish an execution without a review.
+3. Run the procedure in `.agents/commands/review-branch.md` with no fixed-point argument (it
+   deduces one) and the default working-tree comparison form — this execution has committed
+   nothing, so the three-dot form would review an empty diff (ADR-0025). Rework rounds, if any,
+   happen here.
+4. Once the review is approved, point the user to `/ship-note` to record what changed on the
+   issue.
 
 ---
 
 ## Rules
 
-- Two phases, in order. Never start Phase 2 without Phase 1 confirmation (unless `skip confirm`).
+- Three phases, in order. Never start Phase 2 without Phase 1 confirmation (unless
+  `skip confirm`), and never call the work done without Phase 3 (unless `skip review`).
 - The linked `.agents/plans/` file (if it exists) is the source of truth for *what* to build;
   fall back to the issue body when no plan is linked. Deviate only with reason and surface
   any deviation so `/ship-note` can record it.
 - Execution must obey `AGENTS.md`, the relevant `.agents/rules/*`, and the ubiquitous language.
 - Report failures faithfully — never claim done when build/lint failed or a step was skipped.
+- **Work is not done until an agentic review has seen it.** Only `skip review` bypasses Phase 3,
+  and using it must be stated in the final report. A failing acceptance run stops before the
+  review rather than skipping it.
 - Working-tree only: do not commit, push, change issue state/labels, or post to the issue.
 - Recording the outcome is a separate step — run `/ship-note` after execution.

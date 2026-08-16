@@ -115,7 +115,8 @@ Cada comando se define una sola vez como una especificación agnóstica del agen
 | `/install-scaffold` | Instalar este andamiaje en un proyecto destino (ver más abajo). |
 | `/create-issue` | Convertir una descripción de requerimiento en un issue de GitHub con un plan completo en el cuerpo. |
 | `/update-issue` | Corregir el cuerpo/título de un issue cuando la primera generación fue inexacta. |
-| `/execute-issue` | Ejecutar el issue vinculado a la rama actual, en dos fases: confirmar, luego implementar. |
+| `/execute-issue` | Ejecutar el issue vinculado a la rama actual, en tres fases: confirmar, implementar, luego revisar. |
+| `/review-branch` | Revisar el trabajo de la rama actual en dos ejes (Standards + Spec) y encadenar rondas de rework hasta que apruebes. Ve el trabajo sin commitear. |
 | `/comment-issue` | Añadir un comentario al hilo del issue de la rama actual sin tocar su estado. |
 | `/ship-note` | Publicar un comentario que describe lo que realmente se entregó, una vez terminado el trabajo. |
 | `/spec-breakdown` | Descomponer una especificación grande en un issue epic + issues hijos con un grafo de dependencias. |
@@ -164,7 +165,7 @@ Un flujo típico de un solo issue:
 ```
 /create-issue "add CSV export to the reports page"   # crea el issue + el plan
 git checkout -b 42-csv-export                          # el nombre de rama lleva el número de issue
-/execute-issue                                          # Fase 1 confirmar, Fase 2 implementar
+/execute-issue                                          # Fase 1 confirmar, Fase 2 implementar, Fase 3 revisar
 /ship-note                                               # registra lo ocurrido, el issue queda abierto
 ```
 

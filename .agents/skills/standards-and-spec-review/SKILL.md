@@ -100,7 +100,23 @@ propose one and show it rather than opening with a question:
 - Otherwise → `main`.
 
 State the fixed point you picked so the user can correct it. Only ask when the deduction fails.
-Keep the three-dot form (`git diff <fixed-point>...HEAD`) either way.
+
+**The comparison form follows what is under review.** Upstream step 1 hardcodes three-dot; here
+it depends on whether the work is committed:
+
+- **Committed** (every epic child — the runner commits and pushes before reviewing):
+  `git diff <fixed-point>...HEAD`.
+- **Uncommitted** (the interactive gate — `/execute-issue` never commits, ADR-0025):
+  `git diff $(git merge-base <fixed-point> HEAD)`, after `git add -N .` so untracked files enter
+  the diff. Diff against the **merge base**, not against the fixed point directly: a plain
+  `git diff <fixed-point>` would render everything the fixed point gained since the branch was
+  cut as spurious reversed changes. This is the working-tree analogue of the three-dot form, and
+  it is a superset of it — it sees committed and uncommitted work alike.
+
+When the invoker names the form, use it — the runner always does. Otherwise pick the merge-base
+form, which is correct whether or not anything is committed, and **say which you picked**. Never
+decide from a fixed default: on uncommitted work three-dot yields an empty diff and trips the
+guard below, reporting "nothing to review" about a branch full of changes.
 
 **Step 2 — spec sources, in this order.** This replaces the upstream search order; `docs/`,
 `specs/`, and `.scratch/` do not exist here.
@@ -152,9 +168,10 @@ There is no human there, so: if the fixed point cannot be deduced, report that a
 `main`; if no spec is found, report "no spec available" and run the Standards axis alone. Never
 stop to ask.
 
-**Corpus pack — pre-read inputs under the parallel runner.** When the invoker names a
-**corpus pack** (`.worktrees/.corpus-pack.md`, rebuilt by the runner on every `--review`
-invocation — the verbatim, path-separated concatenation of `AGENTS.md`,
+**Corpus pack — pre-read inputs on both review paths.** When the invoker names a
+**corpus pack** (`.worktrees/.corpus-pack.md`, rebuilt by `.agents/scripts/build-corpus-pack.sh`
+on every `--review` invocation and before every interactive dispatch, ADR-0029 — the verbatim,
+path-separated concatenation of `AGENTS.md`,
 `.agents/rules/*.md`, `.agents/ubiquitous-language.md`, and `.agents/adr/*.md`), skip the
 source reading in steps 2–3 entirely: verify the named files exist, hand the pack to the
 **Standards** sub-agent as its complete standards sources, and hand the **Spec**
@@ -163,8 +180,8 @@ sub-agent its per-child sources (`.worktrees/.issue.md`, the linked plan, and
 Never give the pack to the Spec sub-agent: each axis gets only its own sources. Axis
 isolation is blindness between findings, never exclusivity over sources
 (`.agents/ubiquitous-language.md`; ADR-0024). The smell baseline still travels as
-always — pasted into the Standards prompt from this file. Without a pack (any
-interactive invocation), nothing changes: read the sources as steps 2–3 describe.
+always — pasted into the Standards prompt from this file. Without a pack — an invocation
+that names none — nothing changes: read the sources as steps 2–3 describe.
 
 **Step 5 — the report goes to the chat only.** This skill reads; it does not write files, commit,
 or touch GitHub. To put a report on the branch's issue, hand off to `/comment-issue`.

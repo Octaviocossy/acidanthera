@@ -10,7 +10,9 @@
 AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 
 # Headless agent CLI used for the agentic review the runner's '--review' action fans
-# out over each child (standards-and-spec-review). Same COMMAND PREFIX vocabulary as
+# out over each child (standards-and-spec-review), AND by the interactive gate
+# (/review-branch, /execute-issue Phase 3) via .agents/scripts/run-review-agent.sh.
+# Same COMMAND PREFIX vocabulary as
 # AGENT_EXEC_CMD above. Empty means "inherit AGENT_EXEC_CMD" — NOT "skip the review":
 # the review gate is never skipped by omission. Set this to a different command prefix
 # to give the reviewer a different model than the implementer.

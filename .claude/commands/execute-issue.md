@@ -1,6 +1,6 @@
 ---
-description: Execute the current branch's GitHub issue in two phases — confirm, then implement
-argument-hint: [optional execution notes / overrides, e.g. "skip confirm"]
+description: Execute the current branch's GitHub issue in three phases — confirm, implement, review
+argument-hint: [optional execution notes / overrides, e.g. "skip confirm", "skip review"]
 allowed-tools: Bash(git:*), mcp__github__list_issues, mcp__github__issue_read, mcp__github__list_pull_requests
 ---
 
