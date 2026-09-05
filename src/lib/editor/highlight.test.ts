@@ -1,8 +1,8 @@
 import { tags } from '@lezer/highlight';
 import { describe, expect, it } from 'vitest';
-import { orbitHighlightStyle } from './highlight';
+import { acidantheraHighlightStyle } from './highlight';
 
-describe('orbitHighlightStyle', () => {
+describe('acidantheraHighlightStyle', () => {
   it('resolves every markdown treatment to a token-backed class', () => {
     const highlightedTags = [
       tags.heading1,
@@ -24,7 +24,7 @@ describe('orbitHighlightStyle', () => {
     ];
 
     for (const tag of highlightedTags) {
-      expect(orbitHighlightStyle.style([tag])).toBeTruthy();
+      expect(acidantheraHighlightStyle.style([tag])).toBeTruthy();
     }
   });
 });

@@ -759,7 +759,7 @@ mod tests {
     /// A unique temp directory per test, canonicalized because macOS resolves `/tmp` to
     /// `/private/tmp` — `guarded_path` compares canonical paths, so the root must already be one.
     fn temp_root(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("orbit-vault-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("acidanthera-vault-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp root");
         dir.canonicalize().expect("canonicalizes temp root")
@@ -1028,7 +1028,7 @@ mod tests {
     #[test]
     fn create_note_in_should_reject_a_target_outside_the_root() {
         let root = temp_root("create-note-escape");
-        let escapee = root.join("..").join("orbit-escapee.md");
+        let escapee = root.join("..").join("acidanthera-escapee.md");
 
         let error = create_note_in(&root, &path_str(&escapee)).expect_err("rejects");
 

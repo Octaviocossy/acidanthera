@@ -37,7 +37,7 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       {kind === 'dir' ? (
         <>
           <span className={active ? 'opacity-80' : 'opacity-65'}>
-            <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit', collapsed ? '' : 'rotate-90')} />
+            <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera', collapsed ? '' : 'rotate-90')} />
           </span>
           <Icon icon={Folder} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
         </>

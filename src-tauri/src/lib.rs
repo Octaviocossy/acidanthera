@@ -22,7 +22,7 @@ pub fn run() {
         .manage(AgentProcessState::default())
         .manage(ConfigWatcherState::default())
         .setup(|app| {
-            log::info!("orbit-111 backend started");
+            log::info!("acidanthera backend started");
             let handle = app.handle().clone();
             // Must run before `config::init`'s first-run scaffold: settings migration only
             // triggers while `settings.toml` is still absent, and `config::init` would otherwise

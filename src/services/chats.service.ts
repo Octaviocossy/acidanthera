@@ -18,13 +18,13 @@ export interface ChatRecord {
 
 /**
  * Typed wrapper over the chat-persistence commands (epic #66, #68). Chats are stored as
- * `.chat.md` files under the hidden `.orbit/chats/` directory inside the open vault, keyed by a
+ * `.chat.md` files under the hidden `.acidanthera/chats/` directory inside the open vault, keyed by a
  * bare `id`. The store is format-agnostic: it moves the serialized markdown from
  * `serializeChatFile` to/from disk — the shape lives in `@/lib/chat/chat-file`, and the vault
  * root is derived from the same open-vault state the note commands use.
  */
 export const chatsService = {
-  /** Writes a conversation's serialized markdown, creating `.orbit/chats/` on first save. Overwrites an existing chat with the same `id`. Resolves to the written path. */
+  /** Writes a conversation's serialized markdown, creating `.acidanthera/chats/` on first save. Overwrites an existing chat with the same `id`. Resolves to the written path. */
   saveChat: (id: string, contents: string): Promise<string> => invoke('save_chat', { id, contents }),
 
   /** Reads one saved conversation's raw markdown by `id`. Rejects if no chat has that id. */

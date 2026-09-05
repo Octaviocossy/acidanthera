@@ -1,4 +1,4 @@
-# Contributing to orbit
+# Contributing to acidanthera
 
 Thanks for taking an interest. This document covers what you need to build the app, what to run
 before you open a pull request, and the conventions this codebase holds to.
@@ -15,8 +15,8 @@ You will need:
 - **macOS** — see [Platform support](README.md#platform-support) for why
 
 ```bash
-git clone https://github.com/Octaviocossy/orbit-111.git
-cd orbit-111
+git clone https://github.com/Octaviocossy/acidanthera.git
+cd acidanthera
 pnpm install
 pnpm tauri dev
 ```
@@ -26,7 +26,7 @@ command unavailable — anything touching the vault, settings, chats, or the age
 `pnpm tauri dev`.
 
 The chat panel additionally needs [`claude`](https://claude.com/claude-code) and/or
-[`codex`](https://github.com/openai/codex) installed and logged in. orbit spawns them as child
+[`codex`](https://github.com/openai/codex) installed and logged in. acidanthera spawns them as child
 processes and inherits their session; it never handles API keys.
 
 ## Before you open a pull request
@@ -81,8 +81,8 @@ Decisions that outlive the change that produced them belong in an ADR under
 
 ## Design system
 
-UI work in `src/components` or `src/styles` follows the Orbit design system, encoded in
-[`.agents/skills/orbit-design/SKILL.md`](.agents/skills/orbit-design/SKILL.md): the five-step
+UI work in `src/components` or `src/styles` follows the acidanthera design system, encoded in
+[`.agents/skills/acidanthera-design/SKILL.md`](.agents/skills/acidanthera-design/SKILL.md): the five-step
 surface ladder, four-step text ladder, and semantic radius ladder named by what a value wraps
 rather than by its size.
 

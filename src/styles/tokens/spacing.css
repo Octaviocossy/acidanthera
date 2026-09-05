@@ -1,5 +1,5 @@
 /*
- * Orbit-111 design tokens - spacing & radii.
+ * acidanthera design tokens - spacing & radii.
  * 4px grid. Tailwind's default spacing scale is already 4px-based (p-1 = 4px), so these
  * raw variables exist for non-Tailwind consumers (e.g. the CM6 theme in a later slice)
  * rather than being re-wired into `@theme`.

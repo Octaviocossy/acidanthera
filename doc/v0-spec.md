@@ -1,4 +1,4 @@
-# Orbit-111 — Spec
+# acidanthera — Spec
 
 > A desktop markdown notes app, **local-first** and **vim-first**, with a built-in AI agent.
 > The goal is to eliminate the context-switch between the notes editor and the terminal where agents currently run.
@@ -62,7 +62,7 @@ Data is plain `.md` files in a filesystem folder (Obsidian philosophy). The app 
 ### 3.2 Stack
 - **Tauri (Rust)** over Electron: lighter, decent binary, and it forces real native backend work (learning / CV goal).
 - **Frontend:** React + Vite.
-- **Styling / design system:** Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first — no `tailwind.config.js`) + shadcn/ui primitives, skinned entirely by the **Orbit Design System** from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb` (see §5.6). We adopt shadcn's accessible *primitives*, not its default look. Lint/format stays on Biome; `cn()` uses `clsx` + `tailwind-merge`.
+- **Styling / design system:** Tailwind CSS v4 (`@tailwindcss/vite`, CSS-first — no `tailwind.config.js`) + shadcn/ui primitives, skinned entirely by the **acidanthera Design System** from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb` (see §5.6). We adopt shadcn's accessible *primitives*, not its default look. Lint/format stays on Biome; `cn()` uses `clsx` + `tailwind-merge`.
 - **Native Rust backend:** filesystem, spawning the agent process, file-watching (`notify` crate). API-key management in the keychain is left for the native-provider backends (post-v0 — see §4).
 
 ### 3.3 Authentication and data — zero auth, zero sync (v0)
@@ -101,7 +101,7 @@ When choosing an external agent, the model comes **tied** to its provider.
 | Family | What it is | Implementations | Status |
 |---|---|---|---|
 | `external-CLI` | External process that already brings its own tool-use loop. | Claude Code, Codex CLI | **v0** |
-| `native-provider` | Stateless model endpoint; the tool loop is implemented by Orbit-111. | Anthropic, OpenAI, Ollama | Post-v0 |
+| `native-provider` | Stateless model endpoint; the tool loop is implemented by acidanthera. | Anthropic, OpenAI, Ollama | Post-v0 |
 
 Both families live behind a single interface, `AgentBackend`. The UI always talks to that interface and doesn't know which engine is behind it.
 
@@ -175,7 +175,7 @@ It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/r
 
 - `@uiw/react-codemirror` accepts an `extensions` array of CM6 as a prop → that's where `vim()`, the `Ctrl-w` keybinding and `lang-markdown` go.
 - `@replit/codemirror-vim` API (v6.x): `vim()` goes first; `getCM(view)` gives access to the legacy API; `Vim.defineEx` registers ex-commands; the `vim-mode-change` event feeds the mode indicator.
-- Monochrome aesthetic driven by the **Orbit Design System** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the four text tiers, and JetBrains Mono for content), so editor and chrome stay visually identical. UI chrome uses Geist. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
+- Monochrome aesthetic driven by the **acidanthera Design System** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the four text tiers, and JetBrains Mono for content), so editor and chrome stay visually identical. UI chrome uses Geist. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
 
 ### 5.2 AI chat (invocable panel)
 - Opens/closes with the FAB or a keyboard shortcut; split view next to the viewer.
@@ -198,7 +198,7 @@ A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges 
 
 ### 5.6 Design system & styling
 
-Orbit-111's visual layer is the **Orbit Design System**, from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb`, delivered with **Tailwind CSS v4**. The former project `ff2532ab-4501-47c9-8acd-a36fe9719a84` is superseded. Token values live in `src/styles/tokens/` and are exposed to Tailwind through `src/styles/index.css`.
+acidanthera's visual layer is the **acidanthera Design System**, from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb`, delivered with **Tailwind CSS v4**. The former project `ff2532ab-4501-47c9-8acd-a36fe9719a84` is superseded. Token values live in `src/styles/tokens/` and are exposed to Tailwind through `src/styles/index.css`.
 
 #### Tokens and themes
 
@@ -221,7 +221,7 @@ Orbit-111's visual layer is the **Orbit Design System**, from Claude Design proj
 
 `src/components/ui/` contains the five store-free primitives: `Kbd`, `SectionLabel`, `Chip`, `Switch`, and `Segmented`, plus `Button` and `Badge`. `Button` has `primary`, `secondary`, and `ghost` variants; `primary` is reserved for AI actions. `FileTreeItem` and `EditorTabs` deliberately remain store-aware application components rather than design primitives. The layout, editor, vault, overlay, and AI components compose these rules but are not promoted to generic primitives.
 
-For implementation and review guidance, use the vendored `orbit-design` skill. ADRs 0006–0008 record the token-vocabulary, AI-accent, and titlebar decisions.
+For implementation and review guidance, use the vendored `acidanthera-design` skill. ADRs 0006–0008 record the token-vocabulary, AI-accent, and titlebar decisions.
 
 ---
 
@@ -246,7 +246,7 @@ The navigation state machine (active region + global mode + chat state) and the 
 
 ### Half A — Editor + Filesystem
 - Tauri + React + Vite scaffold.
-- **Styling foundation (§5.6):** add Tailwind v4 (`@tailwindcss/vite`) + shadcn/ui + the `@/` alias + `cn()`; vendor the Orbit-111 design tokens; self-host JetBrains Mono; wire the CM6 theme to the same CSS variables. Remove the default template's light/dark CSS (Orbit is dark-only).
+- **Styling foundation (§5.6):** add Tailwind v4 (`@tailwindcss/vite`) + shadcn/ui + the `@/` alias + `cn()`; vendor the acidanthera design tokens; self-host JetBrains Mono; wire the CM6 theme to the same CSS variables. Remove the default template's light/dark CSS (acidanthera is dark-only).
 - CodeMirror 6 editor with vim. Open vault, sidebar, open/edit/save `.md`.
 - File-watcher (`notify`) that refreshes the sidebar.
 
@@ -270,7 +270,7 @@ The agent writes to the vault → it appears in the sidebar. Full loop, one wind
 
 | Topic | Decision | Status |
 |---|---|---|
-| Name | Orbit-111 | ✅ |
+| Name | acidanthera | ✅ |
 | Base editor | CodeMirror 6 directly (not react-md-editor) | ✅ |
 | Layout | Obsidian-style: sidebar + viewer + invocable chat with FAB | ✅ |
 | Vim navigation | Two levels (editor / app), `Ctrl-w` as exit prefix | ✅ |
@@ -280,7 +280,7 @@ The agent writes to the vault → it appears in the sidebar. Full loop, one wind
 | Agent text | Complete message in v0; deltas as evolution | ✅ |
 | Graph render | cosmos (GPU) | ✅ |
 | Styling stack | Tailwind CSS v4 (CSS-first) + shadcn/ui primitives, token-skinned | ✅ |
-| Design system | Orbit-111 tokens from Claude Design project `ff2532…`; monochrome, one lime accent | ✅ |
+| Design system | acidanthera tokens from Claude Design project `ff2532…`; monochrome, one lime accent | ✅ |
 | Typeface | JetBrains Mono (self-hosted); Berkeley Mono documented swap-in | ✅ |
 | Accent discipline | Lime reserved for the active FAB only; shadcn `--primary`/`--ring` stay monochrome | ✅ |
 | Dark-only theme | Near-black always; no light theme / `prefers-color-scheme` branch in v0 | ✅ |

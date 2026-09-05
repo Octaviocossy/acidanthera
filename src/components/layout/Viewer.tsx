@@ -65,7 +65,7 @@ export function Viewer() {
       <div className="min-h-0 flex-1">
         {buffers.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <span className="font-sans text-display font-medium text-text-primary tracking-display">orbit</span>
+            <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
             <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
             <span className="font-mono text-meta text-text-muted">{vaultRoot === null ? '' : displayPath(vaultRoot)}</span>
             <Kbd>Ctrl-w f</Kbd>

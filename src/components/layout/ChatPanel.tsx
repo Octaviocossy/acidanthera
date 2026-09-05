@@ -42,7 +42,7 @@ function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: stri
       aria-selected={active}
       onClick={() => onSelect(tab)}
       className={cn(
-        'border-b pb-0.5 font-mono text-label uppercase tracking-label transition-colors duration-[var(--dur)] ease-orbit',
+        'border-b pb-0.5 font-mono text-label uppercase tracking-label transition-colors duration-[var(--dur)] ease-acidanthera',
         active ? 'border-border-strong text-text-primary' : 'border-transparent text-text-muted hover:text-text-primary'
       )}
     >
@@ -52,7 +52,7 @@ function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: stri
 }
 
 /** The invocable AI chat region (doc/v0-spec.md §5.2): a two-tab surface (#71) — the live `AgentEvent`
- *  transcript, plus a keyboard-navigable list of the conversations saved under `.orbit/chats/`. */
+ *  transcript, plus a keyboard-navigable list of the conversations saved under `.acidanthera/chats/`. */
 export function ChatPanel() {
   useChatHistoryKeymap();
 

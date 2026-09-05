@@ -30,7 +30,7 @@ export type ChatItem =
 interface ChatState {
   modelId: AgentModelId;
   items: ChatItem[];
-  /** Persisted id of the current thread (`.orbit/chats/<id>.chat.md`); `null` until the thread is
+  /** Persisted id of the current thread (`.acidanthera/chats/<id>.chat.md`); `null` until the thread is
    *  first saved. Owned here — the store, not the backend process, is the durable thread identity. */
   chatId: string | null;
   /** A loaded thread's title, preserved across re-saves; `''` means derive it from the transcript. */
@@ -53,7 +53,7 @@ interface ChatState {
   loadChat: (file: ChatFile) => void;
   /** Reads + parses a saved conversation by `id`, then {@link loadChat}s it; error → toast. */
   loadChatById: (id: string) => Promise<void>;
-  /** Serializes the current thread and writes it to the vault's `.orbit/chats/` (best-effort). */
+  /** Serializes the current thread and writes it to the vault's `.acidanthera/chats/` (best-effort). */
   persistCurrentChat: () => Promise<void>;
 }
 

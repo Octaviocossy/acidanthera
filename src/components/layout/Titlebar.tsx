@@ -11,7 +11,7 @@ export function Titlebar() {
   return (
     <header data-tauri-drag-region="deep" className="relative flex h-[var(--rail-titlebar)] shrink-0 items-center border-b border-hairline bg-surface">
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-sans font-medium text-ui text-text-primary">
-        <span>orbit</span>
+        <span>acidanthera</span>
         {vaultName && (
           <>
             <span> — </span>

@@ -1,5 +1,5 @@
 {
-  "name": "orbit-111",
+  "name": "acidanthera",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,11 +8,11 @@
   "author": "Octavio Cossy Torquati",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Octaviocossy/orbit-111.git"
+    "url": "git+https://github.com/Octaviocossy/acidanthera.git"
   },
-  "homepage": "https://github.com/Octaviocossy/orbit-111#readme",
+  "homepage": "https://github.com/Octaviocossy/acidanthera#readme",
   "bugs": {
-    "url": "https://github.com/Octaviocossy/orbit-111/issues"
+    "url": "https://github.com/Octaviocossy/acidanthera/issues"
   },
   "engines": {
     "node": ">=18"

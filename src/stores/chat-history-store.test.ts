@@ -30,7 +30,7 @@ function chatFileContents(id: string, title: string): string {
 }
 
 function record(id: string, title = id): ChatRecord {
-  return { id, path: `/vault/.orbit/chats/${id}.chat.md`, updatedMs: 0, contents: chatFileContents(id, title) };
+  return { id, path: `/vault/.acidanthera/chats/${id}.chat.md`, updatedMs: 0, contents: chatFileContents(id, title) };
 }
 
 const initialHistoryState = useChatHistoryStore.getState();

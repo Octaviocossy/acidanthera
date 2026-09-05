@@ -17,7 +17,7 @@ describe('Viewer', () => {
   it('shows the branded empty state when no notes are open', () => {
     render(<Viewer />);
 
-    expect(screen.getByText('orbit')).toBeInTheDocument();
+    expect(screen.getByText('acidanthera')).toBeInTheDocument();
     expect(screen.getByText('Your vault is empty. Good — clean slate.')).toBeInTheDocument();
     expect(screen.getByText('Ctrl-w f')).toBeInTheDocument();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();

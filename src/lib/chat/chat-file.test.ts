@@ -73,19 +73,19 @@ describe('parseChatFile', () => {
   });
 
   it('fails when a tool_call block has no JSON fence', () => {
-    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- orbit:chat kind="tool_call" id="t-1" -->\n\nno json here`;
+    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- acidanthera:chat kind="tool_call" id="t-1" -->\n\nno json here`;
     const result = parseChatFile(raw);
     expect(result.ok).toBe(false);
   });
 
   it('fails when a tool_call JSON fence is invalid JSON', () => {
-    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- orbit:chat kind="tool_call" id="t-1" -->\n\n\`\`\`json\n{not valid\n\`\`\``;
+    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- acidanthera:chat kind="tool_call" id="t-1" -->\n\n\`\`\`json\n{not valid\n\`\`\``;
     const result = parseChatFile(raw);
     expect(result.ok).toBe(false);
   });
 
   it('skips an unknown item kind for forward compatibility', () => {
-    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- orbit:chat kind="future_kind" id="f-1" -->\n\nsome body`;
+    const raw = `${serializeChatFile({ meta: meta(), items: [] })}\n<!-- acidanthera:chat kind="future_kind" id="f-1" -->\n\nsome body`;
     const result = parseChatFile(raw);
     expect(result).toEqual({ ok: true, file: { meta: meta(), items: [] } });
   });
@@ -114,8 +114,8 @@ describe('parseChatFile', () => {
 
 describe('isChatFilePath', () => {
   it('matches the .chat.md extension case-insensitively', () => {
-    expect(isChatFilePath('/vault/.orbit/chats/chat-1.chat.md')).toBe(true);
-    expect(isChatFilePath('/vault/.orbit/chats/CHAT-1.CHAT.MD')).toBe(true);
+    expect(isChatFilePath('/vault/.acidanthera/chats/chat-1.chat.md')).toBe(true);
+    expect(isChatFilePath('/vault/.acidanthera/chats/CHAT-1.CHAT.MD')).toBe(true);
   });
 
   it('rejects a plain note or unrelated extension', () => {

@@ -1,9 +1,9 @@
 # AGENTS.md
 
-Instructions for AI agents working in this vault. Orbit runs its agents with this folder as
+Instructions for AI agents working in this vault. acidanthera runs its agents with this folder as
 their working directory, so both Claude Code and Codex load this file automatically.
 
-Edit it freely: Orbit only writes it when it is missing, and never overwrites your changes.
+Edit it freely: acidanthera only writes it when it is missing, and never overwrites your changes.
 
 ## What this vault is
 
@@ -15,7 +15,7 @@ shows Markdown notes, so anything you want the user to see must be a `.md` file.
 
 - One idea per note. Name the file after that idea, in Title Case, ending in `.md`.
 - Open the note with a single `#` heading matching the filename.
-- Link to another note with `[[Wikilinks]]` — the target's filename without the `.md`. Orbit
+- Link to another note with `[[Wikilinks]]` — the target's filename without the `.md`. acidanthera
   renders these inline in the editor. Link generously; the links are the structure of the vault.
 - Prefer prose over deeply nested bullets. Write for the person rereading this in a year.
 

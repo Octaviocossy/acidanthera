@@ -20,7 +20,7 @@ export function Icon({ icon: LucideComponent, size = 15, className }: IconProps)
       strokeWidth={1.2}
       aria-hidden="true"
       className={cn(className)}
-      // Lucide's division can serialize as `1.9199999999999997`; retain the precise Orbit stroke.
+      // Lucide's division can serialize as `1.9199999999999997`; retain the precise acidanthera stroke.
       ref={(element) => element?.setAttribute('stroke-width', String(normalizedStrokeWidth))}
     />
   );

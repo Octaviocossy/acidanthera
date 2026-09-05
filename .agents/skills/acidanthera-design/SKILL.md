@@ -1,9 +1,9 @@
 ---
-name: orbit-design
-description: Use when writing or reviewing any UI in src/components or src/styles — picking a surface, text level, radius, or typeface, or deciding whether something may carry the ember accent. Encodes the Orbit design system's rules.
+name: acidanthera-design
+description: Use when writing or reviewing any UI in src/components or src/styles — picking a surface, text level, radius, or typeface, or deciding whether something may carry the ember accent. Encodes the acidanthera design system's rules.
 ---
 
-# Orbit Design System
+# acidanthera Design System
 
 Use the semantic tokens in `src/styles/tokens/`; do not introduce parallel values or Factory-era names.
 
@@ -21,7 +21,7 @@ Use the semantic tokens in `src/styles/tokens/`; do not introduce parallel value
 
 ## Accent discipline
 
-The ember accent means **the AI acted here** and nothing else (ADR 0007). It is permitted only for the FAB glyph, Send, the active model pill, a running tool chip, an agent-turn glyph, and a dirty-note dot. Do not use it for success, status, branding, decoration, or large fills. Diff add/delete colors remain a separate directional encoding.
+The ember accent means **the AI acted here** and nothing else (ADR 0007). It is permitted only for the FAB glyph, Send, the active model pill, a running tool chip, an agent-turn glyph, and a dirty-note dot. Do not use it for success, status, branding, decoration, or large fills — with one exception (ADR 0032): an icon that never renders inside the window, namely the app icon and the favicon, keeps its ember ring. Every in-app rendering of the brand mark stays monochrome. Diff add/delete colors remain a separate directional encoding.
 
 ## Iconography and voice
 
@@ -39,6 +39,4 @@ The ember accent means **the AI acted here** and nothing else (ADR 0007). It is 
 
 The authoritative token values live in `src/styles/tokens/` and Tailwind utility mappings live in `src/styles/index.css`; this skill deliberately carries rules rather than a copy of those values. `src/components/ui/` contains the store-free primitives `Kbd`, `SectionLabel`, `Chip`, `Switch`, and `Segmented`, plus `Button` and `Badge`. `FileTreeItem` and `EditorTabs` are store-aware application components, not primitives.
 
-Honor invariant 21: the AI accent marks AI agency and nothing else. Honor invariant 22: Orbit names are the only token vocabulary; Factory names and aliases no longer exist.
-
-Vendored from Claude Design project `d333dc32-6b35-4f89-9982-66bbc1014fcb` (Orbit Design System).
+Honor invariant 21: the AI accent marks AI agency and nothing else, except the app icon and favicon (ADR 0032). Honor invariant 22: acidanthera names are the only token vocabulary; Factory names and aliases no longer exist.

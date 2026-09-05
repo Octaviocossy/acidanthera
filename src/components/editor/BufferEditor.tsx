@@ -4,7 +4,7 @@ import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
 import { useEffect, useMemo, useState } from 'react';
 import { applyEditorKeymap } from '@/lib/editor/apply-vim-keymap';
-import { orbitHighlighting } from '@/lib/editor/highlight';
+import { acidantheraHighlighting } from '@/lib/editor/highlight';
 import { editorKeymapExtension, trackEditorView } from '@/lib/editor/keymap-compartment';
 import { regionExit } from '@/lib/editor/region-exit';
 import { editorTheme } from '@/lib/editor/theme';
@@ -50,7 +50,7 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
       buffer.source === 'config' ? tomlLanguage : markdown(),
-      orbitHighlighting,
+      acidantheraHighlighting,
       vimModeSync(buffer.id),
       // Wikilinks are a Markdown-note concept and meaningless in TOML.
       ...(buffer.source === 'config' ? [] : wikilink),

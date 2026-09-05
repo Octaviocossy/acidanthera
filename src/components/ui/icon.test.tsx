@@ -9,7 +9,7 @@ describe('Icon', () => {
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('uses the Orbit stroke width at the default size', () => {
+  it('uses the acidanthera stroke width at the default size', () => {
     const { container } = render(<Icon icon={File} />);
 
     expect(container.querySelector('svg')).toHaveAttribute('stroke-width', '1.92');

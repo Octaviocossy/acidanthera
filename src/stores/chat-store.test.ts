@@ -110,7 +110,7 @@ describe('sendMessage', () => {
     useAppStore.getState().setVaultRoot('/vault');
     const backend = fakeBackend('codex');
     registerBackend(backend);
-    vi.mocked(chatsService.saveChat).mockResolvedValue('/vault/.orbit/chats/x.chat.md');
+    vi.mocked(chatsService.saveChat).mockResolvedValue('/vault/.acidanthera/chats/x.chat.md');
 
     await useChatStore.getState().sendMessage('hello');
 

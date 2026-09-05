@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cn } from './utils';
 
 describe('cn', () => {
-  it('keeps an Orbit font-size step alongside a text color', () => {
+  it('keeps an acidanthera font-size step alongside a text color', () => {
     // Regression guard: tailwind-merge classified `text-micro` as a *color* and dropped it, so
     // every primitive setting a size and a color together rendered at the inherited body size.
     expect(cn('font-mono text-micro', 'text-text-primary')).toBe('font-mono text-micro text-text-primary');

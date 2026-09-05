@@ -24,7 +24,7 @@ export function EntryDraftRow({ kind, depth, onCommit, onCancel }: EntryDraftRow
       depth={depth}
       icon={
         <>
-          {kind === 'directory' && <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit')} />}
+          {kind === 'directory' && <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera')} />}
           {kind === 'directory' ? <Icon icon={Folder} size={15} className="opacity-65" /> : <Icon icon={FileText} size={15} className="opacity-65" />}
         </>
       }

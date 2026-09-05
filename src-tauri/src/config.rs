@@ -26,14 +26,14 @@ const CONFIG_FILES: [&str; 2] = ["settings.toml", "keymaps.toml"];
 
 /// Minimal first-run `settings.toml` seed. The real settings schema is owned by a sibling slice;
 /// this is just enough for the file to exist and parse.
-const DEFAULT_SETTINGS_TOML: &str = "# orbit-111 settings\n";
+const DEFAULT_SETTINGS_TOML: &str = "# acidanthera settings\n";
 
 /// First-run `keymaps.toml` seed (#97 step 6): every resolvable command, commented out, grouped
 /// by layer, showing its current default — uncommenting a line and editing its chord array is
 /// the whole rebinding UX (spec ADR 0005: command-keyed, not chord-keyed). Must be kept in sync
 /// with `generateKeymapsToml()` in `src/lib/keymap/seed.ts`, which is the source of truth this
 /// constant was generated from.
-const DEFAULT_KEYMAPS_TOML: &str = r#"# orbit-111 keymaps
+const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps
 #
 # Every line below is commented out and shows that command's current default. Uncomment a
 # line and edit its chord array to rebind it — a chord array is always replaced wholesale,
@@ -323,7 +323,7 @@ mod tests {
     use super::*;
 
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("orbit-config-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("acidanthera-config-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp directory");
         dir.canonicalize().expect("canonicalizes temp directory")

@@ -1,6 +1,6 @@
 //! Backend logging utility, used by every Tauri command ("use case"). Wraps `tauri-plugin-log`,
 //! configuring it to append structured, timestamped, leveled lines to a local file at
-//! `logs/orbit-111.log` (relative to the app's working directory — `src-tauri/` under
+//! `logs/acidanthera.log` (relative to the app's working directory — `src-tauri/` under
 //! `tauri dev`) and to stdout during development. Each command logs an INFO line on entry and,
 //! through the `LogResult` extension trait, an ERROR line on every failure path.
 
@@ -12,19 +12,19 @@ use tauri_plugin_log::{Builder, Target, TargetKind};
 
 /// The lib/crate name, used as the `level_for` target so our own logs pass at INFO while noisy
 /// dependencies (tauri, notify, …) are held to WARN. Must match `[lib] name` in `Cargo.toml`.
-const CRATE_TARGET: &str = "orbit_111_lib";
+const CRATE_TARGET: &str = "acidanthera_lib";
 
 /// Builds the configured `tauri-plugin-log` plugin. Register it **first** in the Tauri builder
 /// so it captures every subsequent plugin's logs.
 ///
-/// - Appends to `logs/orbit-111.log` (the plugin adds the `.log` extension) and to stdout.
+/// - Appends to `logs/acidanthera.log` (the plugin adds the `.log` extension) and to stdout.
 /// - Global level WARN; our own crate at INFO via `level_for(CRATE_TARGET, …)`.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     Builder::new()
         .clear_targets()
         .target(Target::new(TargetKind::Folder {
             path: PathBuf::from("logs"),
-            file_name: Some("orbit-111".into()),
+            file_name: Some("acidanthera".into()),
         }))
         .target(Target::new(TargetKind::Stdout))
         .level(LevelFilter::Warn)

@@ -1,11 +1,11 @@
 # Keybindings
 
-orbit-111 is vim-first and keyboard-first — see `doc/v0-spec.md` §3.4 for the design rationale
+acidanthera is vim-first and keyboard-first — see `doc/v0-spec.md` §3.4 for the design rationale
 behind the two-level vim system (app-level focus chords vs. the editor's own CodeMirror vim mode).
 
 Every binding below except the editor's own CodeMirror-vim keys, `:w`, and system-clipboard yank
 is **user-rebindable** in `keymaps.toml`, which lives in the platform Tauri app-config dir — on
-macOS `~/Library/Application Support/com.ovct.orbit-111/keymaps.toml`. (This is *not* the XDG
+macOS `~/Library/Application Support/com.ovct.acidanthera/keymaps.toml`. (This is *not* the XDG
 `~/.config` path on macOS; `config.rs` resolves it through Tauri's `app_config_dir()`, so it
 varies by OS.) The file ships fully commented out, one line per command,
 showing its current default; uncomment a line and edit its chord array to rebind it, or set the
