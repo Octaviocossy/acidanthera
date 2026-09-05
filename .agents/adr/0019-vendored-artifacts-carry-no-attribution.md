@@ -40,3 +40,24 @@ argument-order invariants, the two guards, the sandboxed default, the confirmati
 **`.agents/skills/resolving-merge-conflicts/`** — from `mattpocock/skills`,
 `skills/engineering/resolving-merge-conflicts`. No divergence: steps 1–5 are upstream verbatim and
 everything local lives in `## In this repository`.
+
+**`.agents/skills/acidanthera-design/`** — from Claude Design project
+`d333dc32-6b35-4f89-9982-66bbc1014fcb`, *Orbit Design System*. Three divergences, all from the
+rebrand (#134):
+
+1. **Renamed.** Vendored as `orbit-design`; renamed with the product, since
+   `.agents/rules/skill-creation.md` requires `name` to equal the directory name (checked by
+   `verify-scaffold.sh` §8) and the design system it encodes is now `acidanthera`. The `# Orbit
+   Design System` heading, the `description`, and the invariant-22 reference moved with it.
+2. **The accent rule gained ADR 0032's exemption.** Upstream's `## Accent discipline` forbids the
+   ember for branding outright, which is what invariant 21 said when this was vendored. ADR 0032
+   has since carved out the one artifact that never renders inside the window — the app icon and
+   the favicon — so the clause would otherwise contradict the very ADR this repository added.
+
+3. **Attribution footer removed.** The body carried a trailing *"Vendored from Claude Design
+   project `d333dc32-…` (Orbit Design System)"* line. This ADR's whole rule is that a vendored body
+   carries no such footer, so it is deleted and its provenance is the entry you are reading.
+
+The upstream project title stays *Orbit Design System* here: it names an external artifact, and
+renaming it would falsify the provenance this ADR exists to preserve. That is why the citation
+lives in this ADR rather than in the body that moved with the product.

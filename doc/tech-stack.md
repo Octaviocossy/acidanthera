@@ -1,6 +1,6 @@
-# orbit-111 Tech Stack
+# acidanthera Tech Stack
 
-orbit-111 is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
+acidanthera is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
 **snapshot as of 2026-08-08**. For architecture rationale, see `doc/v0-spec.md`; for what each
@@ -92,13 +92,13 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 
 | File | Primary technologies |
 |------|------------------------|
-| `main.rs` | Thin binary entry; calls `orbit_111_lib::run()` |
+| `main.rs` | Thin binary entry; calls `acidanthera_lib::run()` |
 | `lib.rs` | `tauri::Builder` — registers the log/opener/dialog/clipboard plugins, `manage`s `VaultState` + `AgentProcessState` + `ConfigWatcherState`, and registers the frontend commands |
 | `vault.rs` | `notify` watcher, `serde`, `std::fs`, Tauri `command`/`State`/`emit`; `VaultState`, `VaultError`, the guarded vault commands, `scaffold_agent_context` |
 | `agent.rs` | `std::process` child spawning, PATH resolution, Tauri `State`/`emit`; `AgentProcessState`, `agent_spawn`/`agent_send`/`agent_stop` |
 | `settings.rs` | `serde` + `toml` (read) + `toml_edit` (comment-preserving write) + `std::fs`, Tauri app-config-dir path; `Settings`, `SettingsDiagnostic`, legacy `settings.json` migration, default vault |
 | `config.rs` | `toml` + `notify` + `std::fs`; the allowlisted config-file commands, `ConfigWatcherState` / `config-changed`, first-run scaffolding |
-| `chats.rs` | `serde` + `std::fs`; format-agnostic chat persistence under `<vault>/.orbit/chats/`, `ChatRecord` |
+| `chats.rs` | `serde` + `std::fs`; format-agnostic chat persistence under `<vault>/.acidanthera/chats/`, `ChatRecord` |
 | `logging.rs` | `tauri-plugin-log` + `log`; `logging::plugin()`, `LogResult::log_err` |
 
 ## Build & config glue

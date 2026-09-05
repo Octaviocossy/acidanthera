@@ -11,7 +11,7 @@ export interface Settings {
   /** Editor font family, applied by `useApplyTheme` (#28) via `--editor-font`. */
   editorFont: string;
   theme: ThemeName;
-  /** Absolute path of the vault opened at boot. Defaults to `~/Documents/orbit-brain`. */
+  /** Absolute path of the vault opened at boot. Defaults to `~/Documents/acidanthera-brain`. */
   vaultPath: string;
 }
 

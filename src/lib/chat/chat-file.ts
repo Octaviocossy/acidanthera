@@ -20,12 +20,12 @@
  *   updated: "<ISO 8601>"
  *   ---
  *
- *   <!-- orbit:chat kind="user_message" id="user-1" -->
+ *   <!-- acidanthera:chat kind="user_message" id="user-1" -->
  *   > **You**
  *
  *   <verbatim message text>
  *
- *   <!-- orbit:chat kind="tool_call" id="call-1" -->
+ *   <!-- acidanthera:chat kind="tool_call" id="call-1" -->
  *   ```json
  *   { "callId": "call-1", "toolName": "Read", "args": { … }, "status": "ok", "result": … }
  *   ```
@@ -41,7 +41,7 @@
  * `parseChatFile(serializeChatFile(f))` reproduces `f` for every item kind — including messages
  * that contain code fences and tool results whose JSON contains inner ``` fences (markers are
  * matched only as whole lines and the JSON fence is matched greedily to its true closer). The one
- * in-band limitation: a message whose text contains a line that is *exactly* an `<!-- orbit:chat
+ * in-band limitation: a message whose text contains a line that is *exactly* an `<!-- acidanthera:chat
  * … -->` marker would be misread as an item boundary. Namespaced + full-line-anchored, this is
  * negligible for a single-user tool and is accepted rather than engineered away in v0.
  */
@@ -84,9 +84,9 @@ export interface ChatFile {
 export type ChatFileParseResult = { ok: true; file: ChatFile } | { ok: false; error: string };
 
 const FRONTMATTER_FENCE = '---';
-const MARKER_PREFIX = '<!-- orbit:chat';
+const MARKER_PREFIX = '<!-- acidanthera:chat';
 /** Full-line marker: `^…$` so a marker embedded inside indented JSON never triggers a false split. */
-const MARKER_RE = /^<!-- orbit:chat kind=("(?:[^"\\]|\\.)*") id=("(?:[^"\\]|\\.)*") -->$/gm;
+const MARKER_RE = /^<!-- acidanthera:chat kind=("(?:[^"\\]|\\.)*") id=("(?:[^"\\]|\\.)*") -->$/gm;
 /** Greedy body so a tool result whose JSON contains inner ``` fences still closes at the real fence. */
 const JSON_FENCE_RE = /```json\n([\s\S]*)\n```/;
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;

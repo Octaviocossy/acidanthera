@@ -27,7 +27,7 @@ export function ChatInput({ disabled = false, onSubmit }: ChatInputProps) {
 
   return (
     <div className="border-t border-hairline p-3">
-      <div className="rounded-card border border-border bg-elevated px-3 py-2.5 transition-colors duration-[var(--dur)] ease-orbit focus-within:border-border-strong">
+      <div className="rounded-card border border-border bg-elevated px-3 py-2.5 transition-colors duration-[var(--dur)] ease-acidanthera focus-within:border-border-strong">
         <input
           value={value}
           disabled={disabled}

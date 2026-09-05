@@ -1,6 +1,6 @@
 //! Chat persistence store (epic #66, child #68): durable CRUD over saved conversations. Each
 //! conversation is one *chat file* — the plain-markdown format owned by
-//! `src/lib/chat/chat-file.ts` (#67) — stored under the hidden `.orbit/chats/` directory inside
+//! `src/lib/chat/chat-file.ts` (#67) — stored under the hidden `.acidanthera/chats/` directory inside
 //! the open vault, keyed by a chat `id`.
 //!
 //! The store is deliberately **format-agnostic**: it moves the serialized chat-file bytes to and
@@ -8,7 +8,7 @@
 //! (`serializeChatFile`/`parseChatFile`). Rust owns *where* and *when* a chat is stored, exactly
 //! as `vault.rs` reads/writes note strings without interpreting their markdown.
 //!
-//! Because `.orbit` is dot-prefixed, `vault.rs`'s `build_tree` already skips it (like `.git`,
+//! Because `.acidanthera` is dot-prefixed, `vault.rs`'s `build_tree` already skips it (like `.git`,
 //! `.obsidian`, …), so saved chats never appear in the sidebar — they stay readable by path.
 
 use std::{
@@ -26,7 +26,7 @@ use crate::vault::VaultState;
 
 /// Hidden vault subdirectory (relative to the vault root) holding saved chat files. Dot-prefixed
 /// so `vault.rs`'s `build_tree` skips it — chats stay out of the sidebar.
-const CHATS_DIR: [&str; 2] = [".orbit", "chats"];
+const CHATS_DIR: [&str; 2] = [".acidanthera", "chats"];
 
 /// The on-disk suffix of a chat file. Mirrors `CHAT_FILE_EXTENSION` in `src/lib/chat/chat-file.ts`
 /// — an unavoidable cross-language duplication (like `settings.rs`'s mirrored TS defaults), pinned
@@ -73,7 +73,7 @@ impl Serialize for ChatStoreError {
 
 type ChatStoreResult<T> = Result<T, ChatStoreError>;
 
-/// `<vault_root>/.orbit/chats`.
+/// `<vault_root>/.acidanthera/chats`.
 #[cfg(test)]
 fn chats_root(vault_root: &Path) -> PathBuf {
     CHATS_DIR
@@ -83,7 +83,7 @@ fn chats_root(vault_root: &Path) -> PathBuf {
 
 /// A chat id is used verbatim as a file-name stem, so it must be a bare *name* — never a path.
 /// Rejects separators and traversal tokens, mirroring `createVaultEntry`'s "a name, never a path"
-/// rule, so a stored chat can never escape `.orbit/chats/`.
+/// rule, so a stored chat can never escape `.acidanthera/chats/`.
 fn is_safe_id(id: &str) -> bool {
     !id.is_empty()
         && id != "."
@@ -132,15 +132,15 @@ fn storage_directory(
         .map(Some)
 }
 
-/// Returns the real `<vault_root>/.orbit/chats` directory. The two storage components are checked
+/// Returns the real `<vault_root>/.acidanthera/chats` directory. The two storage components are checked
 /// independently so neither can redirect chat operations through a symlink.
 fn storage_root(vault_root: &Path, create: bool) -> ChatStoreResult<Option<PathBuf>> {
     let vault_root = vault_root.canonicalize()?;
-    let Some(orbit) = storage_directory(&vault_root.join(CHATS_DIR[0]), &vault_root, create)?
+    let Some(acidanthera) = storage_directory(&vault_root.join(CHATS_DIR[0]), &vault_root, create)?
     else {
         return Ok(None);
     };
-    storage_directory(&orbit.join(CHATS_DIR[1]), &vault_root, create)
+    storage_directory(&acidanthera.join(CHATS_DIR[1]), &vault_root, create)
 }
 
 fn reject_symlink(path: &Path) -> ChatStoreResult<()> {
@@ -166,7 +166,7 @@ fn mtime_ms(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
-/// Writes `contents` to `<root>/.orbit/chats/<id>.chat.md`, creating the chats dir on demand.
+/// Writes `contents` to `<root>/.acidanthera/chats/<id>.chat.md`, creating the chats dir on demand.
 /// Overwrites an existing chat with the same id (a re-save of the same conversation). Returns the
 /// path so the caller can reveal/reference it.
 fn save_chat_in(vault_root: &Path, id: &str, contents: &str) -> ChatStoreResult<PathBuf> {
@@ -252,7 +252,7 @@ fn list_chats_in(vault_root: &Path) -> ChatStoreResult<Vec<ChatRecord>> {
     Ok(records)
 }
 
-/// Saves a conversation's serialized chat-file markdown under `<vault>/.orbit/chats/<id>.chat.md`,
+/// Saves a conversation's serialized chat-file markdown under `<vault>/.acidanthera/chats/<id>.chat.md`,
 /// creating the directory on first save. Overwrites the existing file when the id already exists.
 /// Returns the written path.
 #[tauri::command]
@@ -303,7 +303,7 @@ mod tests {
     /// A unique temp vault root per test. No canonicalization needed — this store never
     /// canonicalizes (the id is a validated bare name, so traversal is impossible by construction).
     fn temp_root(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("orbit-chats-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("acidanthera-chats-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp root");
         dir.canonicalize().expect("canonicalizes temp root")
@@ -328,16 +328,16 @@ mod tests {
     }
 
     #[test]
-    fn save_chat_in_should_create_the_orbit_chats_dir_and_write_the_file() {
+    fn save_chat_in_should_create_the_acidanthera_chats_dir_and_write_the_file() {
         let root = temp_root("save-creates-dir");
 
         let path = save_chat_in(&root, "hello", "---\nschema: 1\n---\n").expect("saves");
 
         assert_eq!(
             path,
-            root.join(".orbit").join("chats").join("hello.chat.md")
+            root.join(".acidanthera").join("chats").join("hello.chat.md")
         );
-        assert!(root.join(".orbit").join("chats").is_dir());
+        assert!(root.join(".acidanthera").join("chats").is_dir());
         assert_eq!(
             fs::read_to_string(&path).expect("reads back"),
             "---\nschema: 1\n---\n"
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn save_then_read_should_round_trip_contents_verbatim() {
         let root = temp_root("round-trip");
-        let raw = "---\nschema: 1\nid: \"x\"\n---\n\n<!-- orbit:chat kind=\"user_message\" id=\"user-1\" -->\n\n> **You**\n\nhi";
+        let raw = "---\nschema: 1\nid: \"x\"\n---\n\n<!-- acidanthera:chat kind=\"user_message\" id=\"user-1\" -->\n\n> **You**\n\nhi";
 
         save_chat_in(&root, "x", raw).expect("saves");
         let read_back = read_chat_in(&root, "x").expect("reads");
@@ -461,8 +461,8 @@ mod tests {
     fn save_chat_in_should_reject_a_chats_directory_symlinked_outside_the_vault() {
         let root = temp_root("storage-symlink");
         let outside = temp_root("storage-symlink-outside");
-        fs::create_dir(root.join(".orbit")).expect("creates orbit directory");
-        std::os::unix::fs::symlink(&outside, root.join(".orbit").join("chats"))
+        fs::create_dir(root.join(".acidanthera")).expect("creates acidanthera directory");
+        std::os::unix::fs::symlink(&outside, root.join(".acidanthera").join("chats"))
             .expect("links chats directory");
 
         let error = save_chat_in(&root, "chat", "contents").expect_err("rejects symlink");
@@ -584,9 +584,9 @@ mod tests {
     }
 
     #[test]
-    fn save_chat_in_should_return_io_when_orbit_is_a_regular_file() {
-        let root = temp_root("orbit-file");
-        fs::write(root.join(".orbit"), "not a directory").expect("writes orbit file");
+    fn save_chat_in_should_return_io_when_acidanthera_is_a_regular_file() {
+        let root = temp_root("acidanthera-file");
+        fs::write(root.join(".acidanthera"), "not a directory").expect("writes acidanthera file");
 
         let error = save_chat_in(&root, "chat", "contents").expect_err("rejects file");
 
@@ -598,7 +598,7 @@ mod tests {
     fn chat_record_should_serialize_to_the_frontend_contract() {
         let record = ChatRecord {
             id: "chat-1".into(),
-            path: "/vault/.orbit/chats/chat-1.chat.md".into(),
+            path: "/vault/.acidanthera/chats/chat-1.chat.md".into(),
             updated_ms: 42,
             contents: "# Chat".into(),
         };
@@ -607,7 +607,7 @@ mod tests {
 
         assert_eq!(
             value,
-            serde_json::json!({ "id": "chat-1", "path": "/vault/.orbit/chats/chat-1.chat.md", "updatedMs": 42, "contents": "# Chat" })
+            serde_json::json!({ "id": "chat-1", "path": "/vault/.acidanthera/chats/chat-1.chat.md", "updatedMs": 42, "contents": "# Chat" })
         );
     }
 

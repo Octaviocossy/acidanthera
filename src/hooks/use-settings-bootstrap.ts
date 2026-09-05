@@ -17,7 +17,7 @@ export function openVaultRoot(path: string): Promise<string> {
 /**
  * Boot-time settings bootstrap (#25), mounted once in `App.tsx`. Loads the persisted settings,
  * seeds the chat's engine, then opens the vault at `settings.vaultPath` — creating the default
- * `~/Documents/orbit-brain` on first run — so the app starts with a working vault instead of
+ * `~/Documents/acidanthera-brain` on first run — so the app starts with a working vault instead of
  * the manual "Open vault…" step (which remains the recovery path if this fails).
  */
 export function useSettingsBootstrap() {
@@ -41,7 +41,7 @@ export function useSettingsBootstrap() {
         if (cancelled) return;
         useAppStore.getState().setVaultRoot(root);
       } catch {
-        // Every failing command is logged backend-side (logs/orbit-111.log); `vaultRoot`
+        // Every failing command is logged backend-side (logs/acidanthera.log); `vaultRoot`
         // stays null, so the sidebar's "Open vault…" button remains the recovery path.
       }
     })();

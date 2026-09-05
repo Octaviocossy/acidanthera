@@ -39,7 +39,7 @@ jobs:
 
   rust:
     name: Rust
-    # macOS matches the only platform orbit currently supports (ADR 0008), and avoids
+    # macOS matches the only platform acidanthera currently supports (ADR 0008), and avoids
     # installing the libwebkit2gtk apt dependencies a Linux Tauri build would need.
     runs-on: macos-latest
     steps:

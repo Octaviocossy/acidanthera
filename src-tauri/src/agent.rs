@@ -269,7 +269,7 @@ mod tests {
 
     /// A unique temp dir per test, so filesystem-based cases never collide or race.
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("orbit-agent-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("acidanthera-agent-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp dir");
         dir
@@ -336,10 +336,10 @@ mod tests {
     #[test]
     fn resolve_command_in_should_find_a_bare_command_in_the_search_dirs() {
         let dir = temp_dir("resolve-found");
-        let tool = dir.join("orbit-tool");
+        let tool = dir.join("acidanthera-tool");
         write_fixture(&tool, true);
 
-        let resolved = resolve_command_in("orbit-tool", std::slice::from_ref(&dir));
+        let resolved = resolve_command_in("acidanthera-tool", std::slice::from_ref(&dir));
 
         assert_eq!(resolved, Some(tool));
 
@@ -350,12 +350,12 @@ mod tests {
     fn resolve_command_in_should_search_dirs_in_order_and_use_the_first_match() {
         let first = temp_dir("resolve-order-first");
         let second = temp_dir("resolve-order-second");
-        write_fixture(&first.join("orbit-tool"), true);
-        write_fixture(&second.join("orbit-tool"), true);
+        write_fixture(&first.join("acidanthera-tool"), true);
+        write_fixture(&second.join("acidanthera-tool"), true);
 
-        let resolved = resolve_command_in("orbit-tool", &[first.clone(), second.clone()]);
+        let resolved = resolve_command_in("acidanthera-tool", &[first.clone(), second.clone()]);
 
-        assert_eq!(resolved, Some(first.join("orbit-tool")));
+        assert_eq!(resolved, Some(first.join("acidanthera-tool")));
 
         fs::remove_dir_all(&first).expect("cleans up");
         fs::remove_dir_all(&second).expect("cleans up");
@@ -366,12 +366,12 @@ mod tests {
     fn resolve_command_in_should_skip_a_non_executable_match_and_keep_searching() {
         let first = temp_dir("resolve-skip-non-exec-first");
         let second = temp_dir("resolve-skip-non-exec-second");
-        write_fixture(&first.join("orbit-tool"), false);
-        write_fixture(&second.join("orbit-tool"), true);
+        write_fixture(&first.join("acidanthera-tool"), false);
+        write_fixture(&second.join("acidanthera-tool"), true);
 
-        let resolved = resolve_command_in("orbit-tool", &[first.clone(), second.clone()]);
+        let resolved = resolve_command_in("acidanthera-tool", &[first.clone(), second.clone()]);
 
-        assert_eq!(resolved, Some(second.join("orbit-tool")));
+        assert_eq!(resolved, Some(second.join("acidanthera-tool")));
 
         fs::remove_dir_all(&first).expect("cleans up");
         fs::remove_dir_all(&second).expect("cleans up");
@@ -382,7 +382,7 @@ mod tests {
         let dir = temp_dir("resolve-missing");
 
         let resolved =
-            resolve_command_in("orbit-tool-that-does-not-exist", std::slice::from_ref(&dir));
+            resolve_command_in("acidanthera-tool-that-does-not-exist", std::slice::from_ref(&dir));
 
         assert_eq!(resolved, None);
 

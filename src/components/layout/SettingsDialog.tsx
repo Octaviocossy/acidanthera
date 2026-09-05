@@ -184,7 +184,7 @@ export function SettingsDialog() {
             )}
 
             {settings !== null && !syntaxError && category === 'Vault' && (
-              <SettingsRow label="Vault" description="The root folder opened when Orbit starts.">
+              <SettingsRow label="Vault" description="The root folder opened when acidanthera starts.">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="truncate font-mono text-meta text-text-muted" title={settings.vaultPath}>
                     {displayPath(settings.vaultPath)}

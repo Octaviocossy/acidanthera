@@ -21,7 +21,7 @@ export function ToastHost() {
           onClick={() => dismissToast(toast.id)}
           className={cn(
             'pointer-events-auto flex items-center gap-2 rounded-card border bg-elevated px-3 py-1.5 font-sans text-ui text-text-primary',
-            'animate-[toast-in_var(--dur)_var(--ease)] transition-opacity duration-[var(--dur)] ease-orbit',
+            'animate-[toast-in_var(--dur)_var(--ease)] transition-opacity duration-[var(--dur)] ease-acidanthera',
             toast.tone === 'error' ? 'border-border-strong' : 'border-border',
             toast.leaving && 'opacity-0'
           )}

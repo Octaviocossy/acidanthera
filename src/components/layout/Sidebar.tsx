@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search } from '@/components/ui/icon';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
-import { OrbitMarkGlyph } from '@/components/vault/glyphs';
+import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
 import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { cn } from '@/lib/utils';
@@ -88,7 +88,7 @@ export function Sidebar() {
   if (!sidebarExpanded) {
     return (
       <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
-        <OrbitMarkGlyph className="text-text-secondary" />
+        <AcidantheraMarkGlyph className="text-text-secondary" />
         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
           <Icon icon={ChevronRight} size={15} />
         </Button>
@@ -163,7 +163,7 @@ export function Sidebar() {
                   <Icon
                     icon={ChevronRight}
                     size={12}
-                    className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-orbit', expanded.has(entry.path) ? 'rotate-90' : '')}
+                    className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera', expanded.has(entry.path) ? 'rotate-90' : '')}
                   />
                 </span>
                 <Icon icon={Folder} size={15} className="opacity-65" />
@@ -223,7 +223,7 @@ export function Sidebar() {
       aria-label="Vault explorer"
     >
       <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
-        <OrbitMarkGlyph className="text-text-secondary" />
+        <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
             <Icon icon={Search} size={15} />

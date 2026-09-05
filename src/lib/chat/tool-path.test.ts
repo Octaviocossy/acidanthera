@@ -11,7 +11,7 @@ describe('toolCallPath', () => {
   });
 
   it('collapses a home path outside the vault', () => {
-    expect(toolCallPath({ file_path: '/Users/x/.config/orbit/settings.toml' }, '/vault')).toBe('~/.config/orbit/settings.toml');
+    expect(toolCallPath({ file_path: '/Users/x/.config/app/settings.toml' }, '/vault')).toBe('~/.config/app/settings.toml');
   });
 
   it('keeps a non-home path unchanged when no vault is open', () => {

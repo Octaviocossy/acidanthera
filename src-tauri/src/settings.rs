@@ -17,14 +17,14 @@ use toml_edit::{DocumentMut, Item, Value};
 
 use crate::logging::LogResult;
 
-/// File name inside `app_config_dir()` (e.g. `~/Library/Application Support/com.ovct.orbit-111`).
+/// File name inside `app_config_dir()` (e.g. `~/Library/Application Support/com.ovct.acidanthera`).
 const SETTINGS_FILE: &str = "settings.toml";
 
 /// The pre-#96 JSON file name, migrated to `SETTINGS_FILE` once at boot and then deleted.
 const LEGACY_SETTINGS_FILE: &str = "settings.json";
 
 /// Directory name of the default vault, created under the user's documents dir on first boot.
-const DEFAULT_VAULT_DIR: &str = "orbit-brain";
+const DEFAULT_VAULT_DIR: &str = "acidanthera-brain";
 
 /// Valid `theme` values (spec decision 10 — a bad value degrades to the default instead of
 /// flowing through unchecked; mirrors TS's `ThemeName`).
@@ -49,7 +49,7 @@ fn default_theme() -> String {
 /// The persisted user settings. Every field carries a `serde` default so a file written by an
 /// older version (or hand-edited with fields removed) still deserializes. `vault_path` defaults
 /// to the empty string as a sentinel — it needs an `AppHandle` to resolve, so `read_settings`
-/// fills it with `<documents>/orbit-brain` before returning.
+/// fills it with `<documents>/acidanthera-brain` before returning.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -310,7 +310,7 @@ fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {
 /// dialog's writes go through `write_settings_to`, which never regenerates the file.
 fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()> {
     let contents = format!(
-        "# orbit-111 settings\n\
+        "# acidanthera settings\n\
          #\n\
          # model: {model_ids}\n\
          model = {model}\n\
@@ -418,7 +418,7 @@ mod tests {
     use super::*;
 
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("orbit-settings-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("acidanthera-settings-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp directory");
         dir
@@ -449,9 +449,9 @@ mod tests {
     fn resolve_default_vault_path_should_fill_an_empty_path() {
         let mut settings = Settings::default();
 
-        resolve_default_vault_path(&mut settings, "/Users/tester/Documents/orbit-brain");
+        resolve_default_vault_path(&mut settings, "/Users/tester/Documents/acidanthera-brain");
 
-        assert_eq!(settings.vault_path, "/Users/tester/Documents/orbit-brain");
+        assert_eq!(settings.vault_path, "/Users/tester/Documents/acidanthera-brain");
     }
 
     #[test]
@@ -461,7 +461,7 @@ mod tests {
             ..Settings::default()
         };
 
-        resolve_default_vault_path(&mut settings, "/Users/tester/Documents/orbit-brain");
+        resolve_default_vault_path(&mut settings, "/Users/tester/Documents/acidanthera-brain");
 
         assert_eq!(settings.vault_path, "/custom/vault");
     }
@@ -706,7 +706,7 @@ mod tests {
         let json_file = dir.join("settings.json");
         fs::write(
             &json_file,
-            r#"{ "model": "haiku-4.5", "editorFont": "Hack Nerd Font", "theme": "dark", "vaultPath": "/Users/tester/Documents/orbit-brain" }"#,
+            r#"{ "model": "haiku-4.5", "editorFont": "Hack Nerd Font", "theme": "dark", "vaultPath": "/Users/tester/Documents/acidanthera-brain" }"#,
         )
         .expect("writes legacy json");
 
@@ -717,7 +717,7 @@ mod tests {
         assert_eq!(result.settings.model, "haiku-4.5");
         assert_eq!(result.settings.editor_font, "Hack Nerd Font");
         assert_eq!(result.settings.theme, "dark");
-        assert_eq!(result.settings.vault_path, "/Users/tester/Documents/orbit-brain");
+        assert_eq!(result.settings.vault_path, "/Users/tester/Documents/acidanthera-brain");
         assert!(result.diagnostics.is_empty());
         let contents = fs::read_to_string(&toml_file).expect("reads raw toml");
         assert!(contents.contains("# model:"), "documents valid model values");

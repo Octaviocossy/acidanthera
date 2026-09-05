@@ -21,7 +21,7 @@ function formatLayerSection(layer: KeymapLayer): string {
 }
 
 const HEADER = [
-  '# orbit-111 keymaps',
+  '# acidanthera keymaps',
   '#',
   "# Every line below is commented out and shows that command's current default. Uncomment a",
   '# line and edit its chord array to rebind it — a chord array is always replaced wholesale,',

@@ -1,9 +1,11 @@
 <div align="center">
-  <img src="src-tauri/icons/128x128@2x.png" width="96" alt="orbit" />
-  <h1>orbit</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/acidanthera-lockup-dark.png">
+    <img src="assets/brand/acidanthera-lockup-light.png" width="420" alt="acidanthera">
+  </picture>
   <p><strong>A local-first, vim-first markdown notes app with a coding agent living inside it.</strong></p>
   <p>
-    <a href="https://github.com/Octaviocossy/orbit-111/actions/workflows/ci.yml"><img src="https://github.com/Octaviocossy/orbit-111/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="https://github.com/Octaviocossy/acidanthera/actions/workflows/ci.yml"><img src="https://github.com/Octaviocossy/acidanthera/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
   </p>
@@ -11,12 +13,12 @@
 
 <!-- TODO: add a screenshot of the three-region layout here -->
 
-## Why orbit
+## Why acidanthera
 
 Notes live in one window. The agent lives in a terminal in another. The work is the
 context-switch between them.
 
-orbit collapses that into a single window: a real vim-mode markdown editor on the left, an
+acidanthera collapses that into a single window: a real vim-mode markdown editor on the left, an
 agent panel on the right, both pointed at the same folder of `.md` files.
 
 Everything it stands on is deliberately boring:
@@ -24,7 +26,7 @@ Everything it stands on is deliberately boring:
 - **Your notes are plain markdown** in a folder you chose. Nothing is in a database, and the
   app coexists with an existing Obsidian vault rather than importing it.
 - **No account, no server, no sync, no API key.** The agent runs as a child process of the
-  CLI you have already logged into, and orbit never sees a credential.
+  CLI you have already logged into, and acidanthera never sees a credential.
 - **Config is files.** `settings.toml` and `keymaps.toml` are the source of truth; the
   Settings dialog is just a typed editor of them.
 
@@ -45,7 +47,7 @@ visual-line `y` write to the vim register **and** the system clipboard.
 A chat panel that renders agent output as native UI — message bubbles, tool chips, a thinking
 indicator — not a terminal emulator. Claude Code and Codex sit behind one `AgentBackend`
 interface, so the model you pick determines the engine. Conversations autosave as readable
-markdown under `<vault>/.orbit/chats/`, and a saved thread can be reopened and continued.
+markdown under `<vault>/.acidanthera/chats/`, and a saved thread can be reopened and continued.
 
 **Keyboard-first**
 One window-level dispatcher resolves every key. `Ctrl-w`-prefixed chords move between regions,
@@ -63,7 +65,7 @@ a Spotlight-style fuzzy finder opens any note, and every app-level binding is re
 
 ### Platform support
 
-orbit is macOS-only today. It draws its own title bar, which relies on the macOS-only
+acidanthera is macOS-only today. It draws its own title bar, which relies on the macOS-only
 `titleBarStyle: "Overlay"` window option, and the component is not yet gated on platform — so
 on Windows and Linux the app builds and runs but shows a doubled title bar. This is a known,
 deliberate trade-off recorded in [ADR 0008](.agents/adr/0008-custom-titlebar-macos-only.md);
@@ -74,8 +76,8 @@ gating the component (rather than deleting it) is the path to a cross-platform b
 There are no prebuilt releases yet — build from source:
 
 ```bash
-git clone https://github.com/Octaviocossy/orbit-111.git
-cd orbit-111
+git clone https://github.com/Octaviocossy/acidanthera.git
+cd acidanthera
 pnpm install
 
 pnpm tauri dev      # run in development
@@ -84,7 +86,7 @@ pnpm tauri build    # bundle into src-tauri/target/release/bundle/
 
 ## Quick start
 
-1. **First launch** creates and opens `~/Documents/orbit-brain`. Point it somewhere else in
+1. **First launch** creates and opens `~/Documents/acidanthera-brain`. Point it somewhere else in
    Settings (`Ctrl-w s`) → Vault → Change…, or at an existing Obsidian vault.
 2. **Opening a vault scaffolds `AGENTS.md` and `CLAUDE.md`** into its root, hidden from the
    sidebar. This is how the agent knows it is writing wikilinked notes into your vault rather
@@ -153,10 +155,10 @@ Full reference, including precedence details and the vim coexistence rule:
 Both config files live in the platform app-config directory — on macOS:
 
 ```
-~/Library/Application Support/com.ovct.orbit-111/
+~/Library/Application Support/com.ovct.acidanthera/
 ```
 
-They hot-reload on save, and both are openable inside orbit from the file finder (`Ctrl-w f`).
+They hot-reload on save, and both are openable inside acidanthera from the file finder (`Ctrl-w f`).
 
 ### `settings.toml`
 
@@ -167,7 +169,7 @@ Flat, camelCase, four keys:
 | `model` | string | `"gpt-5.4-mini"` | `gpt-5.4-mini`, `haiku-4.5`, `sonnet-5`, `gpt-5.5-fast` |
 | `editorFont` | string | `"JetBrains Mono"` | any installed font family name |
 | `theme` | string | `"dark"` | `"dark"` or `"light"` |
-| `vaultPath` | string | `~/Documents/orbit-brain` | absolute path to a directory |
+| `vaultPath` | string | `~/Documents/acidanthera-brain` | absolute path to a directory |
 
 An invalid *value* degrades that key alone — it falls back to the default and reports a
 diagnostic, leaving the rest of the file in effect. Only a genuine TOML *syntax* error rejects
@@ -199,10 +201,10 @@ taking the rest of the file down with it.
 |---|---|
 | `<vault>/**/*.md` | Your notes — plain markdown, the source of truth |
 | `<vault>/AGENTS.md`, `<vault>/CLAUDE.md` | Agent instructions, auto-scaffolded, hidden from the sidebar |
-| `<vault>/.orbit/chats/<id>.chat.md` | Saved conversations — markdown with frontmatter, readable in Obsidian |
+| `<vault>/.acidanthera/chats/<id>.chat.md` | Saved conversations — markdown with frontmatter, readable in Obsidian |
 | app-config dir | `settings.toml`, `keymaps.toml` |
 
-Nothing else is written anywhere. Deleting `.orbit/` loses your chat history and nothing else.
+Nothing else is written anywhere. Deleting `.acidanthera/` loses your chat history and nothing else.
 
 ## Project structure
 
@@ -230,7 +232,7 @@ src-tauri/src/            Rust backend
 ├── lib.rs                Tauri builder — plugins, managed state, 19 commands
 ├── vault.rs              root-guarded filesystem ops + notify watcher
 ├── agent.rs              child-process spawn/stream/stdin for the agent CLIs
-├── chats.rs              chat persistence under <vault>/.orbit/chats/
+├── chats.rs              chat persistence under <vault>/.acidanthera/chats/
 ├── config.rs             allowlisted TOML config files + watcher
 ├── settings.rs           settings.toml read/write, comment-preserving
 └── logging.rs            file + stdout logging
@@ -296,7 +298,7 @@ Not in v0 yet, roughly in order of intent:
 
 Contributions are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) — it covers local
 setup, the checks to run before opening a PR, and the conventions this codebase holds to
-(co-located tests, the domain glossary, and the Orbit design system).
+(co-located tests, the domain glossary, and the acidanthera design system).
 
 If you are planning something substantial, open an issue first so the design can be settled
 before either of us writes code.

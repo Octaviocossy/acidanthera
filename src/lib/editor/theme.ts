@@ -1,7 +1,7 @@
 import { EditorView } from '@codemirror/view';
 
 /**
- * CM6 theme spec reading the Orbit-111 design tokens (doc/v0-spec.md §5.1, §5.6) so the
+ * CM6 theme spec reading the acidanthera design tokens (doc/v0-spec.md §5.1, §5.6) so the
  * editor stays visually identical to the rest of the chrome. Uses the raw `--*` CSS
  * variables (not Tailwind utilities) per the note in `src/styles/tokens/spacing.css`.
  * Colors flip with the active palette automatically; the font comes from `--editor-font`

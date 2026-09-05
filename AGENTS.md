@@ -85,8 +85,8 @@ _None documented yet._
   (`invoke`, `emit`, channels), capabilities/permissions, build and distribution.
 - Available: `vercel-composition-patterns` — fires on React component-architecture work:
   boolean-prop proliferation, compound components, context providers, React 19 API changes.
-- Available: `orbit-design` — fires when writing or reviewing UI in `src/components` or
-  `src/styles`, enforcing the Orbit surface, typography, radius, accent, and iconography rules.
+- Available: `acidanthera-design` — fires when writing or reviewing UI in `src/components` or
+  `src/styles`, enforcing the acidanthera surface, typography, radius, accent, and iconography rules.
 
 ## Slash Commands
 - Cross-agent slash commands (Claude Code + OpenCode) follow `.agents/rules/command-creation.md`.

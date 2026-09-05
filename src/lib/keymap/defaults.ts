@@ -54,7 +54,7 @@ export function commandIdsForLayer(layer: KeymapLayer): AppCommandId[] {
 }
 
 /**
- * `editor.*` commands resolvable through orbit's own editor extensions (epic #94, child #99) —
+ * `editor.*` commands resolvable through acidanthera's own editor extensions (epic #94, child #99) —
  * kept separate from {@link KEYMAP_LAYERS}'s window-dispatcher layers because these are consumed
  * by CodeMirror's own keymap facet and `@replit/codemirror-vim`'s key-mapping API, not the shared
  * window dispatcher ({@link KeymapLayer} explicitly excludes `'editor'`). `editor.next-tab` /

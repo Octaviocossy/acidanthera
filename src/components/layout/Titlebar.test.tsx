@@ -15,19 +15,19 @@ describe('Titlebar', () => {
   });
 
   it('renders the open vault name', () => {
-    useAppStore.setState({ vaultRoot: '/Users/x/Documents/orbit-brain' });
+    useAppStore.setState({ vaultRoot: '/Users/x/Documents/acidanthera-brain' });
 
     render(<Titlebar />);
 
-    expect(screen.getByText('orbit-brain')).toBeInTheDocument();
+    expect(screen.getByText('acidanthera-brain')).toBeInTheDocument();
   });
 
-  it('renders orbit without a separator when no vault is open', () => {
+  it('renders acidanthera without a separator when no vault is open', () => {
     useAppStore.setState({ vaultRoot: null });
 
     render(<Titlebar />);
 
-    expect(screen.getByText('orbit')).toBeInTheDocument();
+    expect(screen.getByText('acidanthera')).toBeInTheDocument();
     expect(screen.queryByText('—')).not.toBeInTheDocument();
   });
 
