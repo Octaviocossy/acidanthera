@@ -115,19 +115,20 @@ impl VaultState {
 
 /// Resolves `target` to a canonical path guaranteed to live inside `root`, rejecting any
 /// traversal outside it (`..` segments, symlinks, or an absolute path from elsewhere).
-fn guarded_path(root: &Path, target: &str) -> VaultResult<PathBuf> {
-    let root = root.canonicalize()?;
-    let target = PathBuf::from(target);
+///
+/// `root` must already be canonical. Both adopt paths guarantee that (ADR 0034), so this
+/// canonicalizes only its target.
+fn guarded_path(root: &Path, target: &Path) -> VaultResult<PathBuf> {
     let file_name = target.file_name().ok_or(VaultError::InvalidPath)?;
 
-    match fs::symlink_metadata(&target) {
+    match fs::symlink_metadata(target) {
         Ok(metadata) if metadata.file_type().is_symlink() => {
             return Err(VaultError::PathEscapesRoot)
         }
         Ok(_) => {
             let target = target.canonicalize().map_err(|_| VaultError::InvalidPath)?;
             return target
-                .starts_with(&root)
+                .starts_with(root)
                 .then_some(target)
                 .ok_or(VaultError::PathEscapesRoot);
         }
@@ -140,7 +141,7 @@ fn guarded_path(root: &Path, target: &str) -> VaultResult<PathBuf> {
         .filter(|p| !p.as_os_str().is_empty())
         .ok_or(VaultError::InvalidPath)?;
     let parent = parent.canonicalize().map_err(|_| VaultError::InvalidPath)?;
-    if !parent.starts_with(&root) {
+    if !parent.starts_with(root) {
         return Err(VaultError::PathEscapesRoot);
     }
     Ok(parent.join(file_name))
@@ -156,13 +157,21 @@ fn prepare_vault_root(path: &Path) -> VaultResult<PathBuf> {
     Ok(path.canonicalize()?)
 }
 
+fn read_note_at(root: &Path, path: &Path) -> VaultResult<String> {
+    Ok(fs::read_to_string(guarded_path(root, path)?)?)
+}
+
+fn write_note_at(root: &Path, path: &Path, contents: &str) -> VaultResult<()> {
+    fs::write(guarded_path(root, path)?, contents)?;
+    Ok(())
+}
+
 fn read_note_in(root: &Path, target: &str) -> VaultResult<String> {
-    Ok(fs::read_to_string(guarded_path(root, target)?)?)
+    read_note_at(root, Path::new(target))
 }
 
 fn write_note_in(root: &Path, target: &str, contents: &str) -> VaultResult<()> {
-    fs::write(guarded_path(root, target)?, contents)?;
-    Ok(())
+    write_note_at(root, Path::new(target), contents)
 }
 
 /// Appends `.md` unless `path` already carries that extension. `build_tree` only surfaces Markdown
@@ -188,7 +197,7 @@ fn creation_error(err: std::io::Error) -> VaultError {
 /// Creates an empty note under `root`, normalizing the extension. `File::create_new` is atomic:
 /// it fails rather than truncating when something already sits at the resolved path.
 fn create_note_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
-    let target = with_md_extension(guarded_path(root, target)?);
+    let target = with_md_extension(guarded_path(root, Path::new(target))?);
     fs::File::create_new(&target).map_err(creation_error)?;
     Ok(target)
 }
@@ -196,15 +205,15 @@ fn create_note_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
 /// Creates an empty directory under `root`. `create_dir` (not `create_dir_all`) so a typo in the
 /// parent surfaces as an error instead of silently materializing an unintended folder chain.
 fn create_directory_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
-    let target = guarded_path(root, target)?;
+    let target = guarded_path(root, Path::new(target))?;
     fs::create_dir(&target).map_err(creation_error)?;
     Ok(target)
 }
 
 /// Renames an entry within its existing parent, preserving Markdown note extensions.
 fn rename_entry_in(root: &Path, target: &str, new_name: &str) -> VaultResult<PathBuf> {
-    let path = guarded_path(root, target)?;
-    if path == root.canonicalize()? {
+    let path = guarded_path(root, Path::new(target))?;
+    if path == root {
         return Err(VaultError::InvalidPath);
     }
     let metadata = match fs::symlink_metadata(&path) {
@@ -236,13 +245,18 @@ fn rename_entry_in(root: &Path, target: &str, new_name: &str) -> VaultResult<Pat
     Ok(destination)
 }
 
+/// Cap on the ` copy N` search below. A bounded scan keeps a pathological directory from turning
+/// one duplicate into an unbounded stat loop; nobody has 1000 copies of one file, so exhausting
+/// it reports the same `AlreadyExists` a direct collision does.
+const MAX_COPY_ATTEMPTS: u32 = 1000;
+
 /// Returns the first available copy name in `parent`, preserving an existing extension.
 fn derive_copy_name(
     parent: &Path,
     stem: &std::ffi::OsStr,
     extension: Option<&std::ffi::OsStr>,
 ) -> VaultResult<PathBuf> {
-    for number in 1..=1000 {
+    for number in 1..=MAX_COPY_ATTEMPTS {
         let suffix = if number == 1 {
             " copy".to_owned()
         } else {
@@ -286,8 +300,8 @@ fn copy_dir_recursive(from: &Path, to: &Path) -> VaultResult<()> {
 
 /// Duplicates a file or directory within its existing parent under an available copy name.
 fn duplicate_entry_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
-    let path = guarded_path(root, target)?;
-    if path == root.canonicalize()? {
+    let path = guarded_path(root, Path::new(target))?;
+    if path == root {
         return Err(VaultError::InvalidPath);
     }
     let metadata = match fs::symlink_metadata(&path) {
@@ -317,8 +331,8 @@ fn duplicate_entry_in(root: &Path, target: &str) -> VaultResult<PathBuf> {
 }
 
 fn delete_entry_in(root: &Path, target: &str) -> VaultResult<()> {
-    let path = guarded_path(root, target)?;
-    if path == root.canonicalize()? {
+    let path = guarded_path(root, Path::new(target))?;
+    if path == root {
         return Err(VaultError::InvalidPath);
     }
     match fs::symlink_metadata(&path) {
@@ -439,11 +453,9 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
         }
     }
 
-    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-    });
+    // `!is_dir` puts directories first; `sort_by_cached_key` is stable, so equal names keep
+    // `read_dir` order exactly as the previous comparator did.
+    entries.sort_by_cached_key(|entry| (!entry.is_dir, entry.name.to_lowercase()));
 
     Ok(entries)
 }
@@ -490,32 +502,32 @@ fn collect_markdown_files_at(
     Ok(())
 }
 
-fn has_matching_stem(path: &Path, stem: &str) -> bool {
+/// `normalized_stem` must already be lowercased — both callers compute it once per walk.
+fn has_matching_stem(path: &Path, normalized_stem: &str) -> bool {
     path.file_stem()
-        .is_some_and(|file_stem| file_stem.to_string_lossy().to_lowercase() == stem.to_lowercase())
+        .is_some_and(|file_stem| file_stem.to_string_lossy().to_lowercase() == normalized_stem)
 }
 
 fn scan_wikilink_targets_in(root: &Path, stem: &str) -> VaultResult<WikilinkScan> {
     let files = collect_markdown_files(root)?;
+    let normalized_stem = stem.to_lowercase();
     let ambiguous = files
         .iter()
-        .filter(|path| has_matching_stem(path, stem))
+        .filter(|path| has_matching_stem(path, &normalized_stem))
         .take(2)
         .count()
         > 1;
-    let normalized_stem = stem.to_lowercase();
     let mut notes = Vec::new();
     let mut links = 0;
 
-    for path in files {
-        let path_string = path.to_string_lossy();
-        let contents = read_note_in(root, &path_string)?;
+    for path in &files {
+        let contents = read_note_at(root, path)?;
         let matching_links = find_wikilinks(&contents)
             .iter()
             .filter(|wikilink| wikilink.target.trim().to_lowercase() == normalized_stem)
             .count();
         if matching_links > 0 {
-            notes.push(path_string.into_owned());
+            notes.push(path.to_string_lossy().into_owned());
             links += matching_links;
         }
     }
@@ -533,9 +545,10 @@ fn rewrite_wikilinks_in(
     new_stem: &str,
 ) -> VaultResult<WikilinkRewrite> {
     let files = collect_markdown_files(root)?;
+    let normalized_old_stem = old_stem.to_lowercase();
     let ambiguous = files
         .iter()
-        .filter(|path| has_matching_stem(path, old_stem))
+        .filter(|path| has_matching_stem(path, &normalized_old_stem))
         .take(2)
         .count()
         > 1;
@@ -552,24 +565,23 @@ fn rewrite_wikilinks_in(
     let mut links_changed = 0;
     let mut failures = Vec::new();
 
-    for path in files {
-        let path_string = path.to_string_lossy().into_owned();
-        let contents = match read_note_in(root, &path_string) {
+    for path in &files {
+        let contents = match read_note_at(root, path) {
             Ok(contents) => contents,
             Err(err) => {
-                failures.push(format!("{path_string}: {err}"));
+                failures.push(format!("{}: {err}", path.display()));
                 continue;
             }
         };
         let Some((rewritten, links)) = rewrite_targets(&contents, old_stem, new_stem) else {
             continue;
         };
-        if let Err(err) = write_note_in(root, &path_string, &rewritten) {
-            failures.push(format!("{path_string}: {err}"));
+        if let Err(err) = write_note_at(root, path, &rewritten) {
+            failures.push(format!("{}: {err}", path.display()));
             continue;
         }
 
-        notes_changed.push(path_string);
+        notes_changed.push(path.to_string_lossy().into_owned());
         links_changed += links;
     }
 
@@ -615,6 +627,7 @@ pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultRe
             .ok_or(VaultError::NoFolderSelected)?
             .into_path()
             .map_err(|_| VaultError::InvalidPath)?;
+        let root = prepare_vault_root(&root)?;
         scaffold_agent_context_or_warn(&root);
         watch(&app, &state, root.clone())?;
         log::info!("pick_vault: adopted vault root {}", root.display());
@@ -759,7 +772,8 @@ mod tests {
     /// A unique temp directory per test, canonicalized because macOS resolves `/tmp` to
     /// `/private/tmp` — `guarded_path` compares canonical paths, so the root must already be one.
     fn temp_root(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("acidanthera-vault-{}-{label}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("acidanthera-vault-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp root");
         dir.canonicalize().expect("canonicalizes temp root")
@@ -948,7 +962,7 @@ mod tests {
     fn guarded_path_should_accept_a_target_inside_the_root() {
         let root = temp_root("guard-inside");
 
-        let resolved = guarded_path(&root, &path_str(&root.join("note.md"))).expect("resolves");
+        let resolved = guarded_path(&root, &root.join("note.md")).expect("resolves");
 
         assert_eq!(resolved, root.join("note.md"));
 
@@ -959,8 +973,7 @@ mod tests {
     fn guarded_path_should_reject_a_target_that_escapes_the_root() {
         let root = temp_root("guard-escape");
 
-        let error =
-            guarded_path(&root, &path_str(&root.join("..").join("evil.md"))).expect_err("rejects");
+        let error = guarded_path(&root, &root.join("..").join("evil.md")).expect_err("rejects");
 
         assert!(matches!(error, VaultError::PathEscapesRoot));
 
@@ -1520,8 +1533,7 @@ mod tests {
         let link = root.join("linked");
         std::os::unix::fs::symlink(&outside, &link).expect("creates symlink");
 
-        let error =
-            guarded_path(&root, &path_str(&link.join("note.md"))).expect_err("rejects escape");
+        let error = guarded_path(&root, &link.join("note.md")).expect_err("rejects escape");
 
         assert!(matches!(error, VaultError::PathEscapesRoot));
         fs::remove_dir_all(&root).expect("cleans up");

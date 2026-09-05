@@ -46,12 +46,15 @@
 ## Commands
 - Dev: `pnpm dev`
 - Build: `pnpm build`
-- Lint: `pnpm lint`
+- Lint (frontend): `pnpm lint`
+- Lint (Rust): `pnpm lint:rust`
 - Type check: `pnpm build` (the only `tsc` invocation is inside `build`)
 - Test (frontend): `pnpm test` (Vitest, run once; `pnpm test:watch` for watch mode, `pnpm coverage` for a v8 coverage report)
 - Test (Rust): `pnpm test:rust`
-- Format: `pnpm format`
-- Check (lint+format): `pnpm check`
+- Format (frontend): `pnpm format`
+- Format (Rust): `pnpm format:rust`
+- Check (frontend, lint+format): `pnpm check`
+- Check (Rust, lint+format): `pnpm check:rust`
 
 ## Verification Quirks
 _None documented yet._
