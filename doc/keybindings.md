@@ -18,8 +18,10 @@ truth for defaults: `src/lib/keymap/defaults.ts`.
 A single shared window-level dispatcher (`src/lib/keymap/dispatcher.ts`) resolves every keydown
 below — there is no longer one independent `keydown` listener per region. It walks layers in a
 fixed precedence order, **first match wins, with no fallthrough**: the editor (CodeMirror, which
-wins by DOM event-propagation order before the dispatcher ever runs), then the active region
-(sidebar or the chat's History tab), then global. A chord sequence like `Ctrl-w` `f` arms a 1.5s
+wins by DOM event-propagation order before the dispatcher ever runs), then the modal layer, then
+the active region (sidebar or the chat's History tab), then global. The modal layer additionally
+**swallows** every keydown it does not match while it is active (invariant 25, ADR 0014) — which
+is why sidebar chords are inert underneath a dialog. A chord sequence like `Ctrl-w` `f` arms a 1.5s
 pending window for its next step; any non-continuing key, the window expiring, or the owning
 layer going inactive mid-sequence all silently disarm it with no action taken.
 
@@ -52,7 +54,7 @@ target not editable).
 | `h` | `sidebar.collapse` | Collapse cursor row | Only if the cursor is on an expanded directory; no-op on files or already-collapsed directories |
 | `a` | `sidebar.new-note` | Start naming a new note | Placed as a sibling of the cursor row, or a child if the cursor is on a directory |
 | `A` (`Shift-a`) | `sidebar.new-directory` | Start naming a new folder | Same placement rule as `a` |
-| `r` | `sidebar.rename` | Rename the cursor entry | Registered for the upcoming rename flow |
+| `r` | `sidebar.rename` | Rename the cursor entry | Edits the stem inline. For a note, rewrites the wikilinks that point at it, behind a confirmation shown only when at least one is found |
 | `D` (`Shift-d`) | `sidebar.duplicate` | Duplicate the cursor entry | Places the sidebar cursor on the duplicate |
 | `d` then `d` | `sidebar.delete` | Move the cursor entry to Trash | Opens a confirmation that names any dirty buffers whose edits will be discarded |
 
@@ -68,6 +70,20 @@ rebindable via `keymaps.toml`.
 | `ArrowUp` | Move the result cursor up | |
 | `Enter` | Open the highlighted result | Closes the finder |
 | `Escape` | Close the finder without opening anything | |
+
+## Dialogs (modal layer)
+
+Active while a `Modal`-based dialog is open — the delete, rename, close-buffer and switch-vault
+dialogs. This layer sits first in precedence and **swallows** every keydown it does not match, so
+no region chord fires underneath a dialog.
+
+| Keys | Command id | Action | Notes |
+|------|------------|--------|-------|
+| `Enter` | `modal.confirm` | Confirm the dialog | Registered only when the dialog has one unambiguous confirm action |
+| `Escape` | `modal.cancel` | Dismiss the dialog | Always registered |
+
+`SettingsDialog` and `FileFinder` are deliberately outside this layer — each blocks keys its own
+way.
 
 ## Editor
 
@@ -135,6 +151,7 @@ Opened via `:` from normal mode (see App-level navigation above). In v0, both `E
 This doc reflects the current implementation. Source of truth: `src/lib/keymap/defaults.ts` (the
 default chord for every rebindable command), `src/lib/keymap/dispatcher.ts` (precedence and
 sequence matching), `src/hooks/use-global-keymap.ts`, `src/hooks/use-sidebar-keymap.ts`,
-`src/hooks/use-chat-history-keymap.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
+`src/hooks/use-chat-history-keymap.ts`, `src/hooks/use-modal-keymap.ts`,
+`src/lib/keymap/modal-overlay.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
 `src/lib/editor/yank.ts`, `src/components/layout/FileFinder.tsx`. Update this file whenever a
 keybinding is added, changed, or removed.

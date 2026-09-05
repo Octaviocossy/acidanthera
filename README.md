@@ -34,8 +34,10 @@ Everything it stands on is deliberately boring:
 
 **Vault**
 Opens any folder of markdown (Obsidian-compatible). A filesystem watcher keeps the tree live,
-so a note the agent writes shows up without a refresh. Create notes and folders inline with
-`a` / `A`. Every filesystem operation is root-guarded and rejects symlink escapes.
+so a note the agent writes shows up without a refresh. Create, rename, duplicate and delete
+entries from the keyboard or a right-click menu. Renaming a note rewrites the `[[wikilinks]]`
+that point at it, behind a confirmation that names them. Deleting moves the entry to the
+system Trash. Every filesystem operation is root-guarded and rejects symlink escapes.
 
 **Editor**
 CodeMirror 6 with vim emulation on by default. Multi-buffer tabs that preserve undo history
@@ -52,6 +54,7 @@ markdown under `<vault>/.acidanthera/chats/`, and a saved thread can be reopened
 **Keyboard-first**
 One window-level dispatcher resolves every key. `Ctrl-w`-prefixed chords move between regions,
 a Spotlight-style fuzzy finder opens any note, and every app-level binding is rebindable.
+Collapsing the sidebar leaves a 40px rail that still opens any root note in one click.
 
 ## Requirements
 
@@ -104,45 +107,19 @@ pnpm tauri build    # bundle into src-tauri/target/release/bundle/
 ## Keybindings
 
 A single window-level dispatcher resolves every keystroke, walking layers in a fixed order —
-**editor → active region → global** — where the first match wins with no fallthrough. A chord
-sequence like `Ctrl-w` `f` arms a 1.5 s window for its next step; any other key, a timeout, or
-the owning layer going inactive silently cancels it.
-
-**Global** — works anywhere focus is not inside a text field.
-
-| Keys | Command | Action |
-|---|---|---|
-| `Ctrl-w` `f` | `global.find-file` | Open the file finder |
-| `Ctrl-w` `h` / `l` | `global.focus-previous` / `-next` | Cycle regions (sidebar → viewer → chat, wraps) |
-| `Ctrl-w` `b` | `global.toggle-sidebar` | Expand or collapse the sidebar |
-| `Ctrl-w` `c` | `global.toggle-chat` | Toggle the chat panel |
-| `Ctrl-w` `s` | `global.toggle-settings` | Toggle the settings dialog |
-| `:` | `global.command-mode` | Open the command bar |
-
-**Sidebar** — when focused.
-
-| Keys | Command | Action |
-|---|---|---|
-| `j` / `k` | `sidebar.cursor-down` / `-up` | Move the cursor |
-| `l` / `Enter` | `sidebar.open` | Expand a directory, or open a file and focus the editor |
-| `h` | `sidebar.collapse` | Collapse an expanded directory |
-| `a` | `sidebar.new-note` | Name a new note |
-| `A` | `sidebar.new-directory` | Name a new folder |
-
-**Chat History tab** — when the chat is focused and History is showing.
-
-| Keys | Command | Action |
-|---|---|---|
-| `j` / `k` | `chat.history.cursor-down` / `-up` | Move the cursor |
-| `l` / `Enter` | `chat.history.open` | Load that conversation into the transcript |
-
-**Editor**
+**editor → modal → active region → global** — where the first match wins with no fallthrough. A
+chord sequence like `Ctrl-w` `f` arms a 1.5 s window for its next step; any other key, a timeout,
+or the owning layer going inactive silently cancels it.
 
 | Keys | Action |
 |---|---|
-| `:w` / `Cmd-S` | Save (`Cmd` on macOS, `Ctrl` elsewhere) |
-| `yy` / `y{motion}` / `V` `y` | Yank to the vim register **and** the system clipboard |
-| everything else | Standard [`@replit/codemirror-vim`](https://github.com/replit/codemirror-vim) |
+| `Ctrl-w` `h` / `l` | Cycle regions (sidebar → viewer → chat) |
+| `Ctrl-w` `f` | Open the file finder |
+| `Ctrl-w` `b` / `c` / `s` | Toggle sidebar / chat / settings |
+| `j` `k` / `l` / `h` | Sidebar: move, open, collapse |
+| `a` / `A` | New note / new folder |
+| `r` / `D` / `d` `d` | Rename / duplicate / move to Trash |
+| `:w` / `Cmd-S` | Save |
 
 Three sets of keys are **not** rebindable: the file finder's own `↑` `↓` `Enter` `Escape`,
 `Escape` to leave command mode, and the `:w` ex-command.
@@ -204,23 +181,25 @@ taking the rest of the file down with it.
 | `<vault>/.acidanthera/chats/<id>.chat.md` | Saved conversations — markdown with frontmatter, readable in Obsidian |
 | app-config dir | `settings.toml`, `keymaps.toml` |
 
-Nothing else is written anywhere. Deleting `.acidanthera/` loses your chat history and nothing else.
+Nothing else is written anywhere. Deleting `.acidanthera/` loses your chat history and nothing
+else. Deleted notes go to the system Trash — there is no in-app undo, by design.
 
 ## Project structure
 
 ```
 src/                      React 19 + TypeScript frontend
 ├── components/
-│   ├── ai/               chat surface — FAB, transcript, input, tool chips, history
+│   ├── ai/               chat surface — transcript, input, tool chips, thinking indicator, history
 │   ├── editor/           CodeMirror buffer view, tabs, dirty-close dialog
 │   ├── layout/           app chrome — titlebar, sidebar, viewer, chat panel, dialogs
-│   ├── ui/               presentational primitives (button, badge, chip, kbd, …)
-│   └── vault/            file-tree rows, entry drafts, glyphs
+│   ├── ui/               presentational primitives (button, chip, icon, kbd, modal, …)
+│   └── vault/            file-tree rows, entry drafts, context menu, glyphs
 ├── hooks/                app-level effects — keymap, save loop, bootstrap, watchers
 ├── lib/
 │   ├── agent/            engine-agnostic event contract, backend registry, model catalog
 │   ├── chat/             chat-file codec and resume-prompt building
 │   ├── config/           config-entry catalog and open routing
+│   ├── dom/              small DOM predicates (editable-target detection)
 │   ├── editor/           CodeMirror wiring — vim, highlighting, save, yank, wikilinks
 │   ├── keymap/           chord parsing, defaults, resolution, dispatcher
 │   └── vault/            vault helpers — search, open, switch, sidebar rows
@@ -229,8 +208,9 @@ src/                      React 19 + TypeScript frontend
 └── styles/               Tailwind v4 entry + design tokens
 
 src-tauri/src/            Rust backend
-├── lib.rs                Tauri builder — plugins, managed state, 19 commands
+├── lib.rs                Tauri builder — plugins, managed state, command registration
 ├── vault.rs              root-guarded filesystem ops + notify watcher
+├── wikilink.rs           [[wikilink]] scan and target-only rewrite
 ├── agent.rs              child-process spawn/stream/stdin for the agent CLIs
 ├── chats.rs              chat persistence under <vault>/.acidanthera/chats/
 ├── config.rs             allowlisted TOML config files + watcher
@@ -268,11 +248,16 @@ Claude Code and OpenCode.
 
 | Directory | Contents |
 |---|---|
-| `.agents/rules/` | 9 rules the agent must follow — planning, testing, glossary, ADRs, orchestration |
-| `.agents/commands/` | 13 cross-agent slash commands, each with a thin wrapper per agent |
-| `.agents/skills/` | 5 skills the agent loads on its own when the situation matches |
-| `.agents/adr/` | 11 architecture decision records |
+| `.agents/rules/` | The rules the agent must follow — planning, design interrogation, testing, the glossary, ADRs, issue resolution, command and skill creation, orchestration |
+| `.agents/commands/` | Cross-agent slash commands, each with a thin wrapper per agent |
+| `.agents/skills/` | Skills the agent loads on its own when the situation matches |
+| `.agents/scripts/` | The POSIX `sh` toolchain — the parallel runner, the review dispatcher, the corpus-pack builder, scaffold install and verify |
+| `.agents/adr/` | Architecture decision records |
 | `.agents/ubiquitous-language.md` | The domain glossary — canonical terminology and the invariants the app maintains |
+
+A settled spec routes by size: straight to a plan, to a single issue, or — when it is large
+enough — into an epic plus child issues that run in parallel. Either way every change passes a
+two-axis agentic review — standards and spec, reported side by side — before it lands.
 
 The toolchain is zero-dependency by design: POSIX `sh` and Markdown, nothing to install before
 it works. Read [`.agents/docs/workflow.en.md`](.agents/docs/workflow.en.md) for how the pieces

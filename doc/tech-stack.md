@@ -3,7 +3,7 @@
 acidanthera is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
-**snapshot as of 2026-08-08**. For architecture rationale, see `doc/v0-spec.md`; for what each
+**snapshot as of 2026-09-04**. For architecture rationale, see `doc/v0-spec.md`; for what each
 module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md`.
 
 ## At a glance
@@ -31,7 +31,7 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `@replit/codemirror-vim` | ^6.3.0 | Vim emulation + `Vim.defineEx` for `:w` (`src/lib/editor/save.ts`, `vim-mode-sync.ts`) |
 | `tailwindcss` | ^4.3.2 | Utility CSS framework (Tailwind v4), imported in `src/styles/index.css` |
 | `@tailwindcss/vite` | ^4.3.2 | Tailwind v4 Vite plugin (wired in `vite.config.ts`) |
-| `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/{button,badge}.tsx` |
+| `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/button.tsx` |
 | `clsx` + `tailwind-merge` | ^2.1.1 / ^3.6.0 | The `cn()` classname helper — **only** in `src/lib/utils.ts` |
 | `@radix-ui/react-slot` | ^1.3.0 | `asChild` slot pattern — **only** in `src/components/ui/button.tsx` |
 | `@fontsource-variable/geist` | ^5.2.9 | Self-hosted sans variable font — UI chrome; imported in `src/styles/index.css` |
@@ -81,7 +81,7 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `tauri-plugin-log` | 2 | File + stdout logging plugin (`src-tauri/src/logging.rs`) |
 | `tauri-plugin-clipboard-manager` | 2 | Native system clipboard writes, authorized by `clipboard-manager:allow-write-text` |
 | `serde` (derive) | 1 | Serialize/deserialize domain structs across the IPC boundary |
-| `serde_json` | 1 | JSON (settings file, agent stream parsing) |
+| `serde_json` | 1 | JSON — agent stream parsing, IPC serialization, and the legacy `settings.json` migration in `settings.rs` (the live settings file is TOML) |
 | `notify` | 7 | Filesystem watcher for the open vault (`src-tauri/src/vault.rs`) |
 | `thiserror` | 2 | Ergonomic error enums (`VaultError`, `CommandNotFound`, …) |
 | `log` | 0.4 | Logging facade the whole backend logs through |
@@ -95,6 +95,7 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `main.rs` | Thin binary entry; calls `acidanthera_lib::run()` |
 | `lib.rs` | `tauri::Builder` — registers the log/opener/dialog/clipboard plugins, `manage`s `VaultState` + `AgentProcessState` + `ConfigWatcherState`, and registers the frontend commands |
 | `vault.rs` | `notify` watcher, `serde`, `std::fs`, Tauri `command`/`State`/`emit`; `VaultState`, `VaultError`, the guarded vault commands, `scaffold_agent_context` |
+| `wikilink.rs` | `std::fs` + plain Rust; `WikilinkScan` / `scan_wikilink_targets`, narrow `[[target]]` parsing with ambiguity detection |
 | `agent.rs` | `std::process` child spawning, PATH resolution, Tauri `State`/`emit`; `AgentProcessState`, `agent_spawn`/`agent_send`/`agent_stop` |
 | `settings.rs` | `serde` + `toml` (read) + `toml_edit` (comment-preserving write) + `std::fs`, Tauri app-config-dir path; `Settings`, `SettingsDiagnostic`, legacy `settings.json` migration, default vault |
 | `config.rs` | `toml` + `notify` + `std::fs`; the allowlisted config-file commands, `ConfigWatcherState` / `config-changed`, first-run scaffolding |
