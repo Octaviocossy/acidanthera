@@ -323,7 +323,8 @@ mod tests {
     use super::*;
 
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("acidanthera-config-{}-{label}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("acidanthera-config-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp directory");
         dir.canonicalize().expect("canonicalizes temp directory")

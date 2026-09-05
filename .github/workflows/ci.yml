@@ -47,12 +47,18 @@ jobs:
 
       # No Node setup here on purpose: the Tauri build script does not require a built
       # `dist/` to compile or test the crate, so this job skips pnpm entirely.
-      # Equivalent to `pnpm test:rust`.
+      # Equivalent to `pnpm check:rust && pnpm test:rust`.
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+
+      - name: Format
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Lint
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
 
       - name: Test
         run: cargo test --manifest-path src-tauri/Cargo.toml
