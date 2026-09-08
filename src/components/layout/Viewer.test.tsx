@@ -58,6 +58,23 @@ describe('Viewer', () => {
     expect(screen.getByText('No note open.')).toBeInTheDocument();
   });
 
+  it('moves a full border onto the editor card only while the viewer region is focused', () => {
+    const { rerender } = render(<Viewer />);
+
+    expect(screen.getByRole('main', { name: 'Editor' })).toHaveClass('rounded-panel', 'border-border-strong');
+
+    act(() => {
+      useAppStore.setState({ activeRegion: 'sidebar' });
+    });
+    rerender(<Viewer />);
+
+    // A card that shares no edge with its neighbours carries the focus region on all four sides,
+    // and steps back to a hairline rather than losing its outline (spec decisions 22, 38).
+    const card = screen.getByRole('main', { name: 'Editor' });
+    expect(card).toHaveClass('border-hairline');
+    expect(card).not.toHaveClass('border-border-strong');
+  });
+
   it('shows the editor status cluster while a buffer is open', () => {
     act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
 

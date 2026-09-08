@@ -24,6 +24,23 @@ describe('EditorTabs', () => {
     expect(screen.getByRole('tab', { name: 'two.md, unsaved changes' })).toHaveAttribute('aria-selected', 'false');
   });
 
+  it('keeps the close control on an inactive tab, so the dirty dot and the close affordance coexist', () => {
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    // 'two' is dirty and inactive: it renders name-only and reveals its `×` on hover, but the
+    // control stays in the tree throughout so the tab's width never shifts under the pointer.
+    expect(screen.getByRole('button', { name: 'Close two.md' })).toHaveClass('opacity-0', 'group-hover:opacity-100');
+    expect(screen.getByRole('button', { name: 'Close one.md' })).not.toHaveClass('opacity-0');
+  });
+
+  it('detaches the active tab as a chip instead of fusing it into the canvas below', () => {
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    const activeChip = screen.getByRole('tab', { name: 'one.md' }).parentElement;
+    expect(activeChip).toHaveClass('rounded-tab', 'bg-canvas');
+    expect(screen.getByRole('tablist')).not.toHaveClass('border-b');
+  });
+
   it('activates and closes the targeted buffer', async () => {
     const user = userEvent.setup();
     const onActivate = vi.fn();

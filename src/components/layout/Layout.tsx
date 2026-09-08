@@ -20,8 +20,10 @@ export function Layout() {
   useModalKeymap();
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-canvas text-text-primary">
-      <div className="relative flex flex-1 overflow-hidden">
+    <div className="flex h-screen w-screen flex-col bg-panel text-text-primary">
+      {/* The region row is the *inset card* ground: the sidebar paints `bg-panel` too, so the gutter
+          around the editor and agent cards is literally the same surface (spec decision 4). */}
+      <div className="relative flex flex-1 overflow-hidden bg-panel">
         <Sidebar />
         <Viewer />
         <AgentPanel />
