@@ -29,6 +29,17 @@ describe('FileTreeItem', () => {
     expect(screen.queryByText(/^edited/)).not.toBeInTheDocument();
   });
 
+  it('lifts a folder label out of muted while the cursor rests on it', () => {
+    // A folder is a subdued group header at rest, but the cursor has to read on it exactly as it
+    // does on a note — otherwise only the row background moves and the folder text stays muted.
+    const { rerender } = render(<FileTreeItem label="engineering" kind="dir" depth={0} noteCount={4} />);
+    expect(screen.getByText('engineering')).toHaveClass('text-text-muted');
+
+    rerender(<FileTreeItem label="engineering" kind="dir" depth={0} noteCount={4} cursor />);
+
+    expect(screen.getByText('engineering')).not.toHaveClass('text-text-muted');
+  });
+
   it('counts a directory the same way at every depth, not just the top level', () => {
     render(<FileTreeItem label="2026" kind="dir" depth={3} noteCount={7} />);
 

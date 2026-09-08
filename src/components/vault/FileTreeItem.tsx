@@ -61,7 +61,7 @@ export function FileTreeItem({
       onContextMenu={onContextMenu}
       style={{ paddingLeft: depth * 12 + 10 }}
       className={cn(
-        'flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',
+        'group flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',
         active ? 'bg-elevated text-text-primary' : cursor ? 'bg-hover text-text-secondary' : 'bg-transparent text-text-secondary hover:bg-hover'
       )}
     >
@@ -71,7 +71,14 @@ export function FileTreeItem({
             <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera', collapsed ? '' : 'rotate-90')} />
           </span>
           <Icon icon={Folder} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
-          <span className={cn('min-w-0 truncate text-meta', !active && 'text-text-muted')} {...tooltipTarget(label, { whenTruncated: true })}>
+          {/* Muted only at rest. A folder is a subdued group header (decision 26), but the
+              cursor and hover states still have to read on it exactly as they do on a note
+              (decision 23 step 1) — so the cursor inherits the row's `text-text-secondary`
+              and hover lifts the label with the row rather than leaving it muted. */}
+          <span
+            className={cn('min-w-0 truncate text-meta', !active && !cursor && 'text-text-muted group-hover:text-text-secondary')}
+            {...tooltipTarget(label, { whenTruncated: true })}
+          >
             {label}
           </span>
           {/* The dot keeps its meaning and its ember (spec decision 11); the count goes last.
