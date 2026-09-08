@@ -27,8 +27,10 @@ describe('EditorTabs', () => {
   it('keeps the close control on an inactive tab, so the dirty dot and the close affordance coexist', () => {
     render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
-    // 'two' is dirty and inactive: it renders name-only and reveals its `×` on hover, but the
-    // control stays in the tree throughout so the tab's width never shifts under the pointer.
+    // 'two' is dirty and inactive: it carries its file icon like every other tab and reveals
+    // its `×` on hover, but the control stays in the tree throughout so the tab's width never
+    // shifts under the pointer. The icon itself is `aria-hidden` and has no accessible name, so
+    // there is nothing here to assert it by that is not a class or a DOM-shape probe.
     expect(screen.getByRole('button', { name: 'Close two.md' })).toHaveClass('opacity-0', 'group-hover:opacity-100');
     expect(screen.getByRole('button', { name: 'Close one.md' })).not.toHaveClass('opacity-0');
   });
@@ -78,7 +80,7 @@ describe('EditorTabs', () => {
     });
     rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
-    // 82px of measured clearance, minus the 40px rail the lights already sit on.
-    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '42px' });
+    // 87px of measured clearance, minus the 40px rail the lights already sit on.
+    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '47px' });
   });
 });

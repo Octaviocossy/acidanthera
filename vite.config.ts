@@ -42,7 +42,12 @@ export default defineConfig(async () => ({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/src-tauri/**'],
+    // `.worktrees/` holds the parallel runner's child checkouts, each with its own installed
+    // `node_modules`. Without this, `pnpm test` at the repository root collects those copies of
+    // every test file and loads a second React through them, failing with
+    // "Cannot read properties of null (reading 'useCallback')" — and it does so only while an
+    // epic is in flight, which is when the acceptance gate matters most.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/src-tauri/**', '**/.worktrees/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
