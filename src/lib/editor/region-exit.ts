@@ -20,7 +20,7 @@ const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => 
   { id: 'global.focus-previous', run: () => useAppStore.getState().focusPrevious() },
   { id: 'global.focus-next', run: () => useAppStore.getState().focusNext() },
   { id: 'global.toggle-sidebar', run: () => useAppStore.getState().toggleSidebar() },
-  { id: 'global.toggle-chat', run: () => useAppStore.getState().toggleChat() },
+  { id: 'global.toggle-chat', run: () => useAppStore.getState().toggleAgent() },
   { id: 'global.toggle-settings', run: () => useAppStore.getState().toggleSettings() },
   { id: 'global.find-file', run: () => executeAppCommand('global.find-file') },
 ];

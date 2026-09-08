@@ -1,22 +1,22 @@
 import { create } from 'zustand';
 
 /** A focusable region of the app shell (doc/v0-spec.md §3.4, §5.0). */
-export type FocusRegion = 'sidebar' | 'viewer' | 'chat';
+export type FocusRegion = 'sidebar' | 'viewer' | 'agent';
 
 /** The app-level global vim mode — distinct from the editor's own vim mode (doc/v0-spec.md §3.4). */
 export type GlobalMode = 'normal' | 'command';
 
-const REGION_ORDER: FocusRegion[] = ['sidebar', 'viewer', 'chat'];
+const REGION_ORDER: FocusRegion[] = ['sidebar', 'viewer', 'agent'];
 
 /**
  * The regions the focus state machine can reach right now. The sidebar is always visible — it
  * collapses to a 40px rail rather than unmounting — so expansion, not visibility, gates it.
- * A closed chat is genuinely hidden. `viewer` is always reachable, guaranteeing a non-empty list.
+ * A closed agent panel is genuinely hidden. `viewer` is always reachable, guaranteeing a non-empty list.
  */
-function reachableRegions({ sidebarExpanded, chatOpen }: Pick<AppState, 'sidebarExpanded' | 'chatOpen'>): FocusRegion[] {
+function reachableRegions({ sidebarExpanded, agentOpen }: Pick<AppState, 'sidebarExpanded' | 'agentOpen'>): FocusRegion[] {
   return REGION_ORDER.filter((region) => {
     if (region === 'sidebar') return sidebarExpanded;
-    if (region === 'chat') return chatOpen;
+    if (region === 'agent') return agentOpen;
     return true;
   });
 }
@@ -33,7 +33,8 @@ interface AppState {
   mode: GlobalMode;
   /** Whether the sidebar shows its explorer rather than its collapsed rail. */
   sidebarExpanded: boolean;
-  chatOpen: boolean;
+  /** Whether the agent panel is open. It genuinely unmounts when closed, unlike the sidebar. */
+  agentOpen: boolean;
   /** Whether the settings dialog overlay is up (#29). An overlay, not a `FocusRegion`. */
   settingsOpen: boolean;
   /** Root path of the open vault. Seeded here (not the filesystem slice) so the chat's
@@ -49,9 +50,9 @@ interface AppState {
   expandSidebar: () => void;
   collapseSidebar: () => void;
   toggleSidebar: () => void;
-  openChat: () => void;
-  closeChat: () => void;
-  toggleChat: () => void;
+  openAgent: () => void;
+  closeAgent: () => void;
+  toggleAgent: () => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -63,7 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   editorFocusRequest: 0,
   mode: 'normal',
   sidebarExpanded: true,
-  chatOpen: false,
+  agentOpen: false,
   settingsOpen: false,
   vaultRoot: null,
 
@@ -108,15 +109,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSidebar: () => (get().sidebarExpanded ? get().collapseSidebar() : get().expandSidebar()),
 
-  openChat: () => set({ chatOpen: true }),
+  openAgent: () => set({ agentOpen: true }),
 
-  closeChat: () =>
+  closeAgent: () =>
     set((state) => ({
-      chatOpen: false,
-      activeRegion: state.activeRegion === 'chat' ? 'viewer' : state.activeRegion,
+      agentOpen: false,
+      activeRegion: state.activeRegion === 'agent' ? 'viewer' : state.activeRegion,
     })),
 
-  toggleChat: () => (get().chatOpen ? get().closeChat() : get().openChat()),
+  toggleAgent: () => (get().agentOpen ? get().closeAgent() : get().openAgent()),
 
   openSettings: () => set({ settingsOpen: true }),
 

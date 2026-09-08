@@ -1,6 +1,6 @@
 /**
  * Central `AgentEvent` contract (doc/v0-spec.md §4.3). Every backend translates its native
- * stream into this vocabulary via an adapter; the chat panel consumes only this union and
+ * stream into this vocabulary via an adapter; the agent panel consumes only this union and
  * never touches an engine's raw JSON.
  */
 

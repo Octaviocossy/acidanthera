@@ -1,4 +1,4 @@
-import { ChatPanel } from '@/components/layout/ChatPanel';
+import { AgentPanel } from '@/components/layout/AgentPanel';
 import { CommandBar } from '@/components/layout/CommandBar';
 import { DeleteEntryDialog } from '@/components/layout/DeleteEntryDialog';
 import { FileFinder } from '@/components/layout/FileFinder';
@@ -14,7 +14,7 @@ import { SidebarContextMenu } from '@/components/vault/SidebarContextMenu';
 import { useModalKeymap } from '@/hooks/use-modal-keymap';
 
 /**
- * The 3-region app shell (doc/v0-spec.md §5.0): sidebar, viewer, invocable chat, split view.
+ * The 3-region app shell (doc/v0-spec.md §5.0): sidebar, viewer, invocable agent, split view.
  * Owned by slice #10 — siblings only replace their own placeholder region file.
  */
 export function Layout() {
@@ -26,7 +26,7 @@ export function Layout() {
       <div className="relative flex flex-1 overflow-hidden">
         <Sidebar />
         <Viewer />
-        <ChatPanel />
+        <AgentPanel />
         <CommandBar />
         <FileFinder />
         <SidebarContextMenu />
