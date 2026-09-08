@@ -3,7 +3,9 @@
 > Status: **settled**
 > Created: 2026-09-08
 > Grilled: 2026-09-08 — 3 rounds, 10 decisions
-> Suggested next: land on `147-reconcile-design-docs` (decision 8)
+> Suggested next: none — no handoff command applies. Decision 8 landed this directly on
+> `147-reconcile-design-docs`, the open child of epic #141, rather than routing it to
+> `/create-issue`.
 
 ## Goal
 
