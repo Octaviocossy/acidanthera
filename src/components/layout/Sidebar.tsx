@@ -310,6 +310,10 @@ export function Sidebar() {
         cursor={entry.path === cursorPath}
         changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
         collapsed={entry.isDir && !expanded.has(entry.path)}
+        modified={entry.modified}
+        // One meaning of a number in one panel: a folder's count and the footer's `N notes` are
+        // the same `countNotes` measure at two scopes, both from the already-cached tree.
+        noteCount={entry.isDir ? countNotes(entry.children ?? []) : undefined}
         onClick={() => {
           focusRegion('sidebar');
           setCursor(entry.path);
