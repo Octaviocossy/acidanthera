@@ -3,11 +3,11 @@ import type { VaultEntry } from '@/services/vault.service';
 import { collectConfigCandidates, collectVaultFiles, rankVaultFiles } from './file-search';
 
 function file(name: string, path: string): VaultEntry {
-  return { name, path, isDir: false, children: null };
+  return { name, path, isDir: false, modified: null, children: null };
 }
 
 function dir(name: string, path: string, children: VaultEntry[]): VaultEntry {
-  return { name, path, isDir: true, children };
+  return { name, path, isDir: true, modified: null, children };
 }
 
 describe('collectVaultFiles', () => {

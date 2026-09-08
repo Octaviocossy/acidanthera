@@ -21,8 +21,14 @@ const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
 const initialContextMenuState = useContextMenuStore.getState();
 const tree = [
-  { name: 'notes', path: '/vault/notes', isDir: true, children: [{ name: 'ideas.md', path: '/vault/notes/ideas.md', isDir: false, children: null }] },
-  { name: 'readme.md', path: '/vault/readme.md', isDir: false, children: null },
+  {
+    name: 'notes',
+    path: '/vault/notes',
+    isDir: true,
+    modified: null,
+    children: [{ name: 'ideas.md', path: '/vault/notes/ideas.md', isDir: false, modified: null, children: null }],
+  },
+  { name: 'readme.md', path: '/vault/readme.md', isDir: false, modified: null, children: null },
 ];
 
 function renderSidebarWithMenu() {

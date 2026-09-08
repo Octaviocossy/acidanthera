@@ -6,6 +6,8 @@ export interface VaultEntry {
   name: string;
   path: string;
   isDir: boolean;
+  /** Last modification time in milliseconds since the Unix epoch — notes only; a directory is always `null`, and so is a note whose timestamp could not be read. */
+  modified: number | null;
   children: VaultEntry[] | null;
 }
 

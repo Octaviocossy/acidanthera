@@ -21,8 +21,8 @@ vi.mock('@/services/vault.service', () => ({ vaultService: { readVaultTree, onVa
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
 const tree = [
-  { name: 'notes', path: '/vault/notes', isDir: true, children: [] },
-  { name: 'readme.md', path: '/vault/readme.md', isDir: false, children: null },
+  { name: 'notes', path: '/vault/notes', isDir: true, modified: null, children: [] },
+  { name: 'readme.md', path: '/vault/readme.md', isDir: false, modified: null, children: null },
 ];
 
 describe('Sidebar', () => {
