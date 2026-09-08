@@ -1,16 +1,19 @@
+//! Narrow `[[wikilink]]` parsing and target rewriting. The grammar is deliberately narrower than
+//! the editor's `wikilink` decoration: the target is everything before the first `|`, an anchor
+//! (`#…`, `^…`) is preserved verbatim, and comparison is case-insensitive because the macOS
+//! filesystem is. Pure string work — `vault.rs` owns which files it is applied to.
+
 /// A wikilink and the byte ranges needed to rewrite its target without changing its alias or
 /// anchor.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WikilinkMatch {
-    pub start: usize,
-    pub end: usize,
+pub struct WikilinkMatch<'a> {
     pub target_start: usize,
     pub target_end: usize,
-    pub target: String,
+    pub target: &'a str,
 }
 
 /// Finds narrow `[[...]]` wikilinks. Brackets inside a candidate invalidate that candidate.
-pub fn find_wikilinks(source: &str) -> Vec<WikilinkMatch> {
+pub fn find_wikilinks(source: &str) -> Vec<WikilinkMatch<'_>> {
     let bytes = source.as_bytes();
     let mut matches = Vec::new();
     let mut cursor = 0;
@@ -52,11 +55,9 @@ pub fn find_wikilinks(source: &str) -> Vec<WikilinkMatch> {
         let end = content_end + 2;
 
         matches.push(WikilinkMatch {
-            start: cursor,
-            end,
             target_start: content_start,
             target_end,
-            target: source[content_start..target_end].to_owned(),
+            target: &source[content_start..target_end],
         });
         cursor = end;
     }
@@ -103,13 +104,14 @@ mod tests {
 
     #[test]
     fn find_wikilinks_should_parse_plain_links() {
-        let matches = find_wikilinks("before [[Note]] after");
+        let source = "before [[Note]] after";
+        let matches = find_wikilinks(source);
 
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].target, "Note");
         assert_eq!(
-            &"before [[Note]] after"[matches[0].start..matches[0].end],
-            "[[Note]]"
+            &source[matches[0].target_start..matches[0].target_end],
+            "Note"
         );
     }
 

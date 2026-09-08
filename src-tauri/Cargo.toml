@@ -33,3 +33,11 @@ tauri-plugin-clipboard-manager = "2"
 toml = "1"
 toml_edit = "0.25"
 trash = "5"
+
+[lints.clippy]
+# `priority = -1` lets the individually named lints below override the group.
+all = { level = "deny", priority = -1 }
+# Moved to `nursery` upstream, so it is NOT in `clippy::all` — naming it is the only way to get it.
+redundant_clone = "deny"
+large_enum_variant = "deny"
+needless_collect = "deny"

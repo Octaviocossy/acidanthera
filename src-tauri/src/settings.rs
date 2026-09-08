@@ -98,8 +98,14 @@ type SettingsResult<T> = Result<T, SettingsError>;
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum SettingsDiagnostic {
-    Syntax { message: String, line: Option<usize> },
-    Field { key: String, message: String },
+    Syntax {
+        message: String,
+        line: Option<usize>,
+    },
+    Field {
+        key: String,
+        message: String,
+    },
 }
 
 /// Return shape of `read_settings`: settings are always populated (falling back to defaults
@@ -129,7 +135,10 @@ fn default_vault_path(app: &AppHandle) -> SettingsResult<String> {
 /// shape for forward compatibility, even though the writer never emits it — everything else
 /// reads flat top-level keys.
 fn settings_table(table: &toml::Table) -> &toml::Table {
-    table.get("settings").and_then(|value| value.as_table()).unwrap_or(table)
+    table
+        .get("settings")
+        .and_then(|value| value.as_table())
+        .unwrap_or(table)
 }
 
 fn missing_diagnostic(key: &str) -> SettingsDiagnostic {
@@ -146,7 +155,12 @@ fn wrong_type_diagnostic(key: &str) -> SettingsDiagnostic {
     }
 }
 
-fn extract_string(table: &toml::Table, key: &str, default: &str, diagnostics: &mut Vec<SettingsDiagnostic>) -> String {
+fn extract_string(
+    table: &toml::Table,
+    key: &str,
+    default: &str,
+    diagnostics: &mut Vec<SettingsDiagnostic>,
+) -> String {
     match table.get(key) {
         Some(toml::Value::String(value)) => value.clone(),
         Some(_) => {
@@ -209,7 +223,9 @@ fn parse_settings(contents: &str) -> (Settings, Vec<SettingsDiagnostic>) {
     let table: toml::Table = match toml::from_str(contents) {
         Ok(table) => table,
         Err(err) => {
-            let line = err.span().map(|span| contents[..span.start].matches('\n').count() + 1);
+            let line = err
+                .span()
+                .map(|span| contents[..span.start].matches('\n').count() + 1);
             return (
                 Settings::default(),
                 vec![SettingsDiagnostic::Syntax {
@@ -223,7 +239,12 @@ fn parse_settings(contents: &str) -> (Settings, Vec<SettingsDiagnostic>) {
     let mut diagnostics = Vec::new();
     let settings = Settings {
         model: extract_model(table, &mut diagnostics),
-        editor_font: extract_string(table, "editorFont", &default_editor_font(), &mut diagnostics),
+        editor_font: extract_string(
+            table,
+            "editorFont",
+            &default_editor_font(),
+            &mut diagnostics,
+        ),
         theme: extract_theme(table, &mut diagnostics),
         vault_path: extract_string(table, "vaultPath", "", &mut diagnostics),
     };
@@ -234,7 +255,10 @@ fn read_settings_from(file: &Path) -> SettingsResult<SettingsReadResult> {
     match fs::read_to_string(file) {
         Ok(contents) => {
             let (settings, diagnostics) = parse_settings(&contents);
-            Ok(SettingsReadResult { settings, diagnostics })
+            Ok(SettingsReadResult {
+                settings,
+                diagnostics,
+            })
         }
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(SettingsReadResult {
             settings: Settings::default(),
@@ -299,9 +323,17 @@ fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {
         existing.parse::<DocumentMut>()?
     };
     set_field(&mut doc, "model", Value::from(settings.model.clone()));
-    set_field(&mut doc, "editorFont", Value::from(settings.editor_font.clone()));
+    set_field(
+        &mut doc,
+        "editorFont",
+        Value::from(settings.editor_font.clone()),
+    );
     set_field(&mut doc, "theme", Value::from(settings.theme.clone()));
-    set_field(&mut doc, "vaultPath", Value::from(settings.vault_path.clone()));
+    set_field(
+        &mut doc,
+        "vaultPath",
+        Value::from(settings.vault_path.clone()),
+    );
     write_atomic(file, &doc.to_string())
 }
 
@@ -335,12 +367,16 @@ fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()>
 fn read_legacy_json_settings(file: &Path) -> Settings {
     match fs::read_to_string(file) {
         Ok(contents) => serde_json::from_str(&contents).unwrap_or_else(|err| {
-            log::warn!("settings::migrate: legacy settings.json is invalid JSON ({err}); using defaults");
+            log::warn!(
+                "settings::migrate: legacy settings.json is invalid JSON ({err}); using defaults"
+            );
             Settings::default()
         }),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Settings::default(),
         Err(err) => {
-            log::warn!("settings::migrate: could not read legacy settings.json ({err}); using defaults");
+            log::warn!(
+                "settings::migrate: could not read legacy settings.json ({err}); using defaults"
+            );
             Settings::default()
         }
     }
@@ -366,7 +402,9 @@ fn migrate_settings_file(toml_file: &Path, json_file: &Path) -> SettingsResult<(
 /// scaffold so migration always wins the race to create `settings.toml`. Best-effort: a config
 /// dir the app cannot write into must not stop the app from starting.
 pub fn init(app: &AppHandle) {
-    let paths = (|| -> SettingsResult<(PathBuf, PathBuf)> { Ok((settings_file(app)?, legacy_settings_file(app)?)) })();
+    let paths = (|| -> SettingsResult<(PathBuf, PathBuf)> {
+        Ok((settings_file(app)?, legacy_settings_file(app)?))
+    })();
     let (toml_file, json_file) = match paths {
         Ok(paths) => paths,
         Err(err) => {
@@ -418,7 +456,10 @@ mod tests {
     use super::*;
 
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("acidanthera-settings-{}-{label}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "acidanthera-settings-{}-{label}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp directory");
         dir
@@ -451,7 +492,10 @@ mod tests {
 
         resolve_default_vault_path(&mut settings, "/Users/tester/Documents/acidanthera-brain");
 
-        assert_eq!(settings.vault_path, "/Users/tester/Documents/acidanthera-brain");
+        assert_eq!(
+            settings.vault_path,
+            "/Users/tester/Documents/acidanthera-brain"
+        );
     }
 
     #[test]
@@ -468,7 +512,9 @@ mod tests {
 
     #[test]
     fn settings_error_should_serialize_as_a_plain_string() {
-        let error = "not toml {{{".parse::<DocumentMut>().expect_err("creates a toml error");
+        let error = "not toml {{{"
+            .parse::<DocumentMut>()
+            .expect_err("creates a toml error");
 
         let value = serde_json::to_value(SettingsError::Toml(error)).expect("serializes");
 
@@ -525,15 +571,27 @@ mod tests {
     fn read_settings_from_should_degrade_a_single_bad_value_without_rejecting_the_document() {
         let dir = temp_dir("bad-value");
         let file = dir.join("settings.toml");
-        fs::write(&file, "model = \"sonnet-5\"\ntheme = 3\nvaultPath = \"/vault\"\n").expect("writes file");
+        fs::write(
+            &file,
+            "model = \"sonnet-5\"\ntheme = 3\nvaultPath = \"/vault\"\n",
+        )
+        .expect("writes file");
 
         let result = read_settings_from(&file).expect("degrades per key");
 
         assert_eq!(result.settings.model, "sonnet-5");
         assert_eq!(result.settings.theme, "dark");
         assert_eq!(result.settings.vault_path, "/vault");
-        assert_eq!(result.diagnostics.len(), 2, "theme wrong-type + editorFont missing: {:?}", result.diagnostics);
-        assert!(result.diagnostics.iter().any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "theme")));
+        assert_eq!(
+            result.diagnostics.len(),
+            2,
+            "theme wrong-type + editorFont missing: {:?}",
+            result.diagnostics
+        );
+        assert!(result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "theme")));
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
@@ -546,7 +604,10 @@ mod tests {
         let result = read_settings_from(&file).expect("degrades theme");
 
         assert_eq!(result.settings.theme, "dark");
-        assert!(result.diagnostics.iter().any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "theme")));
+        assert!(result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "theme")));
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
@@ -559,7 +620,10 @@ mod tests {
         let result = read_settings_from(&file).expect("degrades model");
 
         assert_eq!(result.settings.model, "gpt-5.4-mini");
-        assert!(result.diagnostics.iter().any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "model")));
+        assert!(result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "model")));
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
@@ -567,7 +631,11 @@ mod tests {
     fn read_settings_from_should_tolerate_a_settings_table_header() {
         let dir = temp_dir("settings-header");
         let file = dir.join("settings.toml");
-        fs::write(&file, "[settings]\nmodel = \"sonnet-5\"\ntheme = \"light\"\n").expect("writes file");
+        fs::write(
+            &file,
+            "[settings]\nmodel = \"sonnet-5\"\ntheme = \"light\"\n",
+        )
+        .expect("writes file");
 
         let result = read_settings_from(&file).expect("tolerates the header");
 
@@ -712,17 +780,34 @@ mod tests {
 
         migrate_settings_file(&toml_file, &json_file).expect("migrates");
 
-        assert!(!json_file.exists(), "legacy json is deleted after migration");
+        assert!(
+            !json_file.exists(),
+            "legacy json is deleted after migration"
+        );
         let result = read_settings_from(&toml_file).expect("reads migrated toml");
         assert_eq!(result.settings.model, "haiku-4.5");
         assert_eq!(result.settings.editor_font, "Hack Nerd Font");
         assert_eq!(result.settings.theme, "dark");
-        assert_eq!(result.settings.vault_path, "/Users/tester/Documents/acidanthera-brain");
+        assert_eq!(
+            result.settings.vault_path,
+            "/Users/tester/Documents/acidanthera-brain"
+        );
         assert!(result.diagnostics.is_empty());
         let contents = fs::read_to_string(&toml_file).expect("reads raw toml");
-        assert!(contents.contains("# model:"), "documents valid model values");
-        assert!(contents.contains("gpt-5.4-mini") && contents.contains("haiku-4.5") && contents.contains("sonnet-5") && contents.contains("gpt-5.5-fast"));
-        assert!(contents.contains("# theme:"), "documents valid theme values");
+        assert!(
+            contents.contains("# model:"),
+            "documents valid model values"
+        );
+        assert!(
+            contents.contains("gpt-5.4-mini")
+                && contents.contains("haiku-4.5")
+                && contents.contains("sonnet-5")
+                && contents.contains("gpt-5.5-fast")
+        );
+        assert!(
+            contents.contains("# theme:"),
+            "documents valid theme values"
+        );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
@@ -753,7 +838,10 @@ mod tests {
 
         assert!(!json_file.exists(), "stale legacy json is cleaned up");
         let result = read_settings_from(&toml_file).expect("reads toml");
-        assert_eq!(result.settings.model, "sonnet-5", "the toml is not clobbered by the stale json");
+        assert_eq!(
+            result.settings.model, "sonnet-5",
+            "the toml is not clobbered by the stale json"
+        );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 

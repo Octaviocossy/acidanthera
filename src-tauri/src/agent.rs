@@ -269,7 +269,8 @@ mod tests {
 
     /// A unique temp dir per test, so filesystem-based cases never collide or race.
     fn temp_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("acidanthera-agent-{}-{label}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("acidanthera-agent-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp dir");
         dir
@@ -381,8 +382,10 @@ mod tests {
     fn resolve_command_in_should_return_none_when_no_search_dir_has_the_command() {
         let dir = temp_dir("resolve-missing");
 
-        let resolved =
-            resolve_command_in("acidanthera-tool-that-does-not-exist", std::slice::from_ref(&dir));
+        let resolved = resolve_command_in(
+            "acidanthera-tool-that-does-not-exist",
+            std::slice::from_ref(&dir),
+        );
 
         assert_eq!(resolved, None);
 

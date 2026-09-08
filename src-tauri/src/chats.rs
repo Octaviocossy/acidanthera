@@ -303,7 +303,8 @@ mod tests {
     /// A unique temp vault root per test. No canonicalization needed — this store never
     /// canonicalizes (the id is a validated bare name, so traversal is impossible by construction).
     fn temp_root(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("acidanthera-chats-{}-{label}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("acidanthera-chats-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("creates temp root");
         dir.canonicalize().expect("canonicalizes temp root")
@@ -335,7 +336,9 @@ mod tests {
 
         assert_eq!(
             path,
-            root.join(".acidanthera").join("chats").join("hello.chat.md")
+            root.join(".acidanthera")
+                .join("chats")
+                .join("hello.chat.md")
         );
         assert!(root.join(".acidanthera").join("chats").is_dir());
         assert_eq!(
