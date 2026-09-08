@@ -40,6 +40,7 @@ describe('Sidebar', () => {
     cleanup();
     useAppStore.setState(initialAppState, true);
     useSidebarStore.setState(initialSidebarState, true);
+    useKeymapStore.setState({ resolved: resolveKeymap(null) });
   });
 
   it('renders one accessible launcher for each root entry while collapsed', () => {
@@ -69,13 +70,74 @@ describe('Sidebar', () => {
     expect(useAppStore.getState().sidebarExpanded).toBe(false);
   });
 
-  it('shows the vault path only while expanded', () => {
+  it('shows the vault name and its recursive note count only while expanded', () => {
     const { rerender } = render(<Sidebar />);
 
-    expect(screen.queryByText('/vault')).not.toBeInTheDocument();
+    expect(screen.queryByText('vault')).not.toBeInTheDocument();
     useAppStore.getState().expandSidebar();
     rerender(<Sidebar />);
-    expect(screen.getByText('/vault')).toBeInTheDocument();
+
+    expect(screen.getByText('vault')).toBeInTheDocument();
+    expect(screen.getByText('1 note')).toBeInTheDocument();
+  });
+
+  it('reveals the full vault path from the footer identity block rather than printing it', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.queryByText('/vault')).not.toBeInTheDocument();
+  });
+
+  it('reaches settings and the agent toggle by pointer in both states', () => {
+    const { rerender } = render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open AI agent' })).toBeInTheDocument();
+
+    useAppStore.getState().expandSidebar();
+    rerender(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Agent' })).toBeInTheDocument();
+  });
+
+  it('toggles the agent panel from the primary nav and reflects it in aria-pressed', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const agent = screen.getByRole('button', { name: 'Agent' });
+    expect(agent).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(agent);
+
+    expect(useAppStore.getState().agentOpen).toBe(true);
+    expect(screen.getByRole('button', { name: 'Agent' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('starts a draft from the primary nav, exactly as the sidebar chord does', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    await user.click(screen.getByRole('button', { name: 'New folder' }));
+
+    expect(useSidebarStore.getState().draft).toEqual({ kind: 'directory', parentPath: '/vault' });
+  });
+
+  it('renders the primary nav chords from the resolved keymap rather than as literals', () => {
+    useKeymapStore.setState({ resolved: resolveKeymap({ 'sidebar.new-note': ['ctrl-n'] }) });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'New note' })).toHaveTextContent('Ctrl+n');
+  });
+
+  it('keeps the primary nav out of the cursor row source', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    // `j`/`k` walk the tree alone: only the two vault entries are rows under the tree.
+    expect(screen.getByRole('tree').textContent).not.toContain('New note');
   });
 
   it('does not render a Config row in either state', () => {
@@ -147,7 +209,7 @@ describe('Sidebar', () => {
     it("reveals a chrome control's label beside the chord the resolved keymap currently binds", () => {
       // Rebound rather than asserted against the default: the point of deriving the hint from
       // the resolved keymap is that editing `keymaps.toml` changes what the reveal shows.
-      useKeymapStore.setState({ resolved: resolveKeymap({ 'sidebar.new-note': ['ctrl-n'] }) });
+      useKeymapStore.setState({ resolved: resolveKeymap({ 'global.find-file': ['ctrl-p'] }) });
       render(
         <>
           <Sidebar />
@@ -155,12 +217,12 @@ describe('Sidebar', () => {
         </>
       );
 
-      fireEvent.pointerOver(screen.getByRole('button', { name: 'New note' }));
+      fireEvent.pointerOver(screen.getByRole('button', { name: 'Find file' }));
       act(() => {
         vi.advanceTimersByTime(500);
       });
 
-      expect(screen.getByRole('tooltip')).toHaveTextContent('New noteCtrl+n');
+      expect(screen.getByRole('tooltip')).toHaveTextContent('Find fileCtrl+p');
     });
 
     it('dismisses an open reveal on a keydown, so it never floats above a keyboard-opened dialog', () => {

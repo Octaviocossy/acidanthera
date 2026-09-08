@@ -1,6 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useAppStore } from '@/stores/app-store';
 import { EditorTabs } from './EditorTabs';
 
 const buffers = [
@@ -8,8 +9,13 @@ const buffers = [
   { id: 'two', filePath: '/vault/two.md', title: 'two.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal' as const, source: 'vault' as const },
 ];
 
+const initialAppState = useAppStore.getState();
+
 describe('EditorTabs', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    useAppStore.setState(initialAppState, true);
+  });
 
   it('exposes the active and dirty buffers through tab semantics', () => {
     render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
@@ -31,9 +37,31 @@ describe('EditorTabs', () => {
     expect(onClose).toHaveBeenCalledWith('two');
   });
 
-  it('renders nothing without open buffers', () => {
+  it('still reserves the chrome strip without open buffers, so the editor never slides under the traffic lights', () => {
     render(<EditorTabs buffers={[]} activeBufferId={null} onActivate={vi.fn()} onClose={vi.fn()} />);
 
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
+  it('marks the strip as a window drag region without putting the attribute on a tab', () => {
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('tablist')).toHaveAttribute('data-tauri-drag-region', 'deep');
+    expect(screen.getByRole('tab', { name: 'one.md' })).not.toHaveAttribute('data-tauri-drag-region');
+  });
+
+  it('insets the strip past the traffic lights only while the sidebar is collapsed', () => {
+    useAppStore.setState({ sidebarExpanded: true });
+    const { rerender } = render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '0px' });
+
+    act(() => {
+      useAppStore.setState({ sidebarExpanded: false });
+    });
+    rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    // 76px of clearance, minus the 40px rail the lights already sit on.
+    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '36px' });
   });
 });

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search } from '@/components/ui/icon';
+import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search, Settings } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
+import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
+import { countNotes } from '@/lib/vault/note-count';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import { renameVaultEntry } from '@/lib/vault/rename-entry';
@@ -34,6 +36,62 @@ function TooltipHint({ label, chord }: { label: string; chord?: string }) {
   );
 }
 
+/**
+ * The sidebar's *chrome strip*: bare, carrying only the drag region the native traffic lights sit
+ * on (decisions 16, 31). A separate strip gives the drag region the whole row rather than the gap
+ * between a mark and two icons, and at 40px collapsed it is the only thing left to grab.
+ *
+ * `trafficLightPosition` is unchanged — the band is still 40px, so `y: 21.5` still centres them.
+ */
+function SidebarChromeStrip() {
+  return <div data-tauri-drag-region="deep" className="h-[var(--rail-titlebar)] w-full shrink-0" />;
+}
+
+/**
+ * A *primary nav* row: icon · label · its chord as a persistent unboxed `Kbd`.
+ *
+ * The one surface in the app that renders a chord in the layout rather than on hover, and still
+ * never as a literal — `chord` comes from the resolved keymap (invariant 31). These are mouse
+ * targets only: they are deliberately absent from `flattenVisibleTree` and the `j`/`k` cursor, so
+ * the sidebar keeps its single row source.
+ */
+function NavRow({
+  icon,
+  label,
+  chord,
+  active = false,
+  ariaPressed,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  chord?: string;
+  active?: boolean;
+  ariaPressed?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={ariaPressed}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-item px-2 py-[5px] text-left font-sans text-ui outline-none transition-colors duration-[var(--dur)] ease-acidanthera hover:bg-hover focus-visible:ring-1 focus-visible:ring-border-strong',
+        active ? 'bg-elevated text-text-primary' : 'text-text-secondary'
+      )}
+      onClick={onClick}
+    >
+      {icon}
+      <span className="min-w-0 truncate">{label}</span>
+      {chord !== undefined && (
+        <Kbd boxed={false} className="ml-auto shrink-0">
+          {chord}
+        </Kbd>
+      )}
+    </button>
+  );
+}
+
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). */
 export function Sidebar() {
   useSidebarKeymap();
@@ -41,6 +99,9 @@ export function Sidebar() {
   const isActive = useAppStore((state) => state.activeRegion === 'sidebar');
   const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
+  const agentOpen = useAppStore((state) => state.agentOpen);
+  const toggleAgent = useAppStore((state) => state.toggleAgent);
+  const openSettings = useAppStore((state) => state.openSettings);
   const focusRegion = useAppStore((state) => state.focusRegion);
   const collapseSidebar = useAppStore((state) => state.collapseSidebar);
   const expandSidebar = useAppStore((state) => state.expandSidebar);
@@ -81,6 +142,14 @@ export function Sidebar() {
 
   const vaultRows = flattenVisibleTree(tree, expanded);
 
+  const findFileChord = formatChord(globalBindings.get('global.find-file'));
+  const newNoteChord = formatChord(sidebarBindings.get('sidebar.new-note'));
+  const newDirectoryChord = formatChord(sidebarBindings.get('sidebar.new-directory'));
+  // The command id keeps its old name: `keymaps.toml` is user-visible, so the chat-to-agent
+  // rename deliberately stopped at the wire (#143, spec decision 28).
+  const agentChord = formatChord(globalBindings.get('global.toggle-chat'));
+  const settingsChord = formatChord(globalBindings.get('global.toggle-settings'));
+
   /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. */
   const startDraft = (kind: EntryDraftKind) => {
     const parentPath = resolveDraftParent(vaultRows, cursorPath, vaultRoot);
@@ -103,69 +172,98 @@ export function Sidebar() {
 
   if (!sidebarExpanded) {
     return (
-      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
+      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-r border-hairline bg-panel" aria-label="Vault explorer">
+        <SidebarChromeStrip />
         <AcidantheraMarkGlyph className="text-text-secondary" />
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" {...tooltipTarget('Expand sidebar')} onClick={expandSidebar}>
-          <Icon icon={ChevronRight} size={15} />
-        </Button>
+        <div className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" aria-label="Expand sidebar" {...tooltipTarget('Expand sidebar')} onClick={expandSidebar}>
+            <Icon icon={ChevronRight} size={15} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 shrink-0 p-0"
+            aria-label="Find file"
+            {...tooltipTarget(<TooltipHint label="Find file" chord={findFileChord} />)}
+            aria-haspopup="dialog"
+            onClick={showFileFinder}
+          >
+            <Icon icon={Search} size={15} />
+          </Button>
+          {vaultRoot !== null && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 shrink-0 p-0"
+                aria-label="New note"
+                {...tooltipTarget(<TooltipHint label="New note" chord={newNoteChord} />)}
+                onClick={() => {
+                  expandSidebar();
+                  startDraft('note');
+                }}
+              >
+                <Icon icon={FilePlus} size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 shrink-0 p-0"
+                aria-label="New folder"
+                {...tooltipTarget(<TooltipHint label="New folder" chord={newDirectoryChord} />)}
+                onClick={() => {
+                  expandSidebar();
+                  startDraft('directory');
+                }}
+              >
+                <Icon icon={FolderPlus} size={14} />
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('h-6 w-6 shrink-0 p-0 text-accent', agentOpen && 'bg-elevated')}
+            aria-pressed={agentOpen}
+            aria-label={agentOpen ? 'Close AI agent' : 'Open AI agent'}
+            {...tooltipTarget(<TooltipHint label="Agent" chord={agentChord} />)}
+            onClick={toggleAgent}
+          >
+            <span className="text-ui" aria-hidden="true">
+              ✦
+            </span>
+          </Button>
+          {vaultRoot !== null && tree.length > 0 && (
+            <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
+              {tree.map((entry) => (
+                <Button
+                  key={entry.path}
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-6 w-6 shrink-0 p-0', entry.path === activeFilePath && 'bg-elevated text-text-primary')}
+                  aria-label={entry.name}
+                  {...tooltipTarget(entry.name)}
+                  onClick={() => openRailEntry(entry)}
+                >
+                  {entry.isDir ? <Icon icon={Folder} size={15} /> : <Icon icon={FileText} size={15} />}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Pinned outside the launcher column's scroll: `⚙` lives in a footer the rail hides, so
+            without this it has no pointer affordance while collapsed (decision 30). */}
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0"
-          aria-label="Find file"
-          {...tooltipTarget(<TooltipHint label="Find file" chord={formatChord(globalBindings.get('global.find-file'))} />)}
+          className="mt-2 mb-3 h-6 w-6 shrink-0 p-0"
+          aria-label="Settings"
+          {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
           aria-haspopup="dialog"
-          onClick={showFileFinder}
+          onClick={openSettings}
         >
-          <Icon icon={Search} size={15} />
+          <Icon icon={Settings} size={15} />
         </Button>
-        {vaultRoot !== null && (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              aria-label="New note"
-              {...tooltipTarget(<TooltipHint label="New note" chord={formatChord(sidebarBindings.get('sidebar.new-note'))} />)}
-              onClick={() => {
-                expandSidebar();
-                startDraft('note');
-              }}
-            >
-              <Icon icon={FilePlus} size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              aria-label="New folder"
-              {...tooltipTarget(<TooltipHint label="New folder" chord={formatChord(sidebarBindings.get('sidebar.new-directory'))} />)}
-              onClick={() => {
-                expandSidebar();
-                startDraft('directory');
-              }}
-            >
-              <Icon icon={FolderPlus} size={14} />
-            </Button>
-            {tree.length > 0 && (
-              <div className="mt-1 flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
-                {tree.map((entry) => (
-                  <Button
-                    key={entry.path}
-                    variant="ghost"
-                    size="sm"
-                    className={cn('h-6 w-6 shrink-0 p-0', entry.path === activeFilePath && 'bg-elevated text-text-primary')}
-                    aria-label={entry.name}
-                    {...tooltipTarget(entry.name)}
-                    onClick={() => openRailEntry(entry)}
-                  >
-                    {entry.isDir ? <Icon icon={Folder} size={15} /> : <Icon icon={FileText} size={15} />}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </aside>
     );
   }
@@ -241,12 +339,16 @@ export function Sidebar() {
     );
   }
 
+  const vaultName = vaultRoot === null ? null : (vaultRoot.split('/').filter(Boolean).pop() ?? vaultRoot);
+  const noteCount = countNotes(tree);
+
   return (
     <aside
       className={cn('flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col border-r bg-panel', isActive ? 'border-border-strong' : 'border-hairline')}
       aria-label="Vault explorer"
     >
-      <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
+      <SidebarChromeStrip />
+      <div className="flex items-center justify-between gap-1 px-[14px] pb-2">
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
           <Button
@@ -254,41 +356,37 @@ export function Sidebar() {
             size="sm"
             className="h-6 w-6 p-0"
             aria-label="Find file"
-            {...tooltipTarget(<TooltipHint label="Find file" chord={formatChord(globalBindings.get('global.find-file'))} />)}
+            {...tooltipTarget(<TooltipHint label="Find file" chord={findFileChord} />)}
             aria-haspopup="dialog"
             onClick={showFileFinder}
           >
             <Icon icon={Search} size={15} />
           </Button>
-          {vaultRoot !== null && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                aria-label="New note"
-                {...tooltipTarget(<TooltipHint label="New note" chord={formatChord(sidebarBindings.get('sidebar.new-note'))} />)}
-                onClick={() => startDraft('note')}
-              >
-                <Icon icon={FilePlus} size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                aria-label="New folder"
-                {...tooltipTarget(<TooltipHint label="New folder" chord={formatChord(sidebarBindings.get('sidebar.new-directory'))} />)}
-                onClick={() => startDraft('directory')}
-              >
-                <Icon icon={FolderPlus} size={14} />
-              </Button>
-            </>
-          )}
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" {...tooltipTarget('Collapse sidebar')} onClick={collapseSidebar}>
             <Icon icon={ChevronLeft} size={15} />
           </Button>
         </div>
       </div>
+      <nav aria-label="Primary" className="flex shrink-0 flex-col gap-0.5 px-[10px] pb-3">
+        {vaultRoot !== null && (
+          <>
+            <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startDraft('note')} />
+            <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startDraft('directory')} />
+          </>
+        )}
+        <NavRow
+          icon={
+            <span className="shrink-0 text-accent text-ui" aria-hidden="true">
+              ✦
+            </span>
+          }
+          label="Agent"
+          chord={agentChord}
+          active={agentOpen}
+          ariaPressed={agentOpen}
+          onClick={toggleAgent}
+        />
+      </nav>
       {vaultRoot === null ? (
         <div className="px-[14px]">
           <Button variant="secondary" size="sm" onClick={() => void pickAndPersistVault()}>
@@ -296,24 +394,46 @@ export function Sidebar() {
           </Button>
         </div>
       ) : (
-        <div
-          role="tree"
-          aria-label="Notes"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[14px] pb-[14px]"
-          onContextMenu={(event) => {
-            if (vaultRoot === null || event.target !== event.currentTarget) return;
-            event.preventDefault();
-            showContextMenu(event.clientX, event.clientY, null);
-          }}
-        >
-          {rowElements}
-        </div>
+        <>
+          <SectionLabel className="shrink-0 px-[14px] pb-1">NOTES</SectionLabel>
+          <div
+            role="tree"
+            aria-label="Notes"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto px-[14px] pb-[14px]"
+            onContextMenu={(event) => {
+              if (vaultRoot === null || event.target !== event.currentTarget) return;
+              event.preventDefault();
+              showContextMenu(event.clientX, event.clientY, null);
+            }}
+          >
+            {rowElements}
+          </div>
+        </>
       )}
       {vaultRoot !== null && (
-        <footer className="shrink-0 border-t border-hairline px-[14px] py-2">
-          <span className="block min-w-0 truncate font-mono text-meta text-text-muted" {...tooltipTarget(vaultRoot, { whenTruncated: true })}>
-            {displayPath(vaultRoot)}
+        /* The *footer identity block*. The tile is `--bg-elevated`, never `--accent-soft`:
+           ADR 0036 exempts the mark itself, not a fill behind it. */
+        <footer className="flex shrink-0 items-center gap-2 border-t border-hairline px-[14px] py-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-item bg-elevated">
+            <AcidantheraMarkGlyph className="h-[18px] w-[16px] text-text-secondary" />
           </span>
+          <span className="flex min-w-0 flex-col" {...tooltipTarget(displayPath(vaultRoot))}>
+            <span className="truncate font-sans text-ui text-text-primary">{vaultName}</span>
+            <span className="truncate font-mono text-meta text-text-muted">
+              {noteCount} {noteCount === 1 ? 'note' : 'notes'}
+            </span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-6 w-6 shrink-0 p-0"
+            aria-label="Settings"
+            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Icon icon={Settings} size={15} />
+          </Button>
         </footer>
       )}
     </aside>

@@ -1,6 +1,26 @@
 import { Icon, X } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/stores/app-store';
 import type { EditorBuffer } from '@/stores/editor-store';
+
+/**
+ * How much horizontal room the native traffic lights need, measured from the window's left edge.
+ *
+ * `trafficLightPosition` is static config with no runtime setter in tauri 2.11.5, so the lights
+ * cannot move when the sidebar collapses to 40px. Insetting this strip's left edge is the only
+ * lever (spec decision 17, ADR 0035).
+ *
+ * Derived from the measurements already recorded for this build rather than re-measured: the
+ * close button's frame origin is x = 9 (`tauri.conf.json`) and its drawn circle's centre x = 15.5
+ * (glossary: *traffic light inset*), so a button's drawn half-width is 6.5. macOS spaces the three
+ * buttons 20px apart centre-to-centre, putting the zoom button's centre at 55.5 and its right edge
+ * at 62. The remaining 14px is the sidebar's own horizontal padding, so the first tab clears the
+ * lights by the same gutter every other sidebar row uses.
+ */
+const TRAFFIC_LIGHT_CLEARANCE = 76;
+
+const SIDEBAR_WIDTH_EXPANDED = 224;
+const SIDEBAR_WIDTH_COLLAPSED = 40;
 
 interface EditorTabsProps {
   buffers: readonly EditorBuffer[];
@@ -9,12 +29,28 @@ interface EditorTabsProps {
   onClose: (bufferId: string) => void;
 }
 
-/** Accessible session-buffer navigation, kept separate from the mounted editor views. */
+/**
+ * The viewer's *chrome strip*: accessible session-buffer navigation, kept separate from the
+ * mounted editor views, on the 40px band the dissolved title bar used to occupy (ADR 0035).
+ *
+ * It reserves its height even at zero buffers so the editor never slides up under the traffic
+ * lights (decision 18), and carries the window drag region so the window drags from here as well
+ * as from the sidebar's strip (decision 31). Tabs stay clickable through Tauri's clickable-tag
+ * exemption — the drag attribute never goes on a button.
+ */
 export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: EditorTabsProps) {
-  if (buffers.length === 0) return null;
+  const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
+  const sidebarWidth = sidebarExpanded ? SIDEBAR_WIDTH_EXPANDED : SIDEBAR_WIDTH_COLLAPSED;
+  const leftInset = Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
 
   return (
-    <div role="tablist" aria-label="Open files" className="flex shrink-0 overflow-x-auto border-b border-hairline bg-panel">
+    <div
+      role="tablist"
+      aria-label="Open files"
+      data-tauri-drag-region="deep"
+      className="flex h-[var(--rail-titlebar)] shrink-0 overflow-x-auto border-b border-hairline bg-panel"
+      style={{ paddingLeft: leftInset }}
+    >
       {buffers.map((buffer) => {
         const active = buffer.id === activeBufferId;
         return (
