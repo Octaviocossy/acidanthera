@@ -27,6 +27,10 @@ pub struct VaultEntry {
     pub name: String,
     pub path: String,
     pub is_dir: bool,
+    /// Last modification time in milliseconds since the Unix epoch, for notes only — a directory
+    /// row renders a note count, never a time. `None` whenever the lookup fails, so one unreadable
+    /// timestamp degrades a single sidebar row instead of failing the whole tree.
+    pub modified: Option<u64>,
     pub children: Option<Vec<VaultEntry>>,
 }
 
@@ -437,6 +441,7 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
                 name,
                 path: path.to_string_lossy().into_owned(),
                 is_dir: true,
+                modified: None,
                 children: Some(build_tree_at(&path, false)?),
             });
         } else if file_type.is_file() && path.extension().is_some_and(|ext| ext == "md") {
@@ -448,6 +453,7 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
                 name: display_name,
                 path: path.to_string_lossy().into_owned(),
                 is_dir: false,
+                modified: modified_millis(&entry),
                 children: None,
             });
         }
@@ -458,6 +464,17 @@ fn build_tree_at(dir: &Path, is_root: bool) -> VaultResult<Vec<VaultEntry>> {
     entries.sort_by_cached_key(|entry| (!entry.is_dir, entry.name.to_lowercase()));
 
     Ok(entries)
+}
+
+/// Reads `entry`'s last modification time as milliseconds since the Unix epoch. Every step can
+/// fail — an unreadable `metadata`, a platform without `modified`, a timestamp before the epoch —
+/// and each failure yields `None` rather than propagating, because a note whose time is unknown is
+/// still a note the sidebar must show.
+fn modified_millis(entry: &fs::DirEntry) -> Option<u64> {
+    let modified = entry.metadata().ok()?.modified().ok()?;
+    let since_epoch = modified.duration_since(std::time::UNIX_EPOCH).ok()?;
+
+    Some(since_epoch.as_millis() as u64)
 }
 
 /// Recursively collects visible Markdown notes, skipping hidden and symlinked entries. The root's
@@ -1623,11 +1640,33 @@ mod tests {
     }
 
     #[test]
+    fn build_tree_should_carry_a_modified_time_for_notes_but_not_directories() {
+        let root = temp_root("tree-modified");
+        fs::create_dir(root.join("folder")).expect("creates directory");
+        fs::write(root.join("note.md"), "body").expect("writes note");
+
+        let entries = build_tree(&root).expect("builds tree");
+        let directory = entries
+            .iter()
+            .find(|entry| entry.name == "folder")
+            .expect("finds the directory");
+        let note = entries
+            .iter()
+            .find(|entry| entry.name == "note")
+            .expect("finds the note");
+
+        assert!(note.modified.is_some(), "a note carries its mtime");
+        assert_eq!(directory.modified, None, "a directory renders a count");
+        fs::remove_dir_all(&root).expect("cleans up");
+    }
+
+    #[test]
     fn vault_entry_should_serialize_to_the_frontend_contract() {
         let entry = VaultEntry {
             name: "notes".into(),
             path: "/vault/notes".into(),
             is_dir: true,
+            modified: None,
             children: Some(Vec::new()),
         };
 
@@ -1635,7 +1674,25 @@ mod tests {
 
         assert_eq!(
             value,
-            serde_json::json!({ "name": "notes", "path": "/vault/notes", "isDir": true, "children": [] })
+            serde_json::json!({ "name": "notes", "path": "/vault/notes", "isDir": true, "modified": null, "children": [] })
+        );
+    }
+
+    #[test]
+    fn vault_entry_should_serialize_a_note_modified_time_as_a_number() {
+        let entry = VaultEntry {
+            name: "note".into(),
+            path: "/vault/note.md".into(),
+            is_dir: false,
+            modified: Some(1_757_000_000_000),
+            children: None,
+        };
+
+        let value = serde_json::to_value(entry).expect("serializes");
+
+        assert_eq!(
+            value,
+            serde_json::json!({ "name": "note", "path": "/vault/note.md", "isDir": false, "modified": 1_757_000_000_000_u64, "children": null })
         );
     }
 

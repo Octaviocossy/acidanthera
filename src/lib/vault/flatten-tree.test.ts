@@ -3,11 +3,11 @@ import type { VaultEntry } from '@/services/vault.service';
 import { flattenVisibleTree } from './flatten-tree';
 
 function file(name: string, path = name): VaultEntry {
-  return { name, path, isDir: false, children: null };
+  return { name, path, isDir: false, modified: null, children: null };
 }
 
 function dir(name: string, children: VaultEntry[] | null, path = name): VaultEntry {
-  return { name, path, isDir: true, children };
+  return { name, path, isDir: true, modified: null, children };
 }
 
 describe('flattenVisibleTree', () => {

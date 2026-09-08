@@ -48,7 +48,7 @@ describe('Viewer', () => {
   });
 
   it('shows a neutral empty-editor line when the vault has notes', () => {
-    useSidebarStore.setState({ tree: [{ name: 'note.md', path: '/vault/note.md', isDir: false, children: null }] });
+    useSidebarStore.setState({ tree: [{ name: 'note.md', path: '/vault/note.md', isDir: false, modified: null, children: null }] });
 
     render(<Viewer />);
 
