@@ -96,7 +96,6 @@ function NavRow({
 export function Sidebar() {
   useSidebarKeymap();
 
-  const isActive = useAppStore((state) => state.activeRegion === 'sidebar');
   const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const agentOpen = useAppStore((state) => state.agentOpen);
@@ -347,10 +346,7 @@ export function Sidebar() {
   const noteCount = countNotes(tree);
 
   return (
-    <aside
-      className={cn('flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col border-r bg-panel', isActive ? 'border-border-strong' : 'border-hairline')}
-      aria-label="Vault explorer"
-    >
+    <aside className="flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col bg-panel" aria-label="Vault explorer">
       <SidebarChromeStrip />
       <div className="flex items-center justify-between gap-1 px-[14px] pb-2">
         <AcidantheraMarkGlyph className="text-text-secondary" />
