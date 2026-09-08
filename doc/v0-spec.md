@@ -38,7 +38,7 @@ Personal tool, *scratch-your-own-itch* philosophy (Linus-style). Not a product f
 
 ### v0 (in development)
 - Vim-first markdown editor over a local vault of plain `.md` files.
-- File sidebar + central viewer + invocable AI chat.
+- File sidebar + central viewer + invocable agent panel.
 - Agent via headless CLI (Claude Code **or** Codex), rendered as native UI.
 - Zero auth, zero sync.
 
@@ -75,7 +75,7 @@ v0 has no user authentication and no synchronization: no login, no accounts, no 
 Vim is a pillar from day one. Two **deliberately separate** systems:
 
 - **(a) Vim inside the editor** → `@replit/codemirror-vim` extension over CodeMirror 6. Handled by the lib (hjkl, insert/normal/visual modes, `:w`, etc.).
-- **(b) App-level global vim** → navigating without a mouse between the layout regions (sidebar, viewer, chat when open). **Not a lib**: it's a custom focus-management + global keymap system (state machine: one active region, one global mode, plus the chat's open/closed state). It's the most custom piece of the project and is built **first**; the regions hang off it.
+- **(b) App-level global vim** → navigating without a mouse between the layout regions (sidebar, viewer, agent when open). **Not a lib**: it's a custom focus-management + global keymap system (state machine: one active region, one global mode, plus the agent panel's open/closed state). It's the most custom piece of the project and is built **first**; the regions hang off it.
 
 **CodeMirror coexistence rule** (what makes it "feel right"):
 1. Outside the editor: the global layer handles everything (hjkl within the region, `:` for the command-line, region jumps).
@@ -106,7 +106,7 @@ When choosing an external agent, the model comes **tied** to its provider.
 Both families live behind a single interface, `AgentBackend`. The UI always talks to that interface and doesn't know which engine is behind it.
 
 ### 4.3 Central contract — `AgentEvent`
-The piece designed from v0 (even though native-providers arrive later). Each backend translates its native stream into this common vocabulary via an **adapter**. The chat panel consumes **only** `AgentEvent` and never touches any engine's raw JSON.
+The piece designed from v0 (even though native-providers arrive later). Each backend translates its native stream into this common vocabulary via an **adapter**. The agent panel consumes **only** `AgentEvent` and never touches any engine's raw JSON.
 
 > **Adapters are the system's growth point.** Over time more are added to support more engines and models; the result (`AgentEvent`) is always the same. Adding an engine = writing an adapter, **never** touching the UI.
 
@@ -163,12 +163,14 @@ The agent and the editor can touch the same file. **v0 decision:** the agent is 
 ### 5.0 Layout — Obsidian-style
 Three-region structure, left to right:
 
-- **Sidebar (left):** collapsible folder-and-file explorer of the vault.
+- **Sidebar (left):** the vault explorer, and — since ADR 0035 — the host of *every* global control. It never unmounts: collapsing it yields a 40px **sidebar rail**, not a hidden region. Above the tree sit the brand row and the **primary nav** (`New note`, `New folder`, `Agent`), each row carrying its chord as a persistent unboxed `Kbd`; below it the **footer identity block** carries the vault name, its recursive note count, and Settings. Because that footer is hidden at 40px, the rail pins its own Settings control beneath the expand toggle, find, the two create buttons, the Agent `✦`, and one glyph per root entry.
 - **Central viewer:** the open file (markdown editor). The widest region.
-- **AI chat (right):** an **invocable** panel in split view — when opened, the viewer shrinks and both stay visible side by side (not an overlay). Separated by a thin divider.
-- **Floating AI button (FAB):** top-right corner, opens/closes the chat. Implemented as the design system's `AiFab`; its ember glyph is one of the sanctioned places the AI accent appears (§5.6), alongside the send button, active model pill, running tool chip, agent-turn glyph, and dirty-note dot. The chat panel carries **no header chrome** — no rule, no title — so the FAB floats over its top row beside the model pill.
+- **Agent panel (right):** an **invocable** panel in split view — when opened, the viewer shrinks and both stay visible side by side (not an overlay).
+- **Chrome strip (top):** the 40px band the native traffic lights sit on. It is deliberately **not** a component — the sidebar renders its own bare drag strip and `EditorTabs` is the viewer's, so nothing has to track the sidebar's width to keep the seam aligned through expand and collapse (ADR 0035). It carries no state and no controls, and **there is no titlebar**.
 
-The chat is a region with open/closed state within the focus state machine (§3.4). The graph is no longer a permanent panel (§5.4).
+The viewer and the agent panel each render as an **inset card**: a `--radius-panel` card of `--bg-canvas` set into a `--bg-panel` gutter that runs continuously from the sidebar, so sidebar and chrome read as one surface. The card is bounded by a **hairline in both themes, never a shadow** — it is inset into the ground rather than elevated above it — and that hairline steps to `--border-strong` while its region is focused, which is how a focused region reads now that no edge is shared. Editor tabs sit detached above the card as `--radius-tab` chips.
+
+The AI entry point is the primary nav's **Agent** row, whose `✦` is one of the sanctioned places the AI accent appears (§5.6). The agent panel is a region with open/closed state within the focus state machine (§3.4). The graph is no longer a permanent panel (§5.4).
 
 ### 5.1 Markdown editor / viewer
 It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/react-md-editor`: since vim is a pillar from v0 and react-md-editor doesn't run on CM6, starting on the final target is cheaper than migrating. Accepted cost: building preview/toolbar by hand.
@@ -177,14 +179,20 @@ It starts **directly on CodeMirror 6** (`@uiw/react-codemirror`), not on `@uiw/r
 - `@replit/codemirror-vim` API (v6.x): `vim()` goes first; `getCM(view)` gives access to the legacy API; `Vim.defineEx` registers ex-commands; the `vim-mode-change` event feeds the mode indicator.
 - Monochrome aesthetic driven by the **acidanthera Design System** (§5.6): the CodeMirror 6 theme reads the same CSS variables as the rest of the app (surfaces, the four text tiers, and JetBrains Mono for content), so editor and chrome stay visually identical. UI chrome uses Geist. Preview/toolbar are built by hand with Tailwind + shadcn primitives; inline `[[wikilinks]]` render via the `Wikilink` component (underline + hover, no color).
 
-### 5.2 AI chat (invocable panel)
-- Opens/closes with the FAB or a keyboard shortcut; split view next to the viewer.
+### 5.2 Agent panel (invocable)
+- Opens/closes from the primary nav's **Agent** row (§5.0) or `Ctrl-w c`; split view next to the viewer.
 - Spawns the selected `AgentBackend`. v0: selector between Claude Code and Codex CLI.
-- Renders the `AgentEvent` stream as native UI (chat + tool-call chips), not a terminal — via the design system's `ai/*` components: `ChatMessage`, `ToolChip`, and `ChatInput`, with the `AiFab` toggle (§5.6). The event → component mapping is in §5.6.
+- Renders the `AgentEvent` stream as native UI (transcript + tool-call chips), not a terminal — via the design system's `ai/*` components: `ChatMessage`, `ToolChip`, and `ChatInput` (§5.6). The event → component mapping is in §5.6.
 - Input for user turns; backend selector.
 
+> The rename to *agent* covers the **region and panel only**. The transcript and its persistence stay `chat`: `useChatStore`, `ChatFile`, `.acidanthera/chats/`, the `global.toggle-chat` command id, and the `chat.history` keymap layer all keep the old name, so no `keymaps.toml` breaks and no vault needs migrating.
+
 ### 5.3 File sidebar
-Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files. Rows use the design system's `FileTreeItem` (§5.6), which encodes the two vim selection states from §3.4: `active` (the open file — `--bg-elevated` with primary text) and `cursor` (the vim keyboard cursor — `--bg-hover` with secondary text). An unchanged row is transparent and moves to `--bg-hover` on pointer hover.
+Collapsible folder-and-file explorer of the vault, refreshed via the file-watcher whenever the agent (or the user) writes or modifies files. Rows use the design system's `FileTreeItem` (§5.6).
+
+A **note row** is two lines — its title, then `edited <relative>` in muted mono metadata. A **directory row** is one muted line whose trailing number counts the notes beneath it at any depth. The asymmetry is what makes a folder read as a subdued group header inside what is still a tree rather than a two-level grouped list. A note whose mtime cannot be read renders **no** meta line rather than a placeholder, and an inline name input occupies the full two-line height with its meta line blank, so naming or renaming a note never shifts the list. The folder count is hidden from the row's accessible name — it only summarizes child rows the tree already enumerates — while the edited time is not, existing nowhere else.
+
+`FileTreeItem` also encodes the two vim selection states from §3.4: `active` (the open file — `--bg-elevated` with primary text) and `cursor` (the vim keyboard cursor — `--bg-hover` with secondary text). An unchanged row is transparent and moves to `--bg-hover` on pointer hover.
 
 ### 5.4 Neural tree / Graph view (invocable view, post-v0)
 A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges = links between notes.
@@ -193,7 +201,7 @@ A view that opens (not a permanent panel, Obsidian-style). Nodes = files, edges 
 - **Render: cosmos** (GPU rendering), chosen for scaling to large vaults over a naive d3-force.
 
 ### 5.5 Keyboard-first / vim keys
-- The whole app usable with the keyboard only (§3.4), including opening/closing the chat.
+- The whole app usable with the keyboard only (§3.4), including opening/closing the agent panel.
 - Toggle: vim starts **enabled by default** in v0. The toggle (and other preferences) will live in a future settings modal; v0 doesn't build that UI yet.
 
 ### 5.6 Design system & styling
@@ -205,23 +213,26 @@ acidanthera's visual layer is the **acidanthera Design System**, from Claude Des
 - **Surfaces:** the five-step ladder is `--bg-canvas` (`#0b0c0d`) → `--bg-panel` → `--bg-surface` → `--bg-elevated` → `--bg-hover`. The editor canvas is deliberately darker than the sidebar panel; this contrast is load-bearing.
 - **Text:** `--text-primary`, `--text-body`, `--text-secondary`, and `--text-muted`. `--text-body` is editor prose specifically; primary is for headings and active rows.
 - **Borders:** `--border-hairline` for seams and dividers, `--border` for controls and cards, and `--border-strong` for focused outlines and modal edges.
-- **Accent:** ember is `#e8683a` in dark and `#f54e00` in light. It means *the AI acted here* and nothing else; see ADR 0007. Its sanctioned uses are the FAB and agent-turn glyphs, Send, the active model pill, a running tool chip, and the dirty-note dot. Diff colors retain their separate directional meaning.
+- **Accent:** ember is `#e8683a` in dark and `#f54e00` in light. It means *the AI acted here* and nothing else; see ADR 0007. Its sanctioned uses are the primary nav's **Agent** `✦` and agent-turn glyphs, Send, the active model pill, a running tool chip, and the dirty-note dot — plus, at disabled opacity, an AI action that is offered but not yet available. **The brand mark is the exception:** it is identity rather than signal, so the accent system does not apply to it at all and its ember ring renders wherever the mark renders — app icon, favicon, sidebar brand row, footer identity tile, and the collapsed rail (ADR 0036, superseding ADR 0032). The exemption covers the mark, never a fill behind it: the footer tile is `--bg-elevated`, never `--accent-soft`. `--danger` is the app's only other colored fill and marks the destructive path (ADRs 0015, 0018). Diff colors retain their separate directional meaning.
 - **Typography:** Geist is the UI-chrome face; JetBrains Mono is for content and metadata. Headings stop at weight 500; 600 is reserved for strong inline emphasis. The semantic type scale lives in `typography.css`.
 - **Radii:** the eight-step semantic ladder is `--radius-kbd`, `--radius-btn`, `--radius-item`, `--radius-tab`, `--radius-card`, `--radius-panel`, `--radius-modal`, and `--radius-pill`, named for what each token wraps.
 - **Themes:** dark midnight and light parchment are keyed by `data-theme` and applied by `useApplyTheme`; there is no container theme class.
 
 #### Geometry, elevation, and iconography
 
-- **Rails:** sidebar 224px · chat 340px · titlebar 40px · FAB 40px. There is no status bar: editor state renders in the editor's bottom-right status cluster, while the titlebar hosts the sidebar re-show, find, and settings controls.
-- **Elevation:** dark mode uses hairline borders rather than shadows, except window and overlay drops. Light mode uses warm shadows only, never cool-tinted shadows. The scrim is `rgba(5,6,7,.55)` with no backdrop blur.
+- **Rails:** sidebar 224px (`--rail-sidebar`) · collapsed rail 40px (`--rail-sidebar-collapsed`) · agent panel 340px (`--rail-agent`) · chrome strip 40px (`--rail-titlebar`, which keeps its name having outlived the component it was named for — ADR 0035). There is no status bar **and no titlebar** (ADRs 0009, 0035): editor state renders in the editor's bottom-right status cluster, and every global control lives in the sidebar — in the primary nav, the brand row, the footer identity block, or, while collapsed, the rail.
+- **Elevation:** dark mode uses hairline borders rather than shadows, except window and overlay drops. Light mode uses warm shadows only, never cool-tinted shadows. The scrim is `rgba(5,6,7,.55)` with no backdrop blur. An **inset card** (§5.0) is bounded by a hairline in *both* themes and never a shadow: it is set into the ground, not raised above it.
 - **Motion:** short 150ms fades, no bounce; hover moves one surface step up.
-- **Glyphs:** `✦` AI · `◈` context/file · `⌕` search · `▸`/`▾` disclosure · `＋` add · `·` separator. Unicode glyphs are first-class icons. Drawn icons are hand-tuned at 15px on a 16 viewBox with a 1.2 stroke and `currentColor`; do not add an icon dependency.
+- **Glyphs:** `✦` AI · `◈` context/file · `⌕` search · `＋` add · `·` separator. These are **characters that live inside text** — chip prefixes, section-label marks, message glyphs — not an icon set; they are typography and they stay characters.
+- **Icons:** every *drawn* icon comes from Lucide through the `Icon` primitive, which is the only place the house spec is set — `strokeWidth={1.2}` with `absoluteStrokeWidth`, so the stroke reads 1.2px at any size, over Lucide's matching `currentColor`, no fill, and round caps and joins (ADR 0017). `AcidantheraMarkGlyph` is the single hand-drawn SVG that survives, because a brand mark is not an icon and no library ships it. Disclosure (`▸`/`▾`) is a rotated Lucide chevron, not a character.
 
 #### Component inventory
 
-`src/components/ui/` contains the five store-free primitives: `Kbd`, `SectionLabel`, `Chip`, `Switch`, and `Segmented`, plus `Button` and `Badge`. `Button` has `primary`, `secondary`, and `ghost` variants; `primary` is reserved for AI actions. `FileTreeItem` and `EditorTabs` deliberately remain store-aware application components rather than design primitives. The layout, editor, vault, overlay, and AI components compose these rules but are not promoted to generic primitives.
+`src/components/ui/` contains the store-free presentational primitives `Button`, `Kbd`, `SectionLabel`, `Chip`, `Switch`, `Segmented`, `Modal`, `Icon`, and `Tooltip`. `Button` has `primary`, `danger`, `secondary`, and `ghost` variants; the two filled variants are the app's only colored buttons — `primary` is reserved for AI actions and `danger` for the confirming click of a destructive dialog, and they never appear together. `Chip` is the only label-shaped primitive: the square label chip it replaced was deleted once it had no consumer, so a bordered mono label box is no longer part of the vocabulary. `Modal` is the one primitive with a side effect — it registers the modal keymap layer. `Tooltip` is the sidebar's app-drawn hover reveal and takes a `ReactNode`, so anything store-derived is resolved by its caller. `FileTreeItem` and `EditorTabs` deliberately remain store-aware application components rather than design primitives. The layout, editor, vault, overlay, and AI components compose these rules but are not promoted to generic primitives.
 
-For implementation and review guidance, use the vendored `acidanthera-design` skill. ADRs 0006–0008 record the token-vocabulary, AI-accent, and titlebar decisions.
+One more rule a reviewer needs: the **primary nav** is the single surface in the app that renders a chord *persistently*, as an unboxed `Kbd` in the row rather than on hover. Every user-facing chord — there and everywhere else — is read from the resolved keymap, never written as a string literal.
+
+For implementation and review guidance, use the vendored `acidanthera-design` skill. ADRs 0006–0008 record the token-vocabulary, AI-accent, and app-drawn-chrome decisions; ADR 0009 retires the status bar, ADR 0017 replaces the hand-drawn icons with Lucide, and ADRs 0035–0036 dissolve the titlebar into per-region chrome strips and exempt the brand mark from the accent system.
 
 ---
 
@@ -229,7 +240,7 @@ For implementation and review guidance, use the vendored `acidanthera-design` sk
 
 The full loop, in a single window:
 
-1. You ask the agent something from the chat (e.g. "write a brief on X reading my notes on Y").
+1. You ask the agent something from the agent panel (e.g. "write a brief on X reading my notes on Y").
 2. The agent reads vault notes (Read/Grep/Glob) and writes a new brief as `.md`.
 3. The file-watcher detects the change: the brief appears in the sidebar (and in the graph) with no intervention.
 4. You open it in the editor and manually distill it into atomic notes (the personal judgment step).
@@ -267,6 +278,10 @@ The agent writes to the vault → it appears in the sidebar. Full loop, one wind
 ---
 
 ## 8. Decision log
+
+> Historical record: each row states the decision **as it was taken**, not the system as it stands
+> today. Where a row and a live section disagree, the live section wins — §5.6 supersedes the
+> design-system, typeface, and accent rows, and §5.0 supersedes the layout row.
 
 | Topic | Decision | Status |
 |---|---|---|

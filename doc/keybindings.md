@@ -19,7 +19,7 @@ A single shared window-level dispatcher (`src/lib/keymap/dispatcher.ts`) resolve
 below — there is no longer one independent `keydown` listener per region. It walks layers in a
 fixed precedence order, **first match wins, with no fallthrough**: the editor (CodeMirror, which
 wins by DOM event-propagation order before the dispatcher ever runs), then the modal layer, then
-the active region (sidebar or the chat's History tab), then global. The modal layer additionally
+the active region (sidebar or the agent panel's History tab), then global. The modal layer additionally
 **swallows** every keydown it does not match while it is active (invariant 25, ADR 0014) — which
 is why sidebar chords are inert underneath a dialog. A chord sequence like `Ctrl-w` `f` arms a 1.5s
 pending window for its next step; any non-continuing key, the window expiring, or the owning
@@ -120,7 +120,8 @@ yank behavior above, standard `@replit/codemirror-vim` keys (insert `i`/`a`/`o`,
 replace `R`, `Esc`, motions, operators like `d`/`c`, other ex-commands, etc.) work unmodified. See
 the [`@replit/codemirror-vim` project](https://github.com/replit/codemirror-vim) for the full vim
 key reference rather than this doc. The editor's bottom-right status cluster shows its live
-line and column plus a badge reflecting the current vim submode.
+line and column plus the current vim submode, both as bare mono metadata — the submode carries no
+box, border, or fill.
 
 ## Agent
 
