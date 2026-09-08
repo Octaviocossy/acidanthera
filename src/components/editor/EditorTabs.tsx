@@ -10,16 +10,17 @@ import type { EditorBuffer } from '@/stores/editor-store';
  * cannot move when the sidebar collapses to 40px. Insetting this strip's left edge is the only
  * lever (spec decision 17, ADR 0035).
  *
- * Measured from a screenshot of this build, not derived — the derivation this replaced assumed
- * macOS spaces the buttons 20px apart centre-to-centre and was 6px short. The three buttons
- * actually measure x 9-22, 32-45 and 55-68, i.e. centres 15.5 / 38.5 / 61.5 at **23px** spacing,
- * so the zoom button's right edge is 68. The close button's 9 / 15.5 matches the figures already
- * recorded in the glossary (*traffic light inset*), which corroborates the measurement.
+ * Measured from a screenshot of this build, never derived. The three buttons occupy x 14-27,
+ * 37-50 and 60-73, i.e. centres 20.5 / 43.5 / 66.5 at **23px** spacing, so the zoom button's
+ * right edge is 73. Re-measuring is not ceremony: the arithmetic has been wrong twice — #131
+ * assumed the `x` origin and #144 assumed 20px spacing and landed 6px short — and it happened
+ * to agree only because `trafficLightPosition.x` moved 9 → 14 and the cluster shifted rigidly.
  *
- * 68 + 14 = 82, the 14px being the sidebar's own horizontal padding (`px-[14px]`), so the first
- * tab clears the lights by the same gutter every other sidebar row uses.
+ * 73 + 14 = 87, the 14px being the sidebar's own horizontal padding (`px-[14px]`), so the first
+ * tab clears the lights by the same gutter every other sidebar row uses — and, since `x` is now
+ * that same 14, the lights start in that gutter too rather than hugging the window edge.
  */
-const TRAFFIC_LIGHT_CLEARANCE = 82;
+const TRAFFIC_LIGHT_CLEARANCE = 87;
 
 const SIDEBAR_WIDTH_EXPANDED = 224;
 const SIDEBAR_WIDTH_COLLAPSED = 40;
@@ -73,10 +74,14 @@ export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: Edi
               className="flex items-center gap-2 px-[14px] py-[7px] font-mono text-[12px] outline-none focus-visible:ring-1 focus-visible:ring-border-strong"
               onClick={() => onActivate(buffer.id)}
             >
-              {/* Only the active chip carries the file icon; an inactive one is name-only, and
-                  reveals its `×` on hover (decision 42). The dirty dot is untouched and renders on
-                  both — it is one of the two indicators invariant 21 permits the ember. */}
-              {active && <Icon icon={FileText} size={15} />}
+              {/* Every chip carries the file icon, reversing the icon clause of decision 42: an
+                  active-only icon changes the chip's width on activation, reflowing the whole strip
+                  on every tab switch. The icon inherits the chip's colour, so it dims with the label
+                  rather than encoding active/inactive a fourth time. The `×` stays hover-only on an
+                  inactive chip — that half of decision 42 is what its noise rationale supports — and
+                  the dirty dot is untouched, being one of the two indicators invariant 21 permits
+                  the ember. */}
+              <Icon icon={FileText} size={15} />
               <span>{buffer.title}</span>
               {buffer.dirty && <span aria-hidden="true" className="h-[6px] w-[6px] rounded-pill bg-accent" />}
             </button>
