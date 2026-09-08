@@ -8,7 +8,7 @@ import { useKeymapStore } from '@/stores/keymap-store';
  * Vim-style `j`/`k`/`l`/`Enter` navigation over the agent panel's History tab (#71). Contributes
  * the `[chat.history]` layer to the shared window dispatcher (`src/lib/keymap/dispatcher.ts`,
  * epic #94 child #97) instead of running its own independent `keydown` listener — bindings come
- * from `useKeymapStore`'s resolved `keymaps.toml`. Active only while the chat is the focused
+ * from `useKeymapStore`'s resolved `keymaps.toml`. Active only while the agent panel is the focused
  * region, the app is in normal mode, and the History tab is showing.
  */
 export function useChatHistoryKeymap() {

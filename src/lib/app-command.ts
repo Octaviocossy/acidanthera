@@ -56,7 +56,7 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'global.focus-next', label: 'Focus next region', layer: 'global' },
   { id: 'global.focus-previous', label: 'Focus previous region', layer: 'global' },
   { id: 'global.toggle-sidebar', label: 'Toggle sidebar', layer: 'global' },
-  { id: 'global.toggle-chat', label: 'Toggle chat', layer: 'global' },
+  { id: 'global.toggle-chat', label: 'Toggle agent', layer: 'global' },
   { id: 'global.toggle-settings', label: 'Toggle settings', layer: 'global' },
   { id: 'global.command-mode', label: 'Enter command mode', layer: 'global' },
   { id: 'sidebar.cursor-down', label: 'Move cursor down', layer: 'sidebar' },
