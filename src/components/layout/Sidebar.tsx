@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search } from '@/components/ui/icon';
+import { Kbd } from '@/components/ui/kbd';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
 import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
+import { formatChord } from '@/lib/keymap/format-chord';
+import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
@@ -18,7 +21,18 @@ import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
+import { useKeymapStore } from '@/stores/keymap-store';
 import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
+
+/** A chrome control's hover reveal: its label, plus the live chord bound to its command. */
+function TooltipHint({ label, chord }: { label: string; chord?: string }) {
+  return (
+    <>
+      <span>{label}</span>
+      {chord !== undefined && <Kbd>{chord}</Kbd>}
+    </>
+  );
+}
 
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). */
 export function Sidebar() {
@@ -32,6 +46,8 @@ export function Sidebar() {
   const expandSidebar = useAppStore((state) => state.expandSidebar);
   const showFileFinder = useFileFinderStore((state) => state.show);
   const showContextMenu = useContextMenuStore((state) => state.show);
+  const globalBindings = useKeymapStore((state) => state.resolved.layers.global);
+  const sidebarBindings = useKeymapStore((state) => state.resolved.layers.sidebar);
 
   const tree = useSidebarStore((state) => state.tree);
   const expanded = useSidebarStore((state) => state.expanded);
@@ -89,10 +105,18 @@ export function Sidebar() {
     return (
       <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center gap-2 border-r border-hairline bg-panel py-3" aria-label="Vault explorer">
         <AcidantheraMarkGlyph className="text-text-secondary" />
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" title="Expand sidebar" onClick={expandSidebar}>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Expand sidebar" {...tooltipTarget('Expand sidebar')} onClick={expandSidebar}>
           <Icon icon={ChevronRight} size={15} />
         </Button>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          aria-label="Find file"
+          {...tooltipTarget(<TooltipHint label="Find file" chord={formatChord(globalBindings.get('global.find-file'))} />)}
+          aria-haspopup="dialog"
+          onClick={showFileFinder}
+        >
           <Icon icon={Search} size={15} />
         </Button>
         {vaultRoot !== null && (
@@ -102,7 +126,7 @@ export function Sidebar() {
               size="sm"
               className="h-6 w-6 p-0"
               aria-label="New note"
-              title="New note (a)"
+              {...tooltipTarget(<TooltipHint label="New note" chord={formatChord(sidebarBindings.get('sidebar.new-note'))} />)}
               onClick={() => {
                 expandSidebar();
                 startDraft('note');
@@ -115,7 +139,7 @@ export function Sidebar() {
               size="sm"
               className="h-6 w-6 p-0"
               aria-label="New folder"
-              title="New folder (A)"
+              {...tooltipTarget(<TooltipHint label="New folder" chord={formatChord(sidebarBindings.get('sidebar.new-directory'))} />)}
               onClick={() => {
                 expandSidebar();
                 startDraft('directory');
@@ -132,7 +156,7 @@ export function Sidebar() {
                     size="sm"
                     className={cn('h-6 w-6 shrink-0 p-0', entry.path === activeFilePath && 'bg-elevated text-text-primary')}
                     aria-label={entry.name}
-                    title={entry.name}
+                    {...tooltipTarget(entry.name)}
                     onClick={() => openRailEntry(entry)}
                   >
                     {entry.isDir ? <Icon icon={Folder} size={15} /> : <Icon icon={FileText} size={15} />}
@@ -225,20 +249,42 @@ export function Sidebar() {
       <div className="flex items-center justify-between gap-1 px-[14px] pt-[14px] pb-2">
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Find file" title="Find file (Ctrl-w f)" aria-haspopup="dialog" onClick={showFileFinder}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            aria-label="Find file"
+            {...tooltipTarget(<TooltipHint label="Find file" chord={formatChord(globalBindings.get('global.find-file'))} />)}
+            aria-haspopup="dialog"
+            onClick={showFileFinder}
+          >
             <Icon icon={Search} size={15} />
           </Button>
           {vaultRoot !== null && (
             <>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New note" title="New note (a)" onClick={() => startDraft('note')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                aria-label="New note"
+                {...tooltipTarget(<TooltipHint label="New note" chord={formatChord(sidebarBindings.get('sidebar.new-note'))} />)}
+                onClick={() => startDraft('note')}
+              >
                 <Icon icon={FilePlus} size={14} />
               </Button>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="New folder" title="New folder (A)" onClick={() => startDraft('directory')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                aria-label="New folder"
+                {...tooltipTarget(<TooltipHint label="New folder" chord={formatChord(sidebarBindings.get('sidebar.new-directory'))} />)}
+                onClick={() => startDraft('directory')}
+              >
                 <Icon icon={FolderPlus} size={14} />
               </Button>
             </>
           )}
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" title="Collapse sidebar" onClick={collapseSidebar}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" {...tooltipTarget('Collapse sidebar')} onClick={collapseSidebar}>
             <Icon icon={ChevronLeft} size={15} />
           </Button>
         </div>
@@ -265,7 +311,7 @@ export function Sidebar() {
       )}
       {vaultRoot !== null && (
         <footer className="shrink-0 border-t border-hairline px-[14px] py-2">
-          <span className="block min-w-0 truncate font-mono text-meta text-text-muted" title={vaultRoot}>
+          <span className="block min-w-0 truncate font-mono text-meta text-text-muted" {...tooltipTarget(vaultRoot, { whenTruncated: true })}>
             {displayPath(vaultRoot)}
           </span>
         </footer>

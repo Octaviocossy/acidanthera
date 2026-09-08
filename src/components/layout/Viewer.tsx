@@ -3,6 +3,7 @@ import { BufferEditor } from '@/components/editor/BufferEditor';
 import { CloseBufferDialog } from '@/components/editor/CloseBufferDialog';
 import { EditorTabs } from '@/components/editor/EditorTabs';
 import { Kbd } from '@/components/ui/kbd';
+import { useCommandChord } from '@/hooks/use-chord-title';
 import { saveBuffer } from '@/lib/editor/save-buffer';
 import { cn } from '@/lib/utils';
 import { displayPath } from '@/lib/vault/display-path';
@@ -28,6 +29,7 @@ export function Viewer() {
   const completeSaveRequest = useEditorStore((state) => state.completeSaveRequest);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const vaultTree = useSidebarStore((state) => state.tree);
+  const findFileChord = useCommandChord('global.find-file');
   const [closingBufferId, setClosingBufferId] = useState<string | null>(null);
   const closingBuffer = buffers.find((buffer) => buffer.id === closingBufferId);
 
@@ -68,7 +70,7 @@ export function Viewer() {
             <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
             <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
             <span className="font-mono text-meta text-text-muted">{vaultRoot === null ? '' : displayPath(vaultRoot)}</span>
-            <Kbd>Ctrl-w f</Kbd>
+            {findFileChord !== undefined && <Kbd>{findFileChord}</Kbd>}
           </div>
         ) : (
           buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)

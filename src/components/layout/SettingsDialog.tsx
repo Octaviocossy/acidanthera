@@ -10,9 +10,10 @@ import type { SettingsDiagnostic, ThemeName } from '@/services/settings.service'
 import { useAppStore } from '@/stores/app-store';
 import { useChatStore } from '@/stores/chat-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { KeymapsSettings } from './KeymapsSettings';
 
 const THEMES: ThemeName[] = ['dark', 'light'];
-const CATEGORIES = ['Appearance', 'Editor', 'Vault'] as const;
+const CATEGORIES = ['Appearance', 'Editor', 'Vault', 'Keymaps'] as const;
 type SettingsCategory = (typeof CATEGORIES)[number];
 
 function SettingsRow({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
@@ -195,6 +196,11 @@ export function SettingsDialog() {
                 </div>
               </SettingsRow>
             )}
+
+            {/* Deliberately not gated on `settings !== null && !syntaxError`, unlike the three
+                above: those guards concern `settings.toml`, and a broken `settings.toml` must not
+                hide the keymaps of an unrelated file. */}
+            {category === 'Keymaps' && <KeymapsSettings />}
           </div>
         </div>
       </div>

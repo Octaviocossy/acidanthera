@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseChord } from './chord';
-import { formatChord } from './format-chord';
+import { formatChord, formatChords } from './format-chord';
 
 describe('formatChord', () => {
   afterEach(() => {
@@ -28,5 +28,15 @@ describe('formatChord', () => {
     Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
 
     expect(formatChord([parseChord('mod-s')])).toBe('⌘S');
+  });
+});
+
+describe('formatChords', () => {
+  it('returns an empty list when a command has no binding', () => {
+    expect(formatChords(undefined)).toEqual([]);
+  });
+
+  it('formats every bound chord in order, not just the first', () => {
+    expect(formatChords([parseChord('l'), parseChord('enter')])).toEqual(['l', '⏎']);
   });
 });

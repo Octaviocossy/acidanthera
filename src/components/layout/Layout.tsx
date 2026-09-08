@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
 import { Titlebar } from '@/components/layout/Titlebar';
 import { ToastHost } from '@/components/layout/ToastHost';
+import { TooltipHost } from '@/components/layout/TooltipHost';
 import { Viewer } from '@/components/layout/Viewer';
 import { SidebarContextMenu } from '@/components/vault/SidebarContextMenu';
 import { useModalKeymap } from '@/hooks/use-modal-keymap';
@@ -29,6 +30,7 @@ export function Layout() {
         <CommandBar />
         <FileFinder />
         <SidebarContextMenu />
+        <TooltipHost />
         {/* Before ToastHost so toasts stay visible above the modal scrim. */}
         <SettingsDialog />
         <SwitchVaultDialog />

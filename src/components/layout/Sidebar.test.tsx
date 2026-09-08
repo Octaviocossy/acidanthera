@@ -1,9 +1,13 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveKeymap } from '@/lib/keymap/resolve';
+import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
 import { useAppStore } from '@/stores/app-store';
+import { useKeymapStore } from '@/stores/keymap-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { Sidebar } from './Sidebar';
+import { TooltipHost } from './TooltipHost';
 
 const { openVaultFile, readVaultTree, onVaultChanged } = vi.hoisted(() => ({
   openVaultFile: vi.fn(),
@@ -91,5 +95,96 @@ describe('Sidebar', () => {
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
 
     expect(useAppStore.getState().sidebarExpanded).toBe(false);
+  });
+
+  describe('hover reveal', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      useAppStore.setState({ sidebarExpanded: true });
+    });
+
+    afterEach(() => {
+      resetTooltip();
+      useKeymapStore.setState({ resolved: resolveKeymap(null) });
+      vi.useRealTimers();
+    });
+
+    it('reveals the full name of a clipped tree row once the hover delay elapses', () => {
+      render(
+        <>
+          <Sidebar />
+          <TooltipHost />
+        </>
+      );
+      const label = screen.getByText('readme.md');
+      Object.defineProperty(label, 'scrollWidth', { value: 200, configurable: true });
+      Object.defineProperty(label, 'clientWidth', { value: 100, configurable: true });
+
+      fireEvent.pointerOver(label);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent('readme.md');
+    });
+
+    it('reveals nothing for a tree row whose name already fits', () => {
+      render(
+        <>
+          <Sidebar />
+          <TooltipHost />
+        </>
+      );
+
+      fireEvent.pointerOver(screen.getByText('readme.md'));
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    it("reveals a chrome control's label beside the chord the resolved keymap currently binds", () => {
+      // Rebound rather than asserted against the default: the point of deriving the hint from
+      // the resolved keymap is that editing `keymaps.toml` changes what the reveal shows.
+      useKeymapStore.setState({ resolved: resolveKeymap({ 'sidebar.new-note': ['ctrl-n'] }) });
+      render(
+        <>
+          <Sidebar />
+          <TooltipHost />
+        </>
+      );
+
+      fireEvent.pointerOver(screen.getByRole('button', { name: 'New note' }));
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent('New noteCtrl+n');
+    });
+
+    it('dismisses an open reveal on a keydown, so it never floats above a keyboard-opened dialog', () => {
+      render(
+        <>
+          <Sidebar />
+          <TooltipHost />
+        </>
+      );
+      const label = screen.getByText('readme.md');
+      Object.defineProperty(label, 'scrollWidth', { value: 200, configurable: true });
+      Object.defineProperty(label, 'clientWidth', { value: 100, configurable: true });
+
+      fireEvent.pointerOver(label);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.keyDown(window, { key: 'd' });
+      });
+
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
   });
 });

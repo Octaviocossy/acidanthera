@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Icon, Settings } from '@/components/ui/icon';
+import { useChordTitle } from '@/hooks/use-chord-title';
 import { useAppStore } from '@/stores/app-store';
 
 export function Titlebar() {
@@ -7,6 +8,9 @@ export function Titlebar() {
   const openSettings = useAppStore((state) => state.openSettings);
   const chatOpen = useAppStore((state) => state.chatOpen);
   const toggleChat = useAppStore((state) => state.toggleChat);
+  // Hooks at the top of the component, never inside JSX conditionals.
+  const chatTitle = useChordTitle('Toggle AI chat', 'global.toggle-chat');
+  const settingsTitle = useChordTitle('Settings', 'global.toggle-settings');
 
   return (
     <header data-tauri-drag-region="deep" className="relative flex h-[var(--rail-titlebar)] shrink-0 items-center border-b border-hairline bg-surface">
@@ -29,14 +33,14 @@ export function Titlebar() {
           className="h-6 w-6 p-0 text-accent"
           aria-pressed={chatOpen}
           aria-label={chatOpen ? 'Close AI chat' : 'Open AI chat'}
-          title="Toggle AI chat (Ctrl-w c)"
+          title={chatTitle}
           onClick={toggleChat}
         >
           <span className="text-ui" aria-hidden="true">
             ✦
           </span>
         </Button>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Settings" title="Settings (Ctrl-w s)" aria-haspopup="dialog" onClick={openSettings}>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Settings" title={settingsTitle} aria-haspopup="dialog" onClick={openSettings}>
           <Icon icon={Settings} size={15} />
         </Button>
       </div>

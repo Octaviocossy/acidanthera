@@ -1,5 +1,6 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { ChevronRight, FileText, Folder, Icon } from '@/components/ui/icon';
+import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
 
 export interface FileTreeItemProps {
@@ -44,7 +45,9 @@ export function FileTreeItem({ label, kind, depth, active = false, cursor = fals
       ) : (
         <Icon icon={FileText} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
       )}
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="min-w-0 truncate" {...tooltipTarget(label, { whenTruncated: true })}>
+        {label}
+      </span>
       {changed && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-pill bg-accent" aria-hidden="true" />}
     </div>
   );
