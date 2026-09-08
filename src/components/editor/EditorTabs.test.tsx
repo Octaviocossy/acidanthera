@@ -61,7 +61,7 @@ describe('EditorTabs', () => {
     });
     rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
-    // 76px of clearance, minus the 40px rail the lights already sit on.
-    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '36px' });
+    // 82px of measured clearance, minus the 40px rail the lights already sit on.
+    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '42px' });
   });
 });

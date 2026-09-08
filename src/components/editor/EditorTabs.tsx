@@ -10,14 +10,16 @@ import type { EditorBuffer } from '@/stores/editor-store';
  * cannot move when the sidebar collapses to 40px. Insetting this strip's left edge is the only
  * lever (spec decision 17, ADR 0035).
  *
- * Derived from the measurements already recorded for this build rather than re-measured: the
- * close button's frame origin is x = 9 (`tauri.conf.json`) and its drawn circle's centre x = 15.5
- * (glossary: *traffic light inset*), so a button's drawn half-width is 6.5. macOS spaces the three
- * buttons 20px apart centre-to-centre, putting the zoom button's centre at 55.5 and its right edge
- * at 62. The remaining 14px is the sidebar's own horizontal padding, so the first tab clears the
- * lights by the same gutter every other sidebar row uses.
+ * Measured from a screenshot of this build, not derived — the derivation this replaced assumed
+ * macOS spaces the buttons 20px apart centre-to-centre and was 6px short. The three buttons
+ * actually measure x 9-22, 32-45 and 55-68, i.e. centres 15.5 / 38.5 / 61.5 at **23px** spacing,
+ * so the zoom button's right edge is 68. The close button's 9 / 15.5 matches the figures already
+ * recorded in the glossary (*traffic light inset*), which corroborates the measurement.
+ *
+ * 68 + 14 = 82, the 14px being the sidebar's own horizontal padding (`px-[14px]`), so the first
+ * tab clears the lights by the same gutter every other sidebar row uses.
  */
-const TRAFFIC_LIGHT_CLEARANCE = 76;
+const TRAFFIC_LIGHT_CLEARANCE = 82;
 
 const SIDEBAR_WIDTH_EXPANDED = 224;
 const SIDEBAR_WIDTH_COLLAPSED = 40;

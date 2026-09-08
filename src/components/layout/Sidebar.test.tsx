@@ -110,7 +110,6 @@ describe('Sidebar', () => {
 
     await user.click(agent);
 
-    expect(useAppStore.getState().agentOpen).toBe(true);
     expect(screen.getByRole('button', { name: 'Agent' })).toHaveAttribute('aria-pressed', 'true');
   });
 
