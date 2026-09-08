@@ -32,10 +32,10 @@ isn't inside an editable field (e.g. the command bar or chat input).
 
 | Keys | Command id | Action | Notes |
 |------|------------|--------|-------|
-| `Ctrl-w` then `h` | `global.focus-previous` | Move focus to the previous region | Region cycle: sidebar → viewer → chat → sidebar (wraps; `chat` only reachable if the chat panel is open) |
+| `Ctrl-w` then `h` | `global.focus-previous` | Move focus to the previous region | Region cycle: sidebar → viewer → agent → sidebar (wraps; `agent` only reachable if the agent panel is open) |
 | `Ctrl-w` then `l` | `global.focus-next` | Move focus to the next region | Same cycle, opposite direction |
 | `Ctrl-w` then `b` | `global.toggle-sidebar` | Expand/collapse the sidebar | |
-| `Ctrl-w` then `c` | `global.toggle-chat` | Toggle the chat panel open/closed | |
+| `Ctrl-w` then `c` | `global.toggle-chat` | Toggle the agent panel open/closed | The command id stays `global.toggle-chat`: the rename covers the region and panel only |
 | `Ctrl-w` then `s` | `global.toggle-settings` | Toggle the settings dialog | |
 | `Ctrl-w` then `f` | `global.find-file` | Open the file finder | |
 | `:` | `global.command-mode` | Enter command mode, opens the command bar | Only from normal mode |
@@ -122,9 +122,9 @@ the [`@replit/codemirror-vim` project](https://github.com/replit/codemirror-vim)
 key reference rather than this doc. The editor's bottom-right status cluster shows its live
 line and column plus a badge reflecting the current vim submode.
 
-## Chat
+## Agent
 
-The chat panel has two tabs: the live transcript (`Chat`) and a keyboard-navigable list of saved
+The agent panel has two tabs: the live transcript (`Chat`) and a keyboard-navigable list of saved
 conversations (`History`, #71).
 
 `Enter` in the chat input submits the message (no-op if empty or while a turn is in progress) —
@@ -132,7 +132,7 @@ this is in-input handling, not a dispatcher command.
 
 ### History tab (when focused)
 
-Active only while the chat region has focus, the app is in normal mode, and the History tab is
+Active only while the agent region has focus, the app is in normal mode, and the History tab is
 showing.
 
 | Keys | Command id | Action | Notes |

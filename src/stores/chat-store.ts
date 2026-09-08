@@ -204,7 +204,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       sessionStarted: false,
       pendingResume: countMessages(file.items) > 0,
     });
-    useAppStore.getState().openChat();
+    useAppStore.getState().openAgent();
   },
 
   loadChatById: async (id) => {

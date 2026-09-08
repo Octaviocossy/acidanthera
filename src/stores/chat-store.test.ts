@@ -232,7 +232,7 @@ describe('newChat', () => {
 });
 
 describe('loadChat', () => {
-  it('loads a saved thread into the store and opens the chat region', () => {
+  it('loads a saved thread into the store and opens the agent region', () => {
     const backend = fakeBackend('claude-code');
     registerBackend(backend);
     useChatStore.setState({ sessionStarted: true, modelId: 'sonnet-5' });
@@ -250,7 +250,7 @@ describe('loadChat', () => {
     expect(state.items).toHaveLength(1);
     expect(state.sessionStarted).toBe(false);
     expect(state.pendingResume).toBe(true);
-    expect(useAppStore.getState().chatOpen).toBe(true);
+    expect(useAppStore.getState().agentOpen).toBe(true);
   });
 
   it('keeps the current model when the file references an unknown model id', () => {

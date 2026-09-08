@@ -6,12 +6,12 @@ import { Titlebar } from './Titlebar';
 
 describe('Titlebar', () => {
   beforeEach(() => {
-    useAppStore.setState({ vaultRoot: null, settingsOpen: false, chatOpen: false });
+    useAppStore.setState({ vaultRoot: null, settingsOpen: false, agentOpen: false });
   });
 
   afterEach(() => {
     cleanup();
-    useAppStore.setState({ vaultRoot: null, settingsOpen: false, chatOpen: false });
+    useAppStore.setState({ vaultRoot: null, settingsOpen: false, agentOpen: false });
   });
 
   it('renders the open vault name', () => {
@@ -31,35 +31,35 @@ describe('Titlebar', () => {
     expect(screen.queryByText('—')).not.toBeInTheDocument();
   });
 
-  it('carries the chat toggle and settings, and nothing the sidebar rail owns', () => {
+  it('carries the agent toggle and settings, and nothing the sidebar rail owns', () => {
     render(<Titlebar />);
 
     expect(screen.queryByRole('button', { name: 'Show sidebar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Find file' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open AI chat' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open AI agent' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 
-  it('toggles the chat and reflects it in aria-pressed', async () => {
+  it('toggles the agent panel and reflects it in aria-pressed', async () => {
     const user = userEvent.setup();
     render(<Titlebar />);
-    const toggle = screen.getByRole('button', { name: 'Open AI chat' });
+    const toggle = screen.getByRole('button', { name: 'Open AI agent' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
     await user.click(toggle);
 
-    expect(useAppStore.getState().chatOpen).toBe(true);
-    expect(screen.getByRole('button', { name: 'Close AI chat' })).toHaveAttribute('aria-pressed', 'true');
+    expect(useAppStore.getState().agentOpen).toBe(true);
+    expect(screen.getByRole('button', { name: 'Close AI agent' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('closes an open chat', async () => {
+  it('closes an open agent panel', async () => {
     const user = userEvent.setup();
-    useAppStore.setState({ chatOpen: true });
+    useAppStore.setState({ agentOpen: true });
     render(<Titlebar />);
 
-    await user.click(screen.getByRole('button', { name: 'Close AI chat' }));
+    await user.click(screen.getByRole('button', { name: 'Close AI agent' }));
 
-    expect(useAppStore.getState().chatOpen).toBe(false);
+    expect(useAppStore.getState().agentOpen).toBe(false);
   });
 
   it('marks the whole titlebar as a window drag region', () => {
