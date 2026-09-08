@@ -26,7 +26,10 @@ describe('Viewer', () => {
     const findFileChord = formatChord(useKeymapStore.getState().resolved.layers.global.get('global.find-file'));
     expect(findFileChord).toBeDefined();
     expect(screen.getByText(findFileChord as string)).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    // The chrome strip still reserves its 40px, so the empty state never slides under the
+    // traffic lights — it just holds no tabs.
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.queryByText(/ln 1 · col 1/)).not.toBeInTheDocument();
     expect(screen.queryByText('normal')).not.toBeInTheDocument();
   });

@@ -18,8 +18,10 @@ interface GlyphProps {
  * applied to all six: a constant sagitta of 3.72, giving R 7.28 across the side edges and R 7.897
  * across the diagonals.
  *
- * It stays monochrome. The ember ring belongs to the app icon and favicon alone, which never
- * render inside the window — ember marks AI agency everywhere else (ADR 0032).
+ * The centre ring is ember, matching the app icon and the favicon, and renders wherever the mark
+ * renders — brand row, footer identity tile, and the collapsed rail included. The brand mark is
+ * **identity rather than signal**, so the accent system does not govern it at all (ADR 0036,
+ * superseding ADR 0032). The exemption covers the mark, never a fill behind it.
  */
 export function AcidantheraMarkGlyph({ className }: GlyphProps) {
   return (
@@ -37,7 +39,7 @@ export function AcidantheraMarkGlyph({ className }: GlyphProps) {
     >
       <path d="M12 .6 L23.4 7.65 L23.4 20.35 L12 27.4 L.6 20.35 L.6 7.65 Z" />
       <path d="M12 .6 A7.897 7.897 0 0 0 23.4 7.65 A7.28 7.28 0 0 0 23.4 20.35 A7.897 7.897 0 0 0 12 27.4 A7.897 7.897 0 0 0 .6 20.35 A7.28 7.28 0 0 0 .6 7.65 A7.897 7.897 0 0 0 12 .6 Z" />
-      <circle cx="12" cy="14" r="1.73" />
+      <circle cx="12" cy="14" r="1.73" className="stroke-accent" />
     </svg>
   );
 }
