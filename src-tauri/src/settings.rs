@@ -1,6 +1,7 @@
 //! Persisted user settings (epic #24, child #25; migrated to TOML for #96/epic #94): a
 //! `settings.toml` file in the platform app-config dir holding the agent model, editor font,
-//! theme, and vault path. Read once at boot by the frontend settings store; the dialog edits it
+//! theme, vault path, and daily-note folder. Read once at boot by the frontend settings store; the
+//! dialog edits it
 //! in place through `toml_edit`, preserving the user's comments and key order (ADR 0003). A
 //! legacy `settings.json` (the pre-#96 format) is migrated once at boot, before `config::init`'s
 //! first-run scaffold — see `lib.rs`.
@@ -46,6 +47,10 @@ fn default_theme() -> String {
     "dark".into()
 }
 
+fn default_daily_note_folder() -> String {
+    "daily".into()
+}
+
 /// The persisted user settings. Every field carries a `serde` default so a file written by an
 /// older version (or hand-edited with fields removed) still deserializes. `vault_path` defaults
 /// to the empty string as a sentinel — it needs an `AppHandle` to resolve, so `read_settings`
@@ -57,6 +62,7 @@ pub struct Settings {
     pub editor_font: String,
     pub theme: String,
     pub vault_path: String,
+    pub daily_note_folder: String,
 }
 
 impl Default for Settings {
@@ -66,6 +72,7 @@ impl Default for Settings {
             editor_font: default_editor_font(),
             theme: default_theme(),
             vault_path: String::new(),
+            daily_note_folder: default_daily_note_folder(),
         }
     }
 }
@@ -216,6 +223,34 @@ fn extract_model(table: &toml::Table, diagnostics: &mut Vec<SettingsDiagnostic>)
     }
 }
 
+/// Like `extract_string`, but a blank value is a degradation rather than a value: the folder is
+/// joined onto the vault root, so `""` would resolve to the root itself and scatter daily notes
+/// across the top of the vault. `vault_path` cannot share this rule — there the empty string is a
+/// deliberate sentinel meaning "resolve the default location".
+fn extract_daily_note_folder(
+    table: &toml::Table,
+    diagnostics: &mut Vec<SettingsDiagnostic>,
+) -> String {
+    match table.get("dailyNoteFolder") {
+        Some(toml::Value::String(value)) if !value.trim().is_empty() => value.clone(),
+        Some(toml::Value::String(_)) => {
+            diagnostics.push(SettingsDiagnostic::Field {
+                key: "dailyNoteFolder".to_string(),
+                message: "\"dailyNoteFolder\" cannot be empty; using the default".to_string(),
+            });
+            default_daily_note_folder()
+        }
+        Some(_) => {
+            diagnostics.push(wrong_type_diagnostic("dailyNoteFolder"));
+            default_daily_note_folder()
+        }
+        None => {
+            diagnostics.push(missing_diagnostic("dailyNoteFolder"));
+            default_daily_note_folder()
+        }
+    }
+}
+
 /// Parses `contents` as TOML, degrading per key rather than rejecting the whole document on a
 /// single bad value (spec decision 10). Only a genuine syntax error — the document doesn't parse
 /// as TOML at all — rejects everything and reports the line it starts on.
@@ -247,6 +282,7 @@ fn parse_settings(contents: &str) -> (Settings, Vec<SettingsDiagnostic>) {
         ),
         theme: extract_theme(table, &mut diagnostics),
         vault_path: extract_string(table, "vaultPath", "", &mut diagnostics),
+        daily_note_folder: extract_daily_note_folder(table, &mut diagnostics),
     };
     (settings, diagnostics)
 }
@@ -334,11 +370,16 @@ fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {
         "vaultPath",
         Value::from(settings.vault_path.clone()),
     );
+    set_field(
+        &mut doc,
+        "dailyNoteFolder",
+        Value::from(settings.daily_note_folder.clone()),
+    );
     write_atomic(file, &doc.to_string())
 }
 
 /// Writes a fresh `settings.toml` documenting each key's valid values, in the fixed
-/// model/editorFont/theme/vaultPath order. Used only for first-run scaffolding/migration — the
+/// model/editorFont/theme/vaultPath/dailyNoteFolder order. Used only for first-run scaffolding/migration — the
 /// dialog's writes go through `write_settings_to`, which never regenerates the file.
 fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()> {
     let contents = format!(
@@ -354,12 +395,16 @@ fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()>
          theme = {theme}\n\
          \n\
          # vaultPath: absolute path to the vault directory\n\
-         vaultPath = {vault_path}\n",
+         vaultPath = {vault_path}\n\
+         \n\
+         # dailyNoteFolder: folder for daily notes, relative to the vault root\n\
+         dailyNoteFolder = {daily_note_folder}\n",
         model_ids = KNOWN_MODELS.join(", "),
         model = Value::from(settings.model.clone()),
         editor_font = Value::from(settings.editor_font.clone()),
         theme = Value::from(settings.theme.clone()),
         vault_path = Value::from(settings.vault_path.clone()),
+        daily_note_folder = Value::from(settings.daily_note_folder.clone()),
     );
     write_atomic(file, &contents)
 }
@@ -468,7 +513,11 @@ mod tests {
     #[test]
     fn settings_should_serialize_with_camel_case_field_names() {
         let json = serde_json::to_string(&Settings::default()).expect("serializes");
-        assert!(json.contains("\"editorFont\"") && json.contains("\"vaultPath\""));
+        assert!(
+            json.contains("\"editorFont\"")
+                && json.contains("\"vaultPath\"")
+                && json.contains("\"dailyNoteFolder\"")
+        );
     }
 
     #[test]
@@ -480,9 +529,10 @@ mod tests {
                 settings.model.as_str(),
                 settings.editor_font.as_str(),
                 settings.theme.as_str(),
-                settings.vault_path.as_str()
+                settings.vault_path.as_str(),
+                settings.daily_note_folder.as_str()
             ),
-            ("gpt-5.4-mini", "JetBrains Mono", "dark", "")
+            ("gpt-5.4-mini", "JetBrains Mono", "dark", "", "daily")
         );
     }
 
@@ -538,7 +588,7 @@ mod tests {
     fn read_settings_from_should_parse_a_well_formed_document() {
         let dir = temp_dir("well-formed");
         let file = dir.join("settings.toml");
-        fs::write(&file, "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\n").expect("writes file");
+        fs::write(&file, "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\n").expect("writes file");
 
         let result = read_settings_from(&file).expect("parses");
 
@@ -546,6 +596,7 @@ mod tests {
         assert_eq!(result.settings.editor_font, "Menlo");
         assert_eq!(result.settings.theme, "light");
         assert_eq!(result.settings.vault_path, "/vault");
+        assert_eq!(result.settings.daily_note_folder, "journal");
         assert!(result.diagnostics.is_empty());
         fs::remove_dir_all(&dir).expect("cleans up");
     }
@@ -584,8 +635,8 @@ mod tests {
         assert_eq!(result.settings.vault_path, "/vault");
         assert_eq!(
             result.diagnostics.len(),
-            2,
-            "theme wrong-type + editorFont missing: {:?}",
+            3,
+            "theme wrong-type + editorFont/dailyNoteFolder missing: {:?}",
             result.diagnostics
         );
         assert!(result
@@ -644,6 +695,74 @@ mod tests {
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
+    #[test]
+    fn read_settings_from_should_default_the_daily_note_folder_when_it_is_absent() {
+        let dir = temp_dir("daily-note-folder-absent");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "theme = \"dark\"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades the folder");
+
+        assert_eq!(result.settings.daily_note_folder, "daily");
+        assert!(result.diagnostics.iter().any(
+            |d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "dailyNoteFolder")
+        ));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_reject_a_non_string_daily_note_folder() {
+        let dir = temp_dir("daily-note-folder-wrong-type");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "dailyNoteFolder = 7\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades the folder");
+
+        assert_eq!(result.settings.daily_note_folder, "daily");
+        assert!(result.diagnostics.iter().any(
+            |d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "dailyNoteFolder")
+        ));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_reject_a_blank_daily_note_folder() {
+        let dir = temp_dir("daily-note-folder-blank");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "dailyNoteFolder = \"   \"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades the folder");
+
+        assert_eq!(
+            result.settings.daily_note_folder, "daily",
+            "a blank folder would resolve to the vault root itself"
+        );
+        assert!(result.diagnostics.iter().any(
+            |d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "dailyNoteFolder")
+        ));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_keep_a_bad_daily_note_folder_from_degrading_other_keys() {
+        let dir = temp_dir("daily-note-folder-isolated");
+        let file = dir.join("settings.toml");
+        fs::write(
+            &file,
+            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"\"\n",
+        )
+        .expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades only the folder");
+
+        assert_eq!(result.settings.daily_note_folder, "daily");
+        assert_eq!(result.settings.model, "sonnet-5");
+        assert_eq!(result.settings.theme, "light");
+        assert_eq!(result.settings.vault_path, "/vault");
+        assert_eq!(result.diagnostics.len(), 1);
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
     // --- write_settings_to --------------------------------------------------------------------
 
     #[test]
@@ -655,6 +774,7 @@ mod tests {
             editor_font: "Menlo".into(),
             theme: "light".into(),
             vault_path: "/vault".into(),
+            daily_note_folder: "journal".into(),
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
@@ -662,7 +782,7 @@ mod tests {
 
         assert_eq!(
             contents,
-            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\n"
+            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\n"
         );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
@@ -705,6 +825,27 @@ mod tests {
     }
 
     #[test]
+    fn write_settings_to_should_preserve_a_trailing_comment_on_the_daily_note_folder() {
+        let dir = temp_dir("daily-note-folder-comment");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "dailyNoteFolder = \"daily\" # where the days go\n")
+            .expect("writes commented contents");
+        let settings = Settings {
+            daily_note_folder: "journal".into(),
+            ..Settings::default()
+        };
+
+        write_settings_to(&file, &settings).expect("writes settings");
+        let contents = fs::read_to_string(&file).expect("reads back");
+
+        assert!(
+            contents.starts_with("dailyNoteFolder = \"journal\" # where the days go\n"),
+            "trailing comment on the changed key survives: {contents:?}"
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
     fn write_settings_to_should_preserve_untouched_keys_and_their_comments() {
         let dir = temp_dir("preserve-untouched");
         let file = dir.join("settings.toml");
@@ -741,14 +882,17 @@ mod tests {
             editor_font: "Menlo".into(),
             theme: "light".into(),
             vault_path: "/vault".into(),
+            daily_note_folder: "daily".into(),
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
         let contents = fs::read_to_string(&file).expect("reads back");
 
+        // The four keys already present keep their order; a key the document never had is
+        // appended rather than sorted into place.
         assert_eq!(
             contents,
-            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\n"
+            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\ndailyNoteFolder = \"daily\"\n"
         );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
@@ -791,6 +935,10 @@ mod tests {
         assert_eq!(
             result.settings.vault_path,
             "/Users/tester/Documents/acidanthera-brain"
+        );
+        assert_eq!(
+            result.settings.daily_note_folder, "daily",
+            "a legacy json without the key migrates to the default, not to a diagnostic"
         );
         assert!(result.diagnostics.is_empty());
         let contents = fs::read_to_string(&toml_file).expect("reads raw toml");

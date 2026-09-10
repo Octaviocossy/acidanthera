@@ -1,3 +1,4 @@
+import { openDailyNote } from '@/lib/vault/daily-note';
 import { startNoteDraft } from '@/lib/vault/start-draft';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 
@@ -96,6 +97,9 @@ export function executeAppCommand(command: AppCommandId): void {
       break;
     case 'global.new-note':
       startNoteDraft('note');
+      break;
+    case 'global.daily-note':
+      void openDailyNote();
       break;
     default:
       break;
