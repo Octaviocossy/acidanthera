@@ -13,6 +13,9 @@ export interface Settings {
   theme: ThemeName;
   /** Absolute path of the vault opened at boot. Defaults to `~/Documents/acidanthera-brain`. */
   vaultPath: string;
+  /** Folder daily notes are filed in, relative to the vault root. Defaults to `daily`; a blank or
+   *  non-string value degrades to that default with a `field` diagnostic. */
+  dailyNoteFolder: string;
 }
 
 /** A single settings.toml degradation. Mirrors the Rust `SettingsDiagnostic`

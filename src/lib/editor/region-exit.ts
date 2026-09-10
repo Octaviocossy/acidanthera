@@ -14,13 +14,15 @@ type RegionExitCommandId =
   | 'global.toggle-chat'
   | 'global.toggle-settings'
   | 'global.find-file'
-  | 'global.new-note';
+  | 'global.new-note'
+  | 'global.daily-note';
 
 /**
  * The `[global]` commands this handler completes after arming on a Ctrl-w prefix (epic #94,
- * child #99 step 4), and the effect each runs. `global.new-note` is here because a create verb
- * promoted to the global layer must fire from *any* region, and the editor is the one region the
- * window dispatcher deliberately never sees a keydown from (it bails on a `contenteditable`).
+ * child #99 step 4), and the effect each runs. `global.new-note` and `global.daily-note` are here
+ * because a verb promoted to the global layer must fire from *any* region, and the editor is the
+ * one region the window dispatcher deliberately never sees a keydown from (it bails on a
+ * `contenteditable`).
  *
  * Both this handler and the window dispatcher (`useGlobalKeymap`) read the very same
  * `resolved.layers.global` bindings, so rebinding one of these in `keymaps.toml` changes what it
@@ -35,6 +37,7 @@ const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => 
   { id: 'global.toggle-settings', run: () => useAppStore.getState().toggleSettings() },
   { id: 'global.find-file', run: () => executeAppCommand('global.find-file') },
   { id: 'global.new-note', run: () => executeAppCommand('global.new-note') },
+  { id: 'global.daily-note', run: () => executeAppCommand('global.daily-note') },
 ];
 
 function isCtrlWPrefixStep(step: ChordKey): boolean {
