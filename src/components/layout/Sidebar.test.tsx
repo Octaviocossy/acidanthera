@@ -6,27 +6,22 @@ import { resolveKeymap } from '@/lib/keymap/resolve';
 import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
 import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
+import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { Sidebar } from './Sidebar';
 import { TooltipHost } from './TooltipHost';
 
-const { openVaultFile, readVaultTree, onVaultChanged, executeAppCommand } = vi.hoisted(() => ({
+const { openVaultFile, readVaultTree, onVaultChanged } = vi.hoisted(() => ({
   openVaultFile: vi.fn(),
   readVaultTree: vi.fn(),
   onVaultChanged: vi.fn(),
-  executeAppCommand: vi.fn(),
 }));
 
 vi.mock('@/lib/vault/open-file', () => ({ openVaultFile }));
 vi.mock('@/services/vault.service', () => ({ vaultService: { readVaultTree, onVaultChanged } }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
-// Partial: `APP_COMMANDS` is what `resolveKeymap` reads, so the registry has to stay real.
-vi.mock('@/lib/app-command', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/app-command')>()),
-  executeAppCommand,
-}));
 
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
@@ -61,7 +56,6 @@ const tree = [
 describe('Sidebar', () => {
   beforeEach(() => {
     openVaultFile.mockReset();
-    executeAppCommand.mockReset();
     vi.mocked(invoke).mockReset();
     readVaultTree.mockResolvedValue(tree);
     onVaultChanged.mockResolvedValue(() => {});
@@ -71,6 +65,7 @@ describe('Sidebar', () => {
     useSidebarStore.setState({ tree, expanded: new Set(), cursorPath: null, draft: null });
     useSettingsStore.setState(initialSettingsState, true);
     useSettingsStore.setState({ settings: SETTINGS, diagnostics: [] });
+    useFileFinderStore.getState().hide();
   });
 
   afterEach(() => {
@@ -184,14 +179,22 @@ describe('Sidebar', () => {
     ).toEqual(['New note', 'Daily note', 'New folder', 'Agent']);
   });
 
-  it('dispatches the daily-note command from the primary nav', async () => {
+  // The row dispatches `global.daily-note` through the real `executeAppCommand`, which falls to its
+  // `default: break` on this branch — the command is *declared* (so it resolves a chord, invariant
+  // 35) but not yet *dispatched*; #151 adds its case. So there is no positive effect to assert
+  // here, and mocking the dispatcher to watch the call would mock an internal rather than an I/O
+  // boundary (`.agents/rules/testing.md`). What is assertable is that the row is inert rather than
+  // wired to the wrong verb: it must not do what either create row beside it does.
+  it('leaves the daily note row inert until the command gains a case', async () => {
     const user = userEvent.setup();
     useAppStore.getState().expandSidebar();
     render(<Sidebar />);
 
     await user.click(screen.getByRole('button', { name: 'Daily note' }));
 
-    expect(executeAppCommand).toHaveBeenCalledWith('global.daily-note');
+    expect(useSidebarStore.getState().draft).toBeNull();
+    expect(useFileFinderStore.getState().open).toBe(false);
+    expect(openVaultFile).not.toHaveBeenCalled();
   });
 
   it("renders the daily note row's chord from the global layer it is bound in", () => {
@@ -250,6 +253,42 @@ describe('Sidebar', () => {
 
     expect(useSettingsStore.getState().settings?.theme).toBe('light');
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('write_settings', { settings: { ...SETTINGS, theme: 'light' } });
+  });
+
+  // The icon is `aria-hidden` by design (it duplicates nothing the label says), so its identity is
+  // only reachable through the class Lucide stamps on the rendered `svg` — the same handle
+  // `Icon.test.tsx` and `FileTreeItem.test.tsx` already assert purely-visual affordances through.
+  it('states the current theme rather than the destination', () => {
+    useAppStore.getState().expandSidebar();
+    const { rerender } = render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Toggle theme' }).querySelector('svg')).toHaveClass('lucide-sun');
+
+    act(() => useSettingsStore.setState({ settings: { ...SETTINGS, theme: 'light' } }));
+    rerender(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Toggle theme' }).querySelector('svg')).toHaveClass('lucide-moon');
+  });
+
+  it('states no theme at all before the boot-time load resolves', () => {
+    useSettingsStore.setState({ settings: null });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const toggle = screen.getByRole('button', { name: 'Toggle theme' });
+
+    // Mounted and disabled, but stating nothing — `Sun` here would assert the dark theme, wrongly
+    // for anyone whose persisted theme is light.
+    expect(toggle).toBeDisabled();
+    expect(toggle.querySelector('svg')).toBeNull();
+  });
+
+  it('keeps the rail pin stating nothing before settings load too, since both are one component', () => {
+    useSettingsStore.setState({ settings: null });
+    render(<Sidebar />);
+    const pin = screen.getByRole('button', { name: 'Toggle theme' });
+
+    expect(pin).toBeDisabled();
+    expect(pin.querySelector('svg')).toBeNull();
   });
 
   it('disables the theme toggle while settings.toml has a syntax error', () => {

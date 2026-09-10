@@ -59,7 +59,10 @@ function SidebarChromeStrip() {
  * the *settings dialog write* preserves comments and key order. Its icon states the **current**
  * theme, never the destination. Disabled while a `Syntax` diagnostic is present, exactly as the
  * dialog's rows are — `updateSettings` refuses that write anyway, so the click would silently do
- * nothing — and before the boot-time load resolves.
+ * nothing — and before the boot-time load resolves, where it also draws **no icon at all**:
+ * `settings` is `null` until then, so there is no current theme, and defaulting to `Sun` would
+ * state the dark one — wrongly, for anyone whose persisted theme is light. The button stays
+ * mounted at its fixed 24px either way, so neither mount's layout shifts as settings arrive.
  */
 function ThemeToggle({ className }: { className?: string }) {
   const settings = useSettingsStore((state) => state.settings);
@@ -80,7 +83,7 @@ function ThemeToggle({ className }: { className?: string }) {
         void updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
       }}
     >
-      <Icon icon={settings?.theme === 'light' ? Moon : Sun} size={15} />
+      {settings !== null && <Icon icon={settings.theme === 'light' ? Moon : Sun} size={15} />}
     </Button>
   );
 }
