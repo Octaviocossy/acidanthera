@@ -62,28 +62,40 @@ export function Viewer() {
   };
 
   return (
-    <main aria-label="Editor" className={cn('relative flex h-full flex-1 flex-col overflow-hidden border-t bg-canvas', isActive ? 'border-border-strong' : 'border-transparent')}>
+    // The region column: the tab strip sits on the `bg-panel` ground, the *inset card* below it.
+    <div className="relative flex h-full min-w-0 flex-1 flex-col">
       <EditorTabs buffers={buffers} activeBufferId={activeBufferId} onActivate={activateBuffer} onClose={requestClose} />
-      <div className="min-h-0 flex-1">
-        {buffers.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
-            <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
-            <span className="font-mono text-meta text-text-muted">{vaultRoot === null ? '' : displayPath(vaultRoot)}</span>
-            {findFileChord !== undefined && <Kbd>{findFileChord}</Kbd>}
-          </div>
-        ) : (
-          buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)
-        )}
-      </div>
-      {activeBufferId !== null && (
-        <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-2">
-          <span className="font-mono text-meta text-text-muted">
-            ln {cursor.line} · col {cursor.col}
-          </span>
-          {vimMode !== undefined && <span className="font-mono text-meta uppercase tracking-label text-text-muted">{vimMode}</span>}
+      {/* The editor *inset card*: `--bg-canvas` on the panel ground, `--radius-panel`, gutter on the
+          right and bottom (the sidebar stays flush to the window edge). Its border carries the focus
+          region on all four sides — the card shares no edge with its neighbours, and ADR 0009 already
+          spent the region label it would otherwise need. Hairline in both themes, never a shadow: the
+          card is inset *into* the ground rather than elevated above it (spec decisions 4, 22, 38). */}
+      <main
+        aria-label="Editor"
+        className={cn('relative mr-2 mb-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border bg-canvas', isActive ? 'border-border-strong' : 'border-hairline')}
+      >
+        <div className="min-h-0 flex-1">
+          {buffers.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+              <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
+              <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
+              <span className="font-mono text-meta text-text-muted">{vaultRoot === null ? '' : displayPath(vaultRoot)}</span>
+              {findFileChord !== undefined && <Kbd>{findFileChord}</Kbd>}
+            </div>
+          ) : (
+            buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)
+          )}
         </div>
-      )}
+        {activeBufferId !== null && (
+          <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-2">
+            <span className="font-mono text-meta text-text-muted">
+              ln {cursor.line} · col {cursor.col}
+            </span>
+            {vimMode !== undefined && <span className="font-mono text-meta uppercase tracking-label text-text-muted">{vimMode}</span>}
+          </div>
+        )}
+      </main>
+      {/* Outside the card so its `absolute inset-0` scrim still covers the tab strip as well. */}
       <CloseBufferDialog
         buffer={closingBuffer ?? null}
         onSave={saveAndClose}
@@ -94,6 +106,6 @@ export function Viewer() {
         }}
         onCancel={() => setClosingBufferId(null)}
       />
-    </main>
+    </div>
   );
 }

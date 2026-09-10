@@ -64,7 +64,7 @@ function toolArgs(item: CodexItem): Record<string, unknown> {
 
 /**
  * Codex adapter (doc/v0-spec.md §4.4): translates `codex exec --json`'s native stream into
- * `AgentEvent`s. The chat panel never sees `CodexStreamLine` — only what this module emits.
+ * `AgentEvent`s. The agent panel never sees `CodexStreamLine` — only what this module emits.
  *
  * Unlike Claude Code's single long-lived `-p --input-format stream-json` process, Codex's
  * headless mode runs one turn to completion and exits ("resumable sessions" per doc/v0-spec.md

@@ -8,12 +8,19 @@ const tree = [
     name: 'notes',
     path: '/vault/notes',
     isDir: true,
+    modified: null,
     children: [
-      { name: 'first', path: '/vault/notes/first.md', isDir: false, children: null },
-      { name: 'nested', path: '/vault/notes/nested', isDir: true, children: [{ name: 'second', path: '/vault/notes/nested/second.md', isDir: false, children: null }] },
+      { name: 'first', path: '/vault/notes/first.md', isDir: false, modified: null, children: null },
+      {
+        name: 'nested',
+        path: '/vault/notes/nested',
+        isDir: true,
+        modified: null,
+        children: [{ name: 'second', path: '/vault/notes/nested/second.md', isDir: false, modified: null, children: null }],
+      },
     ],
   },
-  { name: 'outside', path: '/vault/outside.md', isDir: false, children: null },
+  { name: 'outside', path: '/vault/outside.md', isDir: false, modified: null, children: null },
 ];
 
 const buffers: EditorBuffer[] = [

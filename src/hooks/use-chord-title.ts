@@ -24,10 +24,3 @@ export function useCommandChord(commandId: AppCommandId): string | undefined {
     return formatChord(resolved.layers[layer].get(commandId));
   }, [resolved, commandId]);
 }
-
-/** `"Find file (Ctrl+wf)"` — the native `title` a chrome control carries, or the bare label when
- *  the command is unbound. */
-export function useChordTitle(label: string, commandId: AppCommandId): string {
-  const chord = useCommandChord(commandId);
-  return chord === undefined ? label : `${label} (${chord})`;
-}

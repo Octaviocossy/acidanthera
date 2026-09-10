@@ -26,7 +26,10 @@ describe('Viewer', () => {
     const findFileChord = formatChord(useKeymapStore.getState().resolved.layers.global.get('global.find-file'));
     expect(findFileChord).toBeDefined();
     expect(screen.getByText(findFileChord as string)).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    // The chrome strip still reserves its 40px, so the empty state never slides under the
+    // traffic lights — it just holds no tabs.
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.queryByText(/ln 1 · col 1/)).not.toBeInTheDocument();
     expect(screen.queryByText('normal')).not.toBeInTheDocument();
   });
@@ -48,11 +51,28 @@ describe('Viewer', () => {
   });
 
   it('shows a neutral empty-editor line when the vault has notes', () => {
-    useSidebarStore.setState({ tree: [{ name: 'note.md', path: '/vault/note.md', isDir: false, children: null }] });
+    useSidebarStore.setState({ tree: [{ name: 'note.md', path: '/vault/note.md', isDir: false, modified: null, children: null }] });
 
     render(<Viewer />);
 
     expect(screen.getByText('No note open.')).toBeInTheDocument();
+  });
+
+  it('moves a full border onto the editor card only while the viewer region is focused', () => {
+    const { rerender } = render(<Viewer />);
+
+    expect(screen.getByRole('main', { name: 'Editor' })).toHaveClass('rounded-panel', 'border-border-strong');
+
+    act(() => {
+      useAppStore.setState({ activeRegion: 'sidebar' });
+    });
+    rerender(<Viewer />);
+
+    // A card that shares no edge with its neighbours carries the focus region on all four sides,
+    // and steps back to a hairline rather than losing its outline (spec decisions 22, 38).
+    const card = screen.getByRole('main', { name: 'Editor' });
+    expect(card).toHaveClass('border-hairline');
+    expect(card).not.toHaveClass('border-border-strong');
   });
 
   it('shows the editor status cluster while a buffer is open', () => {

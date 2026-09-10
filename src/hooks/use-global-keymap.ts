@@ -59,7 +59,7 @@ export function useGlobalKeymap() {
       { id: 'global.focus-previous', chords: layerBindings.get('global.focus-previous') ?? [], run: () => useAppStore.getState().focusPrevious() },
       { id: 'global.focus-next', chords: layerBindings.get('global.focus-next') ?? [], run: () => useAppStore.getState().focusNext() },
       { id: 'global.toggle-sidebar', chords: layerBindings.get('global.toggle-sidebar') ?? [], run: () => useAppStore.getState().toggleSidebar() },
-      { id: 'global.toggle-chat', chords: layerBindings.get('global.toggle-chat') ?? [], run: () => useAppStore.getState().toggleChat() },
+      { id: 'global.toggle-chat', chords: layerBindings.get('global.toggle-chat') ?? [], run: () => useAppStore.getState().toggleAgent() },
       { id: 'global.toggle-settings', chords: layerBindings.get('global.toggle-settings') ?? [], run: () => useAppStore.getState().toggleSettings() },
       { id: 'global.find-file', chords: layerBindings.get('global.find-file') ?? [], run: () => executeAppCommand('global.find-file') },
       {

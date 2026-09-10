@@ -24,27 +24,32 @@ beforeEach(() => {
         name: 'notes',
         path: '/vault/notes',
         isDir: true,
+        modified: null,
         children: [
-          { name: 'ideas.md', path: '/vault/notes/ideas.md', isDir: false, children: null },
+          { name: 'ideas.md', path: '/vault/notes/ideas.md', isDir: false, modified: null, children: null },
           {
             name: 'projects',
             path: '/vault/notes/projects',
             isDir: true,
+            modified: null,
             children: [
               {
                 name: 'very-long-project-name',
                 path: '/vault/notes/projects/very-long-project-name',
                 isDir: true,
+                modified: null,
                 children: [
                   {
                     name: 'meeting-notes',
                     path: '/vault/notes/projects/very-long-project-name/meeting-notes',
                     isDir: true,
+                    modified: null,
                     children: [
                       {
                         name: 'architecture-decisions.md',
                         path: '/vault/notes/projects/very-long-project-name/meeting-notes/architecture-decisions.md',
                         isDir: false,
+                        modified: null,
                         children: null,
                       },
                     ],

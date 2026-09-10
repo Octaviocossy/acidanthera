@@ -46,7 +46,7 @@ a live line:col and vim-submode readout, and dirty-close confirmation. `yy`, `y{
 visual-line `y` write to the vim register **and** the system clipboard.
 
 **Agent**
-A chat panel that renders agent output as native UI — message bubbles, tool chips, a thinking
+An agent panel that renders agent output as native UI — message bubbles, tool chips, a thinking
 indicator — not a terminal emulator. Claude Code and Codex sit behind one `AgentBackend`
 interface, so the model you pick determines the engine. Conversations autosave as readable
 markdown under `<vault>/.acidanthera/chats/`, and a saved thread can be reopened and continued.
@@ -54,7 +54,8 @@ markdown under `<vault>/.acidanthera/chats/`, and a saved thread can be reopened
 **Keyboard-first**
 One window-level dispatcher resolves every key. `Ctrl-w`-prefixed chords move between regions,
 a Spotlight-style fuzzy finder opens any note, and every app-level binding is rebindable.
-Collapsing the sidebar leaves a 40px rail that still opens any root note in one click.
+Every global control lives in the sidebar — there is no titlebar — and collapsing it leaves a 40px
+rail that still opens any root note in one click.
 
 ## Requirements
 
@@ -64,15 +65,17 @@ Collapsing the sidebar leaves a 40px rail that still opens any root note in one 
 | **Node** | ≥ 18 (required by Vite 7 / React 19) |
 | **pnpm** | 10+ |
 | **Rust** | stable toolchain, plus the [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/) |
-| **Agent CLI** | [`claude`](https://claude.com/claude-code) and/or [`codex`](https://github.com/openai/codex), installed and logged in — optional, needed only for the chat panel |
+| **Agent CLI** | [`claude`](https://claude.com/claude-code) and/or [`codex`](https://github.com/openai/codex), installed and logged in — optional, needed only for the agent panel |
 
 ### Platform support
 
-acidanthera is macOS-only today. It draws its own title bar, which relies on the macOS-only
-`titleBarStyle: "Overlay"` window option, and the component is not yet gated on platform — so
-on Windows and Linux the app builds and runs but shows a doubled title bar. This is a known,
-deliberate trade-off recorded in [ADR 0008](.agents/adr/0008-custom-titlebar-macos-only.md);
-gating the component (rather than deleting it) is the path to a cross-platform build.
+acidanthera is macOS-only today. It draws its own chrome: the 40px band at the top of the window
+is a per-region *chrome strip* the native traffic lights sit on, which relies on the macOS-only
+`titleBarStyle: "Overlay"` window option and a static `trafficLightPosition`. Neither is gated on
+platform — so on Windows and Linux the app builds and runs but shows a doubled title bar. This is
+a known, deliberate trade-off recorded in [ADR 0008](.agents/adr/0008-custom-titlebar-macos-only.md)
+and unchanged by [ADR 0035](.agents/adr/0035-chrome-strip-replaces-the-titlebar.md); gating the
+macOS-only window options is the path to a cross-platform build.
 
 ## Install
 
@@ -96,7 +99,7 @@ pnpm tauri build    # bundle into src-tauri/target/release/bundle/
    than co-editing the file you have open.
 3. **Write something.** `a` in the sidebar names a new note, `Ctrl-w f` opens the fuzzy finder,
    and `:w` or `Cmd-S` saves.
-4. **Talk to the agent.** `Ctrl-w c` opens the chat panel; pick a model from the pill in the
+4. **Talk to the agent.** `Ctrl-w c` — or the sidebar's **Agent** row — opens the agent panel; pick a model from the pill in the
    input.
 
 > [!IMPORTANT]
@@ -191,7 +194,7 @@ src/                      React 19 + TypeScript frontend
 ├── components/
 │   ├── ai/               chat surface — transcript, input, tool chips, thinking indicator, history
 │   ├── editor/           CodeMirror buffer view, tabs, dirty-close dialog
-│   ├── layout/           app chrome — titlebar, sidebar, viewer, chat panel, dialogs
+│   ├── layout/           app chrome — sidebar, viewer, agent panel, dialogs
 │   ├── ui/               presentational primitives (button, chip, icon, kbd, modal, …)
 │   └── vault/            file-tree rows, entry drafts, context menu, glyphs
 ├── hooks/                app-level effects — keymap, save loop, bootstrap, watchers
@@ -202,7 +205,7 @@ src/                      React 19 + TypeScript frontend
 │   ├── dom/              small DOM predicates (editable-target detection)
 │   ├── editor/           CodeMirror wiring — vim, highlighting, save, yank, wikilinks
 │   ├── keymap/           chord parsing, defaults, resolution, dispatcher
-│   └── vault/            vault helpers — search, open, switch, sidebar rows
+│   └── vault/            vault helpers — search, open, switch, tree flattening
 ├── services/             the only callers of @tauri-apps/api
 ├── stores/               Zustand stores (app, editor, chat, sidebar, settings, …)
 └── styles/               Tailwind v4 entry + design tokens
@@ -277,7 +280,7 @@ Not in v0 yet, roughly in order of intent:
 - **Ex-commands** wired to the `:` command bar, which currently opens and closes without
   running anything
 - **Keyboard tab switching** and a delete affordance for saved chats
-- **Windows and Linux** support, gated on the titlebar component
+- **Windows and Linux** support, gated on the macOS-only window options the chrome strip relies on
 
 ## Contributing
 

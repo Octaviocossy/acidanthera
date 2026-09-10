@@ -51,13 +51,15 @@ function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: stri
   );
 }
 
-/** The invocable AI chat region (doc/v0-spec.md §5.2): a two-tab surface (#71) — the live `AgentEvent`
- *  transcript, plus a keyboard-navigable list of the conversations saved under `.acidanthera/chats/`. */
-export function ChatPanel() {
+/** The invocable AI agent region (doc/v0-spec.md §5.2): a two-tab surface (#71) — the live `AgentEvent`
+ *  transcript, plus a keyboard-navigable list of the conversations saved under `.acidanthera/chats/`.
+ *  The region and the panel are named *agent*; the transcript it renders stays *chat* (glossary:
+ *  *Agent panel*), which is why every store, item and child component below keeps the old name. */
+export function AgentPanel() {
   useChatHistoryKeymap();
 
-  const chatOpen = useAppStore((state) => state.chatOpen);
-  const isActive = useAppStore((state) => state.activeRegion === 'chat');
+  const agentOpen = useAppStore((state) => state.agentOpen);
+  const isActive = useAppStore((state) => state.activeRegion === 'agent');
   const focusRegion = useAppStore((state) => state.focusRegion);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const items = useChatStore((state) => state.items);
@@ -72,28 +74,35 @@ export function ChatPanel() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [items, turnActive]);
 
-  if (!chatOpen) return null;
+  if (!agentOpen) return null;
 
-  // Any interaction with the panel focuses the chat region so the History tab's `j`/`k` become live
-  // (`openChat()` only sets `chatOpen`, never `activeRegion` — same contract the sidebar rows honor).
+  // Any interaction with the panel focuses the agent region so the History tab's `j`/`k` become live
+  // (`openAgent()` only sets `agentOpen`, never `activeRegion` — same contract the sidebar rows honor).
   const selectTab = (next: ChatTab) => {
-    focusRegion('chat');
+    focusRegion('agent');
     setTab(next);
   };
   const handleNewChat = () => {
-    focusRegion('chat');
+    focusRegion('agent');
     newChat();
     setTab('chat');
   };
 
   return (
-    <aside className={cn('flex h-full w-[var(--rail-chat)] shrink-0 flex-col border-l bg-panel', isActive ? 'border-border-strong' : 'border-hairline')} aria-label="AI chat">
-      {/* Header strip (#71): tabs left, New chat right. Height is `--rail-titlebar` so the panel
-          joins the app's 40px chrome rhythm — it was `--rail-fab` + inset only to reserve the
-          footprint of the FAB that used to float over this band, which now lives in the titlebar.
+    // The agent *inset card*: the same `--bg-canvas` card on the same `--bg-panel` ground as the
+    // editor, so the two read as two cards on one surface (spec decision 21). Its border carries the
+    // focus region on all four sides; hairline in both themes, never a shadow (decisions 22, 38).
+    <aside
+      className={cn('mr-2 mb-2 flex w-[var(--rail-agent)] shrink-0 flex-col overflow-hidden rounded-panel border bg-canvas', isActive ? 'border-border-strong' : 'border-hairline')}
+      aria-label="AI agent"
+    >
+      {/* Header strip (#71): tabs left, New chat right. Height is `--rail-titlebar` so it lines up
+          with the viewer's tab strip on the app's 40px chrome band — the titlebar it used to line up
+          with is gone (ADR 0035), and before that it was `--rail-fab` + inset only to reserve the
+          footprint of the FAB that once floated over this band.
           New chat starts a fresh thread (the prior one is auto-saved). */}
       <div className="flex h-[var(--rail-titlebar)] shrink-0 items-center border-b border-hairline px-3">
-        <div role="tablist" aria-label="Chat panel" className="flex items-center gap-3">
+        <div role="tablist" aria-label="Agent panel" className="flex items-center gap-3">
           <TabButton tab="chat" label="Chat" active={tab === 'chat'} onSelect={selectTab} />
           <TabButton tab="history" label="History" active={tab === 'history'} onSelect={selectTab} />
         </div>

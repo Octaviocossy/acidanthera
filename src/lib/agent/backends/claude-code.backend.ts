@@ -36,7 +36,7 @@ interface ClaudeStreamLine {
 
 /**
  * Claude Code adapter (doc/v0-spec.md §4.4): translates its native `stream-json` output into
- * `AgentEvent`s. The chat panel never sees `ClaudeStreamLine` — only what this module emits.
+ * `AgentEvent`s. The agent panel never sees `ClaudeStreamLine` — only what this module emits.
  */
 export function createClaudeCodeBackend(): AgentBackend {
   const toolNamesByCallId = new Map<string, string>();

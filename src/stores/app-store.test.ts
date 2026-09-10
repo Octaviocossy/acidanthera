@@ -14,15 +14,15 @@ describe('focusRegion', () => {
   });
 
   it('ignores a region that is not currently reachable', () => {
-    // chat is closed by default, so it is not reachable
-    useAppStore.getState().focusRegion('chat');
+    // the agent panel is closed by default, so it is not reachable
+    useAppStore.getState().focusRegion('agent');
     expect(useAppStore.getState().activeRegion).toBe('viewer');
   });
 });
 
 describe('focusNext / focusPrevious', () => {
-  it('cycles only over reachable regions, skipping a closed chat', () => {
-    // sidebarExpanded: true, chatOpen: false -> reachable = [sidebar, viewer]
+  it('cycles only over reachable regions, skipping a closed agent panel', () => {
+    // sidebarExpanded: true, agentOpen: false -> reachable = [sidebar, viewer]
     useAppStore.getState().focusRegion('sidebar');
     useAppStore.getState().focusNext();
     expect(useAppStore.getState().activeRegion).toBe('viewer');
@@ -31,13 +31,13 @@ describe('focusNext / focusPrevious', () => {
     expect(useAppStore.getState().activeRegion).toBe('sidebar');
   });
 
-  it('includes chat once it is opened', () => {
-    useAppStore.getState().openChat();
+  it('includes the agent panel once it is opened', () => {
+    useAppStore.getState().openAgent();
     useAppStore.getState().focusRegion('sidebar');
     useAppStore.getState().focusNext();
     expect(useAppStore.getState().activeRegion).toBe('viewer');
     useAppStore.getState().focusNext();
-    expect(useAppStore.getState().activeRegion).toBe('chat');
+    expect(useAppStore.getState().activeRegion).toBe('agent');
   });
 
   it('wraps backward past the first reachable region', () => {
@@ -91,10 +91,10 @@ describe('sidebar expansion', () => {
   });
 
   it('collapseSidebar leaves an unrelated activeRegion untouched', () => {
-    useAppStore.getState().openChat();
-    useAppStore.getState().focusRegion('chat');
+    useAppStore.getState().openAgent();
+    useAppStore.getState().focusRegion('agent');
     useAppStore.getState().collapseSidebar();
-    expect(useAppStore.getState().activeRegion).toBe('chat');
+    expect(useAppStore.getState().activeRegion).toBe('agent');
   });
 
   it('toggleSidebar flips expanded -> collapsed -> expanded', () => {
@@ -112,29 +112,29 @@ describe('sidebar expansion', () => {
   });
 });
 
-describe('chat visibility', () => {
-  it('openChat/closeChat toggle chatOpen', () => {
-    useAppStore.getState().openChat();
-    expect(useAppStore.getState().chatOpen).toBe(true);
-    useAppStore.getState().closeChat();
-    expect(useAppStore.getState().chatOpen).toBe(false);
+describe('agent panel visibility', () => {
+  it('openAgent/closeAgent toggle agentOpen', () => {
+    useAppStore.getState().openAgent();
+    expect(useAppStore.getState().agentOpen).toBe(true);
+    useAppStore.getState().closeAgent();
+    expect(useAppStore.getState().agentOpen).toBe(false);
   });
 
-  it('closeChat reassigns activeRegion to viewer when chat was active', () => {
-    useAppStore.getState().openChat();
-    useAppStore.getState().focusRegion('chat');
-    useAppStore.getState().closeChat();
+  it('closeAgent reassigns activeRegion to viewer when the agent region was active', () => {
+    useAppStore.getState().openAgent();
+    useAppStore.getState().focusRegion('agent');
+    useAppStore.getState().closeAgent();
     const state = useAppStore.getState();
-    expect(state.chatOpen).toBe(false);
+    expect(state.agentOpen).toBe(false);
     expect(state.activeRegion).toBe('viewer');
   });
 
-  it('toggleChat flips closed -> open -> closed', () => {
-    expect(useAppStore.getState().chatOpen).toBe(false);
-    useAppStore.getState().toggleChat();
-    expect(useAppStore.getState().chatOpen).toBe(true);
-    useAppStore.getState().toggleChat();
-    expect(useAppStore.getState().chatOpen).toBe(false);
+  it('toggleAgent flips closed -> open -> closed', () => {
+    expect(useAppStore.getState().agentOpen).toBe(false);
+    useAppStore.getState().toggleAgent();
+    expect(useAppStore.getState().agentOpen).toBe(true);
+    useAppStore.getState().toggleAgent();
+    expect(useAppStore.getState().agentOpen).toBe(false);
   });
 });
 

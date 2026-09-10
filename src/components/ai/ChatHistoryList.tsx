@@ -46,7 +46,7 @@ function formatRelative(ms: number, now: number): string {
 }
 
 /**
- * The chat panel's History tab (#71, epic #66): a keyboard-navigable list of the conversations saved
+ * The agent panel's History tab (#71, epic #66): a keyboard-navigable list of the conversations saved
  * under `.acidanthera/chats/`. The sibling of the sidebar's tree view — cursor state lives in
  * `useChatHistoryStore`, `j`/`k`/`l`/`Enter` in `useChatHistoryKeymap`, and this component is the
  * presentational list. It refreshes on mount (it is only mounted while the History tab is shown), and
@@ -110,7 +110,7 @@ export function ChatHistoryList() {
               aria-selected={isActive}
               data-cursor={isCursor}
               onClick={() => {
-                focusRegion('chat');
+                focusRegion('agent');
                 setCursor(row.id);
                 open(row.id);
               }}

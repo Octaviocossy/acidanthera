@@ -162,7 +162,7 @@ describe('open', () => {
     expect(useChatStore.getState().title).toBe('My saved thread');
     expect(useChatHistoryStore.getState().tab).toBe('chat');
     expect(useChatHistoryStore.getState().cursorId).toBe('chat-1');
-    expect(useAppStore.getState().chatOpen).toBe(true);
+    expect(useAppStore.getState().agentOpen).toBe(true);
   });
 
   it('does nothing for an id not present in records', () => {

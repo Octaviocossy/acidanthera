@@ -4,11 +4,11 @@ import { type ChatRecord, chatsService } from '@/services/chats.service';
 import { useChatStore } from './chat-store';
 import { useToastStore } from './toast-store';
 
-/** Which surface the chat panel shows: the live transcript or the saved-chat browser (#71). */
+/** Which surface the agent panel shows: the live transcript or the saved-chat browser (#71). */
 export type ChatTab = 'chat' | 'history';
 
 interface ChatHistoryState {
-  /** The chat panel's active tab (#71). `'chat'` = live transcript, `'history'` = saved-chat list. */
+  /** The agent panel's active tab (#71). `'chat'` = live transcript, `'history'` = saved-chat list. */
   tab: ChatTab;
   /** The saved conversations, newest-first, as returned by `chatsService.listChats` (raw `contents`
    *  each — parsed for display by `ChatHistoryList`, never here; this store stays format-agnostic). */
@@ -31,7 +31,7 @@ interface ChatHistoryState {
 }
 
 /**
- * View state for the chat panel's History tab (#71, epic #66). Holds only browser state — the active
+ * View state for the agent panel's History tab (#71, epic #66). Holds only browser state — the active
  * tab, the fetched `ChatRecord` list, the vim cursor — never the transcript itself (that stays in
  * `useChatStore`). It mirrors the sidebar's list triad: this store is `useSidebarStore`, the keymap
  * hook is `useChatHistoryKeymap`, and `ChatHistoryList` is the presentational list. It parses a
@@ -79,7 +79,7 @@ export const useChatHistoryStore = create<ChatHistoryState>((set, get) => ({
       useToastStore.getState().showToast(`Could not open chat: ${result.error}`, 'error');
       return;
     }
-    // `loadChat` swaps the transcript and calls `useAppStore.openChat()`; land the user on the Chat tab.
+    // `loadChat` swaps the transcript and calls `useAppStore.openAgent()`; land the user on the Chat tab.
     useChatStore.getState().loadChat(result.file);
     set({ tab: 'chat', cursorId: id });
   },
