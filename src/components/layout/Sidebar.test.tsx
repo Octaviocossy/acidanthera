@@ -2,10 +2,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EMPTY_NAVIGATION_HISTORY } from '@/lib/editor/navigation-history';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
 import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
+import { useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -66,6 +68,7 @@ describe('Sidebar', () => {
     useSidebarStore.setState({ tree, expanded: new Set(), cursorPath: null, draft: null });
     useSettingsStore.setState(initialSettingsState, true);
     useSettingsStore.setState({ settings: SETTINGS, diagnostics: [] });
+    useEditorStore.setState({ buffers: [], activeBufferId: null, history: EMPTY_NAVIGATION_HISTORY });
     useFileFinderStore.getState().hide();
   });
 
@@ -77,6 +80,7 @@ describe('Sidebar', () => {
     useAppStore.setState(initialAppState, true);
     useSidebarStore.setState(initialSidebarState, true);
     useSettingsStore.setState(initialSettingsState, true);
+    useEditorStore.setState({ buffers: [], activeBufferId: null, history: EMPTY_NAVIGATION_HISTORY });
     useKeymapStore.setState({ resolved: resolveKeymap(null) });
   });
 
@@ -386,6 +390,58 @@ describe('Sidebar', () => {
 
     expect(draftRow).not.toBeNull();
     expect(within(draftRow as HTMLElement).queryByText(/^edited/)).not.toBeInTheDocument();
+  });
+
+  describe('navigation history controls', () => {
+    beforeEach(() => {
+      useAppStore.setState({ sidebarExpanded: true });
+    });
+
+    it('disables both controls while nothing has been navigated', () => {
+      render(<Sidebar />);
+
+      expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeDisabled();
+    });
+
+    it('enables Back alone once a second buffer has been activated', () => {
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      render(<Sidebar />);
+
+      expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeDisabled();
+    });
+
+    it('activates the previous buffer on Back and enables Forward', async () => {
+      const user = userEvent.setup();
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      const one = useEditorStore.getState().buffers[0].id;
+      render(<Sidebar />);
+
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+
+      expect(useEditorStore.getState().activeBufferId).toBe(one);
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+    });
+
+    it('renders neither control on the collapsed rail', () => {
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      useAppStore.setState({ sidebarExpanded: false });
+      render(<Sidebar />);
+
+      expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Forward' })).not.toBeInTheDocument();
+    });
   });
 
   describe('hover reveal', () => {

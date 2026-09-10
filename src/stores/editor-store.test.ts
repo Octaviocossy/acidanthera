@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { EMPTY_NAVIGATION_HISTORY } from '@/lib/editor/navigation-history';
 import { activeEditorBuffer, useEditorStore } from './editor-store';
 
 function resetStore() {
@@ -6,6 +7,7 @@ function resetStore() {
     buffers: [],
     activeBufferId: null,
     saveRequests: [],
+    history: EMPTY_NAVIGATION_HISTORY,
   });
 }
 
@@ -146,5 +148,98 @@ describe('rewriteBufferPaths', () => {
         expect.objectContaining({ filePath: '/vault/notebook.md' }),
       ])
     );
+  });
+});
+
+describe('navigation history', () => {
+  it('records an activation of a newly opened file', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    store.openFile('/vault/two.md', 'two');
+
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md', '/vault/two.md'], index: 1 });
+  });
+
+  it('records an activation of an already-open buffer', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = getActiveBufferId();
+    store.openFile('/vault/two.md', 'two');
+    store.activateBuffer(one);
+
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md', '/vault/two.md', '/vault/one.md'], index: 2 });
+  });
+
+  it('records nothing when the already-active buffer is re-activated', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = getActiveBufferId();
+    store.activateBuffer(one);
+    store.openFile('/vault/one.md', 'stale disk version');
+
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md'], index: 0 });
+  });
+
+  it('records nothing when closing a buffer activates another one', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    store.openFile('/vault/two.md', 'two');
+    const two = getActiveBufferId();
+
+    store.closeBuffer(two);
+
+    expect(useEditorStore.getState().activeBufferId).not.toBe(two);
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md', '/vault/two.md'], index: 1 });
+  });
+
+  it('activates the previous buffer on goBack and returns on goForward', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = getActiveBufferId();
+    store.openFile('/vault/two.md', 'two');
+    const two = getActiveBufferId();
+
+    store.goBack();
+    expect(useEditorStore.getState().activeBufferId).toBe(one);
+
+    store.goForward();
+    expect(useEditorStore.getState().activeBufferId).toBe(two);
+  });
+
+  it('discards the forward branch once a new file is opened after going back', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    store.openFile('/vault/two.md', 'two');
+    store.openFile('/vault/three.md', 'three');
+    store.goBack();
+    store.goBack();
+    store.openFile('/vault/four.md', 'four');
+
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md', '/vault/four.md'], index: 1 });
+  });
+
+  it('skips and drops an entry whose buffer was closed in the meantime', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = getActiveBufferId();
+    store.openFile('/vault/two.md', 'two');
+    const two = getActiveBufferId();
+    store.openFile('/vault/three.md', 'three');
+    store.closeBuffer(two);
+
+    store.goBack();
+
+    expect(useEditorStore.getState().activeBufferId).toBe(one);
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/vault/one.md', '/vault/three.md'], index: 0 });
+  });
+
+  it('empties the stack on clearHistory', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    store.openFile('/vault/two.md', 'two');
+
+    store.clearHistory();
+
+    expect(useEditorStore.getState().history).toEqual({ entries: [], index: -1 });
   });
 });

@@ -39,6 +39,8 @@ describe('switchVault', () => {
     expect(useAppStore.getState().vaultRoot).toBe('/old-vault');
     expect(useEditorStore.getState().buffers).toHaveLength(1);
     expect(useEditorStore.getState().buffers[0]).toMatchObject({ content: '# unsaved edit', dirty: true });
+    // Cancel leaves the vault open, so its *navigation history* still points at open buffers.
+    expect(useEditorStore.getState().history).toEqual({ entries: ['/old-vault/note.md'], index: 0 });
     expect(invoke).not.toHaveBeenCalledWith('open_vault', expect.anything());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -62,6 +64,8 @@ describe('switchVault', () => {
     expect(outcome).toBe('switched');
     expect(useAppStore.getState().vaultRoot).toBe('/new-vault');
     expect(useEditorStore.getState().buffers).toHaveLength(0);
+    // Every entry would otherwise point into a vault that is no longer open (decision 37).
+    expect(useEditorStore.getState().history).toEqual({ entries: [], index: -1 });
   });
 
   it('switches immediately when there are no dirty buffers, without showing a prompt', async () => {
