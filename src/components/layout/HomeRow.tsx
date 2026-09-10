@@ -18,7 +18,12 @@ export function HomeRow({ icon, label, trailing, onSelect }: { icon: LucideIcon;
       onClick={onSelect}
     >
       <Icon icon={icon} size={15} className="shrink-0" />
-      <span className="min-w-0 truncate">{label}</span>
+      {/* A clipped surface carries a hover reveal (invariant 32). The drawn *Tooltip* is scoped to
+          the sidebar and this is the editor card, so the reveal is the native `title` the app's
+          four other non-sidebar truncating surfaces already use. */}
+      <span className="min-w-0 truncate" title={label}>
+        {label}
+      </span>
       {trailing !== undefined && <span className="ml-auto shrink-0">{trailing}</span>}
     </button>
   );

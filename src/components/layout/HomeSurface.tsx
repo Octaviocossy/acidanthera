@@ -11,6 +11,19 @@ import { useAppStore } from '@/stores/app-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 /**
+ * The total height, in px, of the *agent dock*'s slot — the composer's box (≈100px: `ChatInput`'s
+ * card, its 12px padding and its top hairline) plus the 24px bottom gutter the slot draws around
+ * it.
+ *
+ * It is reserved **now**, while the slot is still empty, because everything above it is centered
+ * in the space the slot leaves: a slot that collapsed to nothing would let the mark, the greeting
+ * and the rows all jump the moment #154 mounted the dock, which is the one thing the slot exists
+ * to prevent. The figure is therefore normative rather than measured — **#154 must fit `ChatInput`
+ * into this box**, not resize the box around it.
+ */
+const AGENT_DOCK_SLOT_HEIGHT = 124;
+
+/**
  * The *home surface*: what the editor card shows whenever no buffer is open (invariant 33).
  *
  * **One component, three states** — no vault, empty vault, vault with notes — differing only in
@@ -85,9 +98,13 @@ export function HomeSurface() {
       </div>
       {/* The *agent dock*'s slot, pinned to the card's bottom edge in its own gutter (spec decision
           5) — the gap above is what will make the dock read as a persistent way in rather than a
-          fourth action row. Empty until #154 mounts `ChatInput` into it, and collapsed while empty
-          so it costs no height in the meantime. */}
-      <div className="shrink-0 px-6 pb-6 empty:hidden" />
+          fourth action row. Empty until #154 mounts `ChatInput` into it, but holding its full
+          height from today so that mount re-lays-out nothing.
+
+          Absent without a vault, because the no-vault state drops the dock along with every row
+          but the open-vault one (glossary, *home surface*) — reserving space for a composer that
+          will never appear there is the same layout lie as reserving none where it will. */}
+      {hasVault && <div className="shrink-0 px-6 pb-6" style={{ height: AGENT_DOCK_SLOT_HEIGHT }} />}
     </div>
   );
 }

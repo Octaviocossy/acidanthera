@@ -11,6 +11,12 @@ import { HomeSurface } from './HomeSurface';
 const { pickAndPersistVault } = vi.hoisted(() => ({ pickAndPersistVault: vi.fn() }));
 vi.mock('@/lib/vault/pick-vault', () => ({ pickAndPersistVault }));
 
+// A row's own behavior ends at the dispatch: what each command then does lives in — and is tested
+// with — `executeAppCommand` and `startNoteDraft`. Spread the real module so `APP_COMMANDS` still
+// backs `resolveKeymap`; only the dispatcher is replaced.
+const { executeAppCommand } = vi.hoisted(() => ({ executeAppCommand: vi.fn() }));
+vi.mock('@/lib/app-command', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/app-command')>()), executeAppCommand }));
+
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
 const note = { name: 'note.md', path: '/vault/note.md', isDir: false, modified: null, children: null };
@@ -19,6 +25,7 @@ describe('HomeSurface', () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    executeAppCommand.mockReset();
     pickAndPersistVault.mockReset();
     pickAndPersistVault.mockResolvedValue('/picked');
     useAppStore.setState(initialAppState, true);
@@ -65,17 +72,24 @@ describe('HomeSurface', () => {
     expect(screen.getByRole('button', { name: /Open an existing vault/ })).toBeInTheDocument();
   });
 
-  it('starts a sidebar draft from the create row, expanding the sidebar first', async () => {
-    useAppStore.setState({ sidebarExpanded: false, activeRegion: 'viewer' });
-
+  it('dispatches the global create command from the create row', async () => {
     render(<HomeSurface />);
     await userEvent.click(screen.getByRole('button', { name: /Write your first note/ }));
 
-    // A draft has nowhere to render at 40px, so the row expands the sidebar before focusing it —
-    // one behavior per command however it is invoked (spec decision 10).
-    expect(useAppStore.getState().sidebarExpanded).toBe(true);
-    expect(useAppStore.getState().activeRegion).toBe('sidebar');
-    expect(useSidebarStore.getState().draft).toEqual({ kind: 'note', parentPath: '/vault' });
+    // The global verb, not the sidebar's `a`: this row is drawn in the viewer, so it must fire the
+    // command that works from there — the same one whose chord it advertises (invariant 35). Where
+    // the draft then lands, and the sidebar expansion that precedes it, belong to `startNoteDraft`
+    // and are covered by `start-draft.test.ts`; this surface renders none of it.
+    expect(executeAppCommand).toHaveBeenCalledWith('global.new-note');
+  });
+
+  it('dispatches the daily-note command from the daily-note row, inert though that command still is', async () => {
+    render(<HomeSurface />);
+    await userEvent.click(screen.getByRole('button', { name: /Start today's daily note/ }));
+
+    // `executeAppCommand` has no case for it until #151 lands. What the row can promise today is
+    // that it asks for the right command — never that a daily note appears.
+    expect(executeAppCommand).toHaveBeenCalledWith('global.daily-note');
   });
 
   it('opens the folder picker from the open-vault row', async () => {
