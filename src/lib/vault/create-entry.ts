@@ -49,8 +49,10 @@ export function draftPlacement(rows: FlatVaultRow[], draft: EntryDraft): { index
   return { index: parentIndex + 1, depth: rows[parentIndex].depth + 1 };
 }
 
-/** Joins a name onto a vault directory path, keeping whichever separator the Rust side handed us. */
-function joinVaultPath(parent: string, name: string): string {
+/** Joins a name onto a vault directory path, keeping whichever separator the Rust side handed us.
+ *  Shared with `daily-note.ts`, which addresses a folder and a file the user never typed — the
+ *  separator question is the same one either way, so there is one implementation of it. */
+export function joinVaultPath(parent: string, name: string): string {
   const separator = parent.includes('\\') ? '\\' : '/';
   return parent.endsWith(separator) ? `${parent}${name}` : `${parent}${separator}${name}`;
 }

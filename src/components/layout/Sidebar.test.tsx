@@ -27,7 +27,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
 const initialSettingsState = useSettingsStore.getState();
-const SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' };
+const SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily' };
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 // Pinned relative to load so the rendered `edited` strings are deterministic: every elapsed value
