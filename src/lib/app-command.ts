@@ -1,3 +1,5 @@
+import { openDailyNote } from '@/lib/vault/daily-note';
+import { startNoteDraft } from '@/lib/vault/start-draft';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 
 /** Which input layer an {@link AppCommandId} belongs to — the namespace before its dotted id
@@ -18,6 +20,8 @@ export type AppCommandId =
   | 'global.toggle-chat'
   | 'global.toggle-settings'
   | 'global.command-mode'
+  | 'global.new-note'
+  | 'global.daily-note'
   | 'sidebar.cursor-down'
   | 'sidebar.cursor-up'
   | 'sidebar.open'
@@ -59,6 +63,11 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'global.toggle-chat', label: 'Toggle agent', layer: 'global' },
   { id: 'global.toggle-settings', label: 'Toggle settings', layer: 'global' },
   { id: 'global.command-mode', label: 'Enter command mode', layer: 'global' },
+  // The sidebar keeps its own `sidebar.new-note`: a verb may live in two layers, and each surface
+  // renders whichever chord fires where it is drawn (invariant 35). Promoting rather than moving
+  // is what lets the *home surface* advertise a chord that works from the viewer.
+  { id: 'global.new-note', label: 'New note', layer: 'global' },
+  { id: 'global.daily-note', label: 'Daily note', layer: 'global' },
   { id: 'sidebar.cursor-down', label: 'Move cursor down', layer: 'sidebar' },
   { id: 'sidebar.cursor-up', label: 'Move cursor up', layer: 'sidebar' },
   { id: 'sidebar.open', label: 'Open entry', layer: 'sidebar' },
@@ -85,6 +94,12 @@ export function executeAppCommand(command: AppCommandId): void {
   switch (command) {
     case 'global.find-file':
       useFileFinderStore.getState().show();
+      break;
+    case 'global.new-note':
+      startNoteDraft('note');
+      break;
+    case 'global.daily-note':
+      void openDailyNote();
       break;
     default:
       break;

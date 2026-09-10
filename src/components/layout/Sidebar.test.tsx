@@ -1,11 +1,18 @@
+import { invoke } from '@tauri-apps/api/core';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EMPTY_NAVIGATION_HISTORY } from '@/lib/editor/navigation-history';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
+import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
+import { useEditorStore } from '@/stores/editor-store';
+import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
+import { FileFinder } from './FileFinder';
 import { Sidebar } from './Sidebar';
 import { TooltipHost } from './TooltipHost';
 
@@ -17,9 +24,12 @@ const { openVaultFile, readVaultTree, onVaultChanged } = vi.hoisted(() => ({
 
 vi.mock('@/lib/vault/open-file', () => ({ openVaultFile }));
 vi.mock('@/services/vault.service', () => ({ vaultService: { readVaultTree, onVaultChanged } }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
+const initialSettingsState = useSettingsStore.getState();
+const SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily' };
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 // Pinned relative to load so the rendered `edited` strings are deterministic: every elapsed value
@@ -49,12 +59,17 @@ const tree = [
 describe('Sidebar', () => {
   beforeEach(() => {
     openVaultFile.mockReset();
+    vi.mocked(invoke).mockReset();
     readVaultTree.mockResolvedValue(tree);
     onVaultChanged.mockResolvedValue(() => {});
     useAppStore.setState(initialAppState, true);
     useAppStore.setState({ vaultRoot: '/vault', sidebarExpanded: false });
     useSidebarStore.setState(initialSidebarState, true);
     useSidebarStore.setState({ tree, expanded: new Set(), cursorPath: null, draft: null });
+    useSettingsStore.setState(initialSettingsState, true);
+    useSettingsStore.setState({ settings: SETTINGS, diagnostics: [] });
+    useEditorStore.setState({ buffers: [], activeBufferId: null, history: EMPTY_NAVIGATION_HISTORY });
+    useFileFinderStore.getState().hide();
   });
 
   afterEach(() => {
@@ -64,6 +79,8 @@ describe('Sidebar', () => {
     resetTooltip();
     useAppStore.setState(initialAppState, true);
     useSidebarStore.setState(initialSidebarState, true);
+    useSettingsStore.setState(initialSettingsState, true);
+    useEditorStore.setState({ buffers: [], activeBufferId: null, history: EMPTY_NAVIGATION_HISTORY });
     useKeymapStore.setState({ resolved: resolveKeymap(null) });
   });
 
@@ -155,6 +172,153 @@ describe('Sidebar', () => {
     expect(screen.getByRole('button', { name: 'New note' })).toHaveTextContent('Ctrl+n');
   });
 
+  it('renders the four primary nav rows in order', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label'))
+    ).toEqual(['New note', 'Daily note', 'New folder', 'Agent']);
+  });
+
+  // The row dispatches `global.daily-note` through the real `executeAppCommand`, which falls to its
+  // `default: break` on this branch — the command is *declared* (so it resolves a chord, invariant
+  // 35) but not yet *dispatched*; #151 adds its case. So there is no positive effect to assert
+  // here. What is assertable is that the row is inert rather than wired to the wrong verb: it must
+  // not do what either surface beside it does. Both of those are visible, so both are observed
+  // through the rendered tree rather than through store state — `FileFinder` is mounted alongside
+  // the sidebar so its overlay is genuinely in the tree to be absent from.
+  it('leaves the daily note row inert until the command gains a case', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(
+      <>
+        <Sidebar />
+        <FileFinder />
+      </>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Daily note' }));
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Find file' })).not.toBeInTheDocument();
+  });
+
+  it("renders the daily note row's chord from the global layer it is bound in", () => {
+    useKeymapStore.setState({ resolved: resolveKeymap({ 'global.daily-note': ['ctrl-w j'] }) });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Daily note' })).toHaveTextContent('Ctrl+wj');
+  });
+
+  it('says the empty tree is empty rather than showing nothing under NOTES', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(await screen.findByText('Nothing here yet.')).toBeInTheDocument();
+  });
+
+  it('never renders the empty line as a row the cursor could land on', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    await screen.findByText('Nothing here yet.');
+
+    expect(within(screen.getByRole('tree')).queryAllByRole('treeitem')).toHaveLength(0);
+  });
+
+  it('drops the empty line as soon as the vault holds a note', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.queryByText('Nothing here yet.')).not.toBeInTheDocument();
+  });
+
+  it('drops the empty line while the first note is being named', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    await screen.findByText('Nothing here yet.');
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'New note' }));
+
+    expect(screen.queryByText('Nothing here yet.')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'New note name' })).toBeInTheDocument();
+  });
+
+  it('writes the opposite theme through the same store the settings dialog writes through', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(useSettingsStore.getState().settings?.theme).toBe('light');
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith('write_settings', { settings: { ...SETTINGS, theme: 'light' } });
+  });
+
+  // *Which* glyph the toggle shows — `Sun` in dark, `Moon` in light — has no test, deliberately.
+  // `Icon` renders `aria-hidden`, so the icon's identity is intentionally absent from the
+  // accessibility tree, and the only handles left are structural (a Lucide class, a `data-testid`,
+  // a `querySelector`), all of which the issue's Step 6 rules out: "Assert by role and accessible
+  // name, never by class." What the icon *means* is covered by the write-direction test above —
+  // clicking in the dark theme writes `light` — which is the toggle's actual contract.
+
+  it('states no theme at all before the boot-time load resolves', () => {
+    useSettingsStore.setState({ settings: null });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const toggle = screen.getByRole('button', { name: 'Toggle theme' });
+
+    // Mounted and disabled, but stating nothing — `Sun` here would assert the dark theme, wrongly
+    // for anyone whose persisted theme is light. Presence-by-absence, not a class assertion: the
+    // button renders no content at all until settings arrive.
+    expect(toggle).toBeDisabled();
+    expect(toggle).toBeEmptyDOMElement();
+  });
+
+  it('keeps the rail pin stating nothing before settings load too, since both are one component', () => {
+    useSettingsStore.setState({ settings: null });
+    render(<Sidebar />);
+    const pin = screen.getByRole('button', { name: 'Toggle theme' });
+
+    expect(pin).toBeDisabled();
+    expect(pin).toBeEmptyDOMElement();
+  });
+
+  it('disables the theme toggle while settings.toml has a syntax error', () => {
+    useSettingsStore.setState({ diagnostics: [{ kind: 'syntax', message: 'expected `=`', line: 3 }] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeDisabled();
+  });
+
+  it('gives the footer the theme toggle and the brand row Settings', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const footer = screen.getByText('2 notes').closest('footer') as HTMLElement;
+
+    expect(within(footer).getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
+    expect(within(footer).queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+  });
+
+  it('mirrors both controls onto the rail while collapsed', () => {
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
+  });
+
   it('keeps the primary nav out of the cursor row source', () => {
     useAppStore.getState().expandSidebar();
     render(<Sidebar />);
@@ -226,6 +390,58 @@ describe('Sidebar', () => {
 
     expect(draftRow).not.toBeNull();
     expect(within(draftRow as HTMLElement).queryByText(/^edited/)).not.toBeInTheDocument();
+  });
+
+  describe('navigation history controls', () => {
+    beforeEach(() => {
+      useAppStore.setState({ sidebarExpanded: true });
+    });
+
+    it('disables both controls while nothing has been navigated', () => {
+      render(<Sidebar />);
+
+      expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeDisabled();
+    });
+
+    it('enables Back alone once a second buffer has been activated', () => {
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      render(<Sidebar />);
+
+      expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeDisabled();
+    });
+
+    it('activates the previous buffer on Back and enables Forward', async () => {
+      const user = userEvent.setup();
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      const one = useEditorStore.getState().buffers[0].id;
+      render(<Sidebar />);
+
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+
+      expect(useEditorStore.getState().activeBufferId).toBe(one);
+      expect(screen.getByRole('button', { name: 'Forward' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+    });
+
+    it('renders neither control on the collapsed rail', () => {
+      act(() => {
+        useEditorStore.getState().openFile('/vault/one.md', 'one');
+        useEditorStore.getState().openFile('/vault/two.md', 'two');
+      });
+      useAppStore.setState({ sidebarExpanded: false });
+      render(<Sidebar />);
+
+      expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Forward' })).not.toBeInTheDocument();
+    });
   });
 
   describe('hover reveal', () => {

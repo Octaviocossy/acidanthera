@@ -8,7 +8,7 @@ import type { VaultEntry } from '@/services/vault.service';
  * Deliberately not `children.length`: a folder holding two note-filled subfolders would read `2`,
  * which is a different meaning of "count" in the same panel.
  */
-export function countNotes(entries: VaultEntry[]): number {
+export function countNotes(entries: readonly VaultEntry[]): number {
   let total = 0;
   for (const entry of entries) {
     if (!entry.isDir) total += 1;

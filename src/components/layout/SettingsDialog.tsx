@@ -29,8 +29,8 @@ function SettingsRow({ label, description, children }: { label: string; descript
 }
 
 /**
- * The settings dialog (#29): a modal overlay editing the four persisted settings (#25) —
- * model, theme, editor font, vault path — through `useSettingsStore`'s write-through
+ * The settings dialog (#29): a modal overlay editing the persisted settings (#25) —
+ * model, theme, editor font, vault path, daily-note folder — through `useSettingsStore`'s write-through
  * `updateSettings`. Monochrome, hand-built on the design primitives. Selecting a model also
  * switches the chat model (and thus its engine) immediately; theme/font values are applied by
  * the theme slice. Opened from the titlebar control or the `Ctrl-w` `s` chord; Escape or a
@@ -49,6 +49,7 @@ export function SettingsDialog() {
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [fontDraft, setFontDraft] = useState('');
+  const [dailyFolderDraft, setDailyFolderDraft] = useState('');
   const [category, setCategory] = useState<SettingsCategory>('Appearance');
 
   // Settings are loaded at boot by `useSettingsBootstrap`; this covers the dialog racing it.
@@ -59,8 +60,9 @@ export function SettingsDialog() {
   useEffect(() => {
     if (!open) return;
     setFontDraft(settings?.editorFont ?? '');
+    setDailyFolderDraft(settings?.dailyNoteFolder ?? '');
     panelRef.current?.focus();
-  }, [open, settings?.editorFont]);
+  }, [open, settings?.editorFont, settings?.dailyNoteFolder]);
 
   // Window-level so Escape closes even when focus has wandered off the panel. Non-Escape
   // keys never bubble past the panel (see its onKeyDown), so this never double-handles.
@@ -86,6 +88,18 @@ export function SettingsDialog() {
       return;
     }
     void updateSettings({ editorFont: next });
+  };
+
+  // A blank folder would resolve to the vault root itself, so it reverts rather than writing —
+  // the same rule `extract_daily_note_folder` applies to a hand-edited `settings.toml`.
+  const commitDailyFolder = () => {
+    if (settings === null) return;
+    const next = dailyFolderDraft.trim();
+    if (next === '' || next === settings.dailyNoteFolder) {
+      setDailyFolderDraft(settings.dailyNoteFolder);
+      return;
+    }
+    void updateSettings({ dailyNoteFolder: next });
   };
 
   return (
@@ -185,16 +199,34 @@ export function SettingsDialog() {
             )}
 
             {settings !== null && !syntaxError && category === 'Vault' && (
-              <SettingsRow label="Vault" description="The root folder opened when acidanthera starts.">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="truncate font-mono text-meta text-text-muted" title={settings.vaultPath}>
-                    {displayPath(settings.vaultPath)}
-                  </span>
-                  <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>
-                    Change…
-                  </Button>
-                </div>
-              </SettingsRow>
+              <div className="flex flex-col gap-6">
+                <SettingsRow label="Vault" description="The root folder opened when acidanthera starts.">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="truncate font-mono text-meta text-text-muted" title={settings.vaultPath}>
+                      {displayPath(settings.vaultPath)}
+                    </span>
+                    <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void pickAndPersistVault()}>
+                      Change…
+                    </Button>
+                  </div>
+                </SettingsRow>
+                <SettingsRow label="Daily note folder" description="Relative to the vault root. Created on first use.">
+                  <input
+                    value={dailyFolderDraft}
+                    onChange={(event) => setDailyFolderDraft(event.currentTarget.value)}
+                    onBlur={commitDailyFolder}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        commitDailyFolder();
+                      }
+                    }}
+                    className="w-56 rounded-card border border-border bg-[var(--surface-input)] px-3 py-2 font-sans text-input text-text-primary outline-none focus:border-border-strong"
+                    spellCheck={false}
+                    aria-label="Daily note folder"
+                  />
+                </SettingsRow>
+              </div>
             )}
 
             {/* Deliberately not gated on `settings !== null && !syntaxError`, unlike the three

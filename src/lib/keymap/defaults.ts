@@ -26,6 +26,8 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'global.toggle-chat': ['ctrl-w c'],
   'global.toggle-settings': ['ctrl-w s'],
   'global.command-mode': [':'],
+  'global.new-note': ['ctrl-w n'],
+  'global.daily-note': ['ctrl-w d'],
 
   // [sidebar]
   'sidebar.cursor-down': ['j'],

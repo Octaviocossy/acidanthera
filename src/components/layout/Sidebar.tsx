@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search, Settings } from '@/components/ui/icon';
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
@@ -8,23 +8,27 @@ import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
 import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
+import { executeAppCommand } from '@/lib/app-command';
+import { canGoBack, canGoForward } from '@/lib/editor/navigation-history';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
-import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
+import { createVaultEntry, draftPlacement } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { countNotes } from '@/lib/vault/note-count';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import { renameVaultEntry } from '@/lib/vault/rename-entry';
+import { startNoteDraft } from '@/lib/vault/start-draft';
 import { type VaultEntry, vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
-import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
+import { useSettingsStore } from '@/stores/settings-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 /** A chrome control's hover reveal: its label, plus the live chord bound to its command. */
 function TooltipHint({ label, chord }: { label: string; chord?: string }) {
@@ -37,14 +41,92 @@ function TooltipHint({ label, chord }: { label: string; chord?: string }) {
 }
 
 /**
- * The sidebar's *chrome strip*: bare, carrying only the drag region the native traffic lights sit
- * on (decisions 16, 31). A separate strip gives the drag region the whole row rather than the gap
- * between a mark and two icons, and at 40px collapsed it is the only thing left to grab.
+ * The sidebar's *chrome strip*: the drag region the native traffic lights sit on (decisions 16,
+ * 31). A separate strip gives the drag region the whole row rather than the gap between a mark
+ * and two icons, and at 40px collapsed it is the only thing left to grab.
+ *
+ * It carries **no state** and only controls acting on what the window is currently showing (ADR
+ * 0037, amending ADR 0035's blanket "no controls" — invariant 23). Anything app-level stays in
+ * the sidebar proper, which is what keeps the strip from drifting back into a titlebar one
+ * convenience at a time. Children stay clickable through Tauri's clickable-tag exemption, exactly
+ * as `EditorTabs`' chips do — the drag attribute never goes on a button.
  *
  * `trafficLightPosition` is unchanged — the band is still 40px, so `y: 21.5` still centres them.
  */
-function SidebarChromeStrip() {
-  return <div data-tauri-drag-region="deep" className="h-[var(--rail-titlebar)] w-full shrink-0" />;
+function SidebarChromeStrip({ children }: { children?: React.ReactNode }) {
+  return (
+    <div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] w-full shrink-0 items-center justify-end gap-0.5 px-[14px]">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The *navigation history* controls: back and forward over **buffer activations**, the first
+ * controls the *chrome strip* has ever carried (ADR 0037).
+ *
+ * `ArrowLeft`/`ArrowRight` rather than chevrons (decision 38): `ChevronLeft` is already the
+ * collapse toggle ~40px below in the brand row, and two identical glyphs meaning different things
+ * in one 224px column is a misclick waiting to happen.
+ *
+ * **Pointer-only** (decision 36): no `AppCommandId`, so no chord and no `Kbd` — deliberately
+ * against `doc/v0-spec.md` §5.5, and reversible by adding two command ids. Not mirrored onto the
+ * *sidebar rail* (decision 33): a navigation control with no visible destination does not earn a
+ * tooltip-identified 40px glyph.
+ */
+function NavigationHistoryControls() {
+  const history = useEditorStore((state) => state.history);
+  const goBack = useEditorStore((state) => state.goBack);
+  const goForward = useEditorStore((state) => state.goForward);
+
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Back" disabled={!canGoBack(history)} {...tooltipTarget('Back')} onClick={goBack}>
+        <Icon icon={ArrowLeft} size={15} />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Forward" disabled={!canGoForward(history)} {...tooltipTarget('Forward')} onClick={goForward}>
+        <Icon icon={ArrowRight} size={15} />
+      </Button>
+    </>
+  );
+}
+
+/**
+ * The *theme toggle*, in the *footer identity block*'s right slot and mirrored as the *sidebar
+ * rail*'s bottom pin (decisions 31, 33) — one implementation, two mounts, so the pair cannot drift.
+ *
+ * It writes through the same `useSettingsStore.updateSettings` the *settings dialog*'s `Segmented`
+ * calls: one write path with two call sites, so ADR 0003 keeps `settings.toml` authoritative and
+ * the *settings dialog write* preserves comments and key order. Its icon states the **current**
+ * theme, never the destination. Disabled while a `Syntax` diagnostic is present, exactly as the
+ * dialog's rows are — `updateSettings` refuses that write anyway, so the click would silently do
+ * nothing — and before the boot-time load resolves, where it also draws **no icon at all**:
+ * `settings` is `null` until then, so there is no current theme, and defaulting to `Sun` would
+ * state the dark one — wrongly, for anyone whose persisted theme is light. The button stays
+ * mounted at its fixed 24px either way, so neither mount's layout shifts as settings arrive.
+ */
+function ThemeToggle({ className }: { className?: string }) {
+  const settings = useSettingsStore((state) => state.settings);
+  const diagnostics = useSettingsStore((state) => state.diagnostics);
+  const updateSettings = useSettingsStore((state) => state.updateSettings);
+  const blocked = settings === null || diagnostics.some((diagnostic) => diagnostic.kind === 'syntax');
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn('h-6 w-6 shrink-0 p-0', className)}
+      aria-label="Toggle theme"
+      disabled={blocked}
+      {...tooltipTarget('Toggle theme')}
+      onClick={() => {
+        if (settings === null) return;
+        void updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
+      }}
+    >
+      {settings !== null && <Icon icon={settings.theme === 'light' ? Moon : Sun} size={15} />}
+    </Button>
+  );
 }
 
 /**
@@ -117,7 +199,6 @@ export function Sidebar() {
   const setTree = useSidebarStore((state) => state.setTree);
   const toggleExpanded = useSidebarStore((state) => state.toggleExpanded);
   const setCursor = useSidebarStore((state) => state.setCursor);
-  const beginDraft = useSidebarStore((state) => state.beginDraft);
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
   const cancelRename = useSidebarStore((state) => state.cancelRename);
 
@@ -144,18 +225,12 @@ export function Sidebar() {
   const findFileChord = formatChord(globalBindings.get('global.find-file'));
   const newNoteChord = formatChord(sidebarBindings.get('sidebar.new-note'));
   const newDirectoryChord = formatChord(sidebarBindings.get('sidebar.new-directory'));
+  // `global`-layer, so unlike `a`/`Shift+A` beside it this chord is not focus-gated.
+  const dailyNoteChord = formatChord(globalBindings.get('global.daily-note'));
   // The command id keeps its old name: `keymaps.toml` is user-visible, so the chat-to-agent
   // rename deliberately stopped at the wire (#143, spec decision 28).
   const agentChord = formatChord(globalBindings.get('global.toggle-chat'));
   const settingsChord = formatChord(globalBindings.get('global.toggle-settings'));
-
-  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. */
-  const startDraft = (kind: EntryDraftKind) => {
-    const parentPath = resolveDraftParent(vaultRows, cursorPath, vaultRoot);
-    if (parentPath === null) return;
-    focusRegion('sidebar');
-    beginDraft(kind, parentPath);
-  };
 
   /** The rail is a launcher, not a preview: files open in place; directories expand first. */
   const openRailEntry = (entry: VaultEntry) => {
@@ -197,10 +272,7 @@ export function Sidebar() {
                 className="h-6 w-6 shrink-0 p-0"
                 aria-label="New note"
                 {...tooltipTarget(<TooltipHint label="New note" chord={newNoteChord} />)}
-                onClick={() => {
-                  expandSidebar();
-                  startDraft('note');
-                }}
+                onClick={() => startNoteDraft('note')}
               >
                 <Icon icon={FilePlus} size={14} />
               </Button>
@@ -210,10 +282,7 @@ export function Sidebar() {
                 className="h-6 w-6 shrink-0 p-0"
                 aria-label="New folder"
                 {...tooltipTarget(<TooltipHint label="New folder" chord={newDirectoryChord} />)}
-                onClick={() => {
-                  expandSidebar();
-                  startDraft('directory');
-                }}
+                onClick={() => startNoteDraft('directory')}
               >
                 <Icon icon={FolderPlus} size={14} />
               </Button>
@@ -231,6 +300,20 @@ export function Sidebar() {
             <span className="text-ui" aria-hidden="true">
               ✦
             </span>
+          </Button>
+          {/* A brand-row control now, so the rail carries it in the stack rather than pinned
+              (decision 33): the rail mirrors whatever the expanded sidebar's hidden surfaces
+              carry, and Settings is no longer one of the footer's. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 shrink-0 p-0"
+            aria-label="Settings"
+            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Icon icon={Settings} size={15} />
           </Button>
           {vaultRoot !== null && tree.length > 0 && (
             <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
@@ -250,19 +333,10 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        {/* Pinned outside the launcher column's scroll: `⚙` lives in a footer the rail hides, so
-            without this it has no pointer affordance while collapsed (decision 30). */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 mb-3 h-6 w-6 shrink-0 p-0"
-          aria-label="Settings"
-          {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
-          aria-haspopup="dialog"
-          onClick={openSettings}
-        >
-          <Icon icon={Settings} size={15} />
-        </Button>
+        {/* Pinned outside the launcher column's scroll, standing in for the *footer identity
+            block* the rail hides — so the pin holds whatever that footer's right slot holds,
+            which is the *theme toggle* now (decision 33, invariant 24). */}
+        <ThemeToggle className="mt-2 mb-3" />
       </aside>
     );
   }
@@ -347,7 +421,9 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col bg-panel" aria-label="Vault explorer">
-      <SidebarChromeStrip />
+      <SidebarChromeStrip>
+        <NavigationHistoryControls />
+      </SidebarChromeStrip>
       <div className="flex items-center justify-between gap-1 px-[14px] pb-2">
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
@@ -365,13 +441,34 @@ export function Sidebar() {
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" {...tooltipTarget('Collapse sidebar')} onClick={collapseSidebar}>
             <Icon icon={ChevronLeft} size={15} />
           </Button>
+          {/* Rehomed from the footer, whose right slot is the *theme toggle* now. ADR 0035 lets
+              that slot be reassigned but not vacated: Settings still needs a pointer affordance
+              in the expanded sidebar (decision 32). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            aria-label="Settings"
+            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Icon icon={Settings} size={15} />
+          </Button>
         </div>
       </div>
       <nav aria-label="Primary" className="flex shrink-0 flex-col gap-0.5 px-[10px] pb-3">
         {vaultRoot !== null && (
           <>
-            <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startDraft('note')} />
-            <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startDraft('directory')} />
+            <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startNoteDraft('note')} />
+            {/* The two note-producing verbs adjacent, then the folder verb, then the agent. */}
+            <NavRow
+              icon={<Icon icon={CalendarDays} size={15} className="shrink-0" />}
+              label="Daily note"
+              chord={dailyNoteChord}
+              onClick={() => executeAppCommand('global.daily-note')}
+            />
+            <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startNoteDraft('directory')} />
           </>
         )}
         <NavRow
@@ -406,7 +503,10 @@ export function Sidebar() {
               showContextMenu(event.clientX, event.clientY, null);
             }}
           >
-            {rowElements}
+            {/* Not a row: absent from `flattenVisibleTree`, so `j`/`k` never land on it and it
+                carries no `treeitem` role. Suppressed while a draft is open, or naming the first
+                note would show the placeholder and the input at once (decision 29). */}
+            {vaultRows.length === 0 && draft === null ? <span className="font-sans text-ui text-text-secondary">Nothing here yet.</span> : rowElements}
           </div>
         </>
       )}
@@ -423,17 +523,7 @@ export function Sidebar() {
               {noteCount} {noteCount === 1 ? 'note' : 'notes'}
             </span>
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto h-6 w-6 shrink-0 p-0"
-            aria-label="Settings"
-            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
-            aria-haspopup="dialog"
-            onClick={openSettings}
-          >
-            <Icon icon={Settings} size={15} />
-          </Button>
+          <ThemeToggle className="ml-auto" />
         </footer>
       )}
     </aside>
