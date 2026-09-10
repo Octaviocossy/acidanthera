@@ -2,7 +2,27 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type { LucideIcon } from 'lucide-react';
-export { ChevronLeft, ChevronRight, Copy, File, FilePlus, FileText, Folder, FolderPlus, Pencil, Search, Settings, Trash2, X } from 'lucide-react';
+export {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  File,
+  FilePlus,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Moon,
+  Pencil,
+  Search,
+  Settings,
+  Sun,
+  Trash2,
+  X,
+} from 'lucide-react';
 
 interface IconProps {
   icon: LucideIcon;

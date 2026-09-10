@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { type DispatcherCommand, type DispatcherLayer, useDispatcherLayer } from '@/lib/keymap/dispatcher';
-import { resolveDraftParent } from '@/lib/vault/create-entry';
 import { deleteVaultEntry } from '@/lib/vault/delete-entry';
 import { duplicateVaultEntry } from '@/lib/vault/duplicate-entry';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { openVaultFile } from '@/lib/vault/open-file';
+import { startNoteDraft } from '@/lib/vault/start-draft';
 import { useAppStore } from '@/stores/app-store';
 import { useKeymapStore } from '@/stores/keymap-store';
-import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 function visibleRows() {
   const sidebar = useSidebarStore.getState();
@@ -49,15 +49,6 @@ function collapseCursorRow(): void {
   }
 }
 
-function beginDraft(kind: EntryDraftKind): void {
-  const app = useAppStore.getState();
-  const sidebar = useSidebarStore.getState();
-
-  const parentPath = resolveDraftParent(visibleRows(), sidebar.cursorPath, app.vaultRoot);
-  if (parentPath === null) return;
-  sidebar.beginDraft(kind, parentPath);
-}
-
 function deleteCursorRow(): void {
   const rows = visibleRows();
   const cursorPath = useSidebarStore.getState().cursorPath;
@@ -97,8 +88,8 @@ export function useSidebarKeymap() {
       { id: 'sidebar.cursor-up', chords: layerBindings.get('sidebar.cursor-up') ?? [], run: () => moveCursor(-1) },
       { id: 'sidebar.open', chords: layerBindings.get('sidebar.open') ?? [], run: openCursorRow },
       { id: 'sidebar.collapse', chords: layerBindings.get('sidebar.collapse') ?? [], run: collapseCursorRow },
-      { id: 'sidebar.new-note', chords: layerBindings.get('sidebar.new-note') ?? [], run: () => beginDraft('note') },
-      { id: 'sidebar.new-directory', chords: layerBindings.get('sidebar.new-directory') ?? [], run: () => beginDraft('directory') },
+      { id: 'sidebar.new-note', chords: layerBindings.get('sidebar.new-note') ?? [], run: () => startNoteDraft('note') },
+      { id: 'sidebar.new-directory', chords: layerBindings.get('sidebar.new-directory') ?? [], run: () => startNoteDraft('directory') },
       { id: 'sidebar.rename', chords: layerBindings.get('sidebar.rename') ?? [], run: renameCursorRow },
       { id: 'sidebar.duplicate', chords: layerBindings.get('sidebar.duplicate') ?? [], run: duplicateCursorRow },
       { id: 'sidebar.delete', chords: layerBindings.get('sidebar.delete') ?? [], run: deleteCursorRow },

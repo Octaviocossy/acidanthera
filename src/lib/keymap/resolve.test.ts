@@ -15,6 +15,18 @@ describe('resolveKeymap', () => {
     expect(resolved.diagnostics).toEqual([]);
   });
 
+  it('resolves the promoted create verbs in the global layer', () => {
+    const resolved = resolveKeymap(null);
+
+    expect(chordStrings(resolved.layers.global.get('global.new-note') ?? [])).toEqual(['ctrl-w n']);
+    expect(chordStrings(resolved.layers.global.get('global.daily-note') ?? [])).toEqual(['ctrl-w d']);
+    // Promoted, not moved: the sidebar keeps its single-key create (invariant 35).
+    expect(chordStrings(resolved.layers.sidebar.get('sidebar.new-note') ?? [])).toEqual(['a']);
+    // A layer whose chords were not prefix/leaf-safe reverts wholesale to its defaults with a
+    // diagnostic, so an empty list is also the proof that "ctrl-w n"/"ctrl-w d" collide with nothing.
+    expect(resolved.diagnostics).toEqual([]);
+  });
+
   it('replaces a command wholesale rather than merging with its default', () => {
     const resolved = resolveKeymap({ 'sidebar.cursor-down': ['ctrl-p'] });
 
