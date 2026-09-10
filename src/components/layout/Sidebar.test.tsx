@@ -10,6 +10,7 @@ import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
+import { FileFinder } from './FileFinder';
 import { Sidebar } from './Sidebar';
 import { TooltipHost } from './TooltipHost';
 
@@ -182,19 +183,24 @@ describe('Sidebar', () => {
   // The row dispatches `global.daily-note` through the real `executeAppCommand`, which falls to its
   // `default: break` on this branch — the command is *declared* (so it resolves a chord, invariant
   // 35) but not yet *dispatched*; #151 adds its case. So there is no positive effect to assert
-  // here, and mocking the dispatcher to watch the call would mock an internal rather than an I/O
-  // boundary (`.agents/rules/testing.md`). What is assertable is that the row is inert rather than
-  // wired to the wrong verb: it must not do what either create row beside it does.
+  // here. What is assertable is that the row is inert rather than wired to the wrong verb: it must
+  // not do what either surface beside it does. Both of those are visible, so both are observed
+  // through the rendered tree rather than through store state — `FileFinder` is mounted alongside
+  // the sidebar so its overlay is genuinely in the tree to be absent from.
   it('leaves the daily note row inert until the command gains a case', async () => {
     const user = userEvent.setup();
     useAppStore.getState().expandSidebar();
-    render(<Sidebar />);
+    render(
+      <>
+        <Sidebar />
+        <FileFinder />
+      </>
+    );
 
     await user.click(screen.getByRole('button', { name: 'Daily note' }));
 
-    expect(useSidebarStore.getState().draft).toBeNull();
-    expect(useFileFinderStore.getState().open).toBe(false);
-    expect(openVaultFile).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Find file' })).not.toBeInTheDocument();
   });
 
   it("renders the daily note row's chord from the global layer it is bound in", () => {
@@ -255,20 +261,12 @@ describe('Sidebar', () => {
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('write_settings', { settings: { ...SETTINGS, theme: 'light' } });
   });
 
-  // The icon is `aria-hidden` by design (it duplicates nothing the label says), so its identity is
-  // only reachable through the class Lucide stamps on the rendered `svg` — the same handle
-  // `Icon.test.tsx` and `FileTreeItem.test.tsx` already assert purely-visual affordances through.
-  it('states the current theme rather than the destination', () => {
-    useAppStore.getState().expandSidebar();
-    const { rerender } = render(<Sidebar />);
-
-    expect(screen.getByRole('button', { name: 'Toggle theme' }).querySelector('svg')).toHaveClass('lucide-sun');
-
-    act(() => useSettingsStore.setState({ settings: { ...SETTINGS, theme: 'light' } }));
-    rerender(<Sidebar />);
-
-    expect(screen.getByRole('button', { name: 'Toggle theme' }).querySelector('svg')).toHaveClass('lucide-moon');
-  });
+  // *Which* glyph the toggle shows — `Sun` in dark, `Moon` in light — has no test, deliberately.
+  // `Icon` renders `aria-hidden`, so the icon's identity is intentionally absent from the
+  // accessibility tree, and the only handles left are structural (a Lucide class, a `data-testid`,
+  // a `querySelector`), all of which the issue's Step 6 rules out: "Assert by role and accessible
+  // name, never by class." What the icon *means* is covered by the write-direction test above —
+  // clicking in the dark theme writes `light` — which is the toggle's actual contract.
 
   it('states no theme at all before the boot-time load resolves', () => {
     useSettingsStore.setState({ settings: null });
@@ -277,9 +275,10 @@ describe('Sidebar', () => {
     const toggle = screen.getByRole('button', { name: 'Toggle theme' });
 
     // Mounted and disabled, but stating nothing — `Sun` here would assert the dark theme, wrongly
-    // for anyone whose persisted theme is light.
+    // for anyone whose persisted theme is light. Presence-by-absence, not a class assertion: the
+    // button renders no content at all until settings arrive.
     expect(toggle).toBeDisabled();
-    expect(toggle.querySelector('svg')).toBeNull();
+    expect(toggle).toBeEmptyDOMElement();
   });
 
   it('keeps the rail pin stating nothing before settings load too, since both are one component', () => {
@@ -288,7 +287,7 @@ describe('Sidebar', () => {
     const pin = screen.getByRole('button', { name: 'Toggle theme' });
 
     expect(pin).toBeDisabled();
-    expect(pin.querySelector('svg')).toBeNull();
+    expect(pin).toBeEmptyDOMElement();
   });
 
   it('disables the theme toggle while settings.toml has a syntax error', () => {
