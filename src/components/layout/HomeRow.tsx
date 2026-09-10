@@ -18,9 +18,9 @@ export function HomeRow({ icon, label, trailing, onSelect }: { icon: LucideIcon;
       onClick={onSelect}
     >
       <Icon icon={icon} size={15} className="shrink-0" />
-      {/* A clipped surface carries a hover reveal (invariant 32). The drawn *Tooltip* is scoped to
-          the sidebar and this is the editor card, so the reveal is the native `title` the app's
-          four other non-sidebar truncating surfaces already use. */}
+      {/* A clipped surface carries a hover reveal (invariant 32): the drawn *Tooltip* inside the
+          sidebar, the native `title` outside it. This is the editor card, and the *Tooltip* is
+          anchored, clamped and mounted for the sidebar's own overflow — so `title` it is. */}
       <span className="min-w-0 truncate" title={label}>
         {label}
       </span>
