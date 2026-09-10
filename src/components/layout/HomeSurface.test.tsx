@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import { useAppStore } from '@/stores/app-store';
+import { useChatStore } from '@/stores/chat-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { HomeSurface } from './HomeSurface';
@@ -19,7 +20,10 @@ vi.mock('@/lib/app-command', async (importOriginal) => ({ ...(await importOrigin
 
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
+const initialChatState = useChatStore.getState();
 const note = { name: 'note.md', path: '/vault/note.md', isDir: false, modified: null, children: null };
+
+const dock = () => screen.queryByLabelText('Chat input');
 
 describe('HomeSurface', () => {
   afterEach(cleanup);
@@ -30,6 +34,7 @@ describe('HomeSurface', () => {
     pickAndPersistVault.mockResolvedValue('/picked');
     useAppStore.setState(initialAppState, true);
     useSidebarStore.setState(initialSidebarState, true);
+    useChatStore.setState(initialChatState, true);
     useAppStore.setState({ vaultRoot: '/vault' });
     useSidebarStore.setState({ tree: [] });
     useKeymapStore.setState({ resolved: resolveKeymap(null) });
@@ -117,5 +122,93 @@ describe('HomeSurface', () => {
 
     expect(screen.queryByText(defaultChord as string)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Write your first note/ })).toBeInTheDocument();
+  });
+
+  describe('the agent dock', () => {
+    it('offers the composer with its own cold-start invitation once a vault is open', () => {
+      render(<HomeSurface />);
+
+      expect(dock()).toHaveAttribute('placeholder', 'Or ask — "set up a structure for PKM + work notes"');
+    });
+
+    it('is absent with no vault open, where a turn could only produce an error item', () => {
+      useAppStore.setState({ vaultRoot: null });
+
+      render(<HomeSurface />);
+
+      expect(dock()).not.toBeInTheDocument();
+    });
+
+    it('is hidden while the agent panel is open, so one transcript never has two composers', () => {
+      useAppStore.setState({ agentOpen: true });
+
+      render(<HomeSurface />);
+
+      expect(dock()).not.toBeInTheDocument();
+    });
+
+    // The order is the whole point of `submitFromDock`, not an incidental consequence of it:
+    // `sendMessage` never reads `agentOpen`, so sending first would stream a real turn's events into
+    // an unmounted transcript (ADR 0038, invariant 34). Asserting both ran would not catch that.
+    it('opens the panel before it sends, never after', async () => {
+      const calls: string[] = [];
+      useAppStore.setState({ openAgent: () => void calls.push('openAgent') });
+      useChatStore.setState({ sendMessage: async () => void calls.push('sendMessage') });
+      render(<HomeSurface />);
+
+      await userEvent.type(dock() as HTMLElement, 'plan my week{Enter}');
+
+      expect(calls).toEqual(['openAgent', 'sendMessage']);
+    });
+
+    it('sends the typed turn itself, trimmed', async () => {
+      const sendMessage = vi.fn(async () => {});
+      useAppStore.setState({ openAgent: vi.fn() });
+      useChatStore.setState({ sendMessage });
+      render(<HomeSurface />);
+
+      await userEvent.type(dock() as HTMLElement, '  plan my week  {Enter}');
+
+      expect(sendMessage).toHaveBeenCalledWith('plan my week');
+    });
+
+    it('takes DOM focus while the viewer region is active, and releases it when the region moves away', () => {
+      render(<HomeSurface />);
+      const input = dock();
+
+      // The dock is the only focusable thing in the card, so invariant 20's "region focus implies
+      // DOM focus" lands here rather than on a `BufferEditor` that is not mounted.
+      expect(input).toHaveFocus();
+
+      act(() => useAppStore.setState({ activeRegion: 'sidebar' }));
+
+      // Left focused, the sidebar's `j`/`k` would be typed into the composer instead of moving its
+      // cursor — the other half of the same invariant.
+      expect(input).not.toHaveFocus();
+    });
+
+    // `isEditableTarget` is true for an `INPUT`, so the window dispatcher bails on the dock exactly
+    // as it bails on the editor's `contenteditable`. Without the escape hatch `regionExit` gives the
+    // editor, focusing the dock above would leave every global chord dead in the app's default boot
+    // state — including the one the row directly above the dock advertises (invariant 35).
+    it('still answers a global chord typed into it, rather than swallowing the keystrokes', async () => {
+      render(<HomeSurface />);
+      expect(dock()).toHaveFocus();
+
+      await userEvent.keyboard('{Control>}w{/Control}n');
+
+      expect(executeAppCommand).toHaveBeenCalledWith('global.new-note');
+      // Neither half of the chord may reach the field it was typed into.
+      expect(dock()).toHaveValue('');
+    });
+
+    it('reads that chord from the resolved keymap, so a rebind reaches the dock too', async () => {
+      useKeymapStore.setState({ resolved: resolveKeymap({ 'global.new-note': ['ctrl-w y'] }) });
+      render(<HomeSurface />);
+
+      await userEvent.keyboard('{Control>}w{/Control}y');
+
+      expect(executeAppCommand).toHaveBeenCalledWith('global.new-note');
+    });
   });
 });

@@ -6,13 +6,22 @@ import { useChatStore } from '@/stores/chat-store';
 
 export interface ChatInputProps {
   disabled?: boolean;
+  /**
+   * Invitation shown while the field is empty. The one thing that differs between this component's
+   * two mounts (spec decision 26): the *agent panel*'s input is a running conversation, the *agent
+   * dock* a cold start. Everything else — the well, the model pill, the send control and the submit
+   * wiring — stays shared, which is what stops the two drifting apart.
+   *
+   * `disabled` still wins over it: a turn in flight is worth saying whatever the mount.
+   */
+  placeholder?: string;
   onSubmit: (text: string) => void;
 }
 
 const MODELS = listModels();
 
 /** The chat input with a persistent model chooser for the next agent turn. */
-export function ChatInput({ disabled = false, onSubmit }: ChatInputProps) {
+export function ChatInput({ disabled = false, placeholder = 'Ask about your vault…', onSubmit }: ChatInputProps) {
   const [value, setValue] = useState('');
   const modelId = useChatStore((state) => state.modelId);
   const setModel = useChatStore((state) => state.setModel);
@@ -38,7 +47,7 @@ export function ChatInput({ disabled = false, onSubmit }: ChatInputProps) {
               submit();
             }
           }}
-          placeholder={disabled ? 'Waiting for the agent…' : 'Ask about your vault…'}
+          placeholder={disabled ? 'Waiting for the agent…' : placeholder}
           className="w-full bg-transparent font-sans text-input text-text-primary outline-none placeholder:text-text-muted disabled:opacity-50"
           spellCheck={false}
           aria-label="Chat input"
@@ -59,7 +68,11 @@ export function ChatInput({ disabled = false, onSubmit }: ChatInputProps) {
               ))}
             </select>
           </label>
-          <Button variant="primary" size="sm" kbd="⌘⏎" disabled={disabled || !value.trim()} onClick={submit}>
+          {/* `⏎`, not `⌘⏎`: the handler above fires on bare `Enter` (spec decision 27). Chat submit
+              is deliberately not an `AppCommandId` — in-input handlers are out of `APP_COMMANDS`'
+              scope — so this hint cannot be keymap-derived, and the honest fix for a false literal
+              is the right literal rather than a modifier nobody asked for in a single-line field. */}
+          <Button variant="primary" size="sm" kbd="⏎" disabled={disabled || !value.trim()} onClick={submit}>
             Send
           </Button>
         </div>
