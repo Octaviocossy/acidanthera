@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { EMPTY_NAVIGATION_HISTORY, type NavigationDirection, type NavigationHistory, navigateHistory, pushEntry } from '@/lib/editor/navigation-history';
 
 /** The editor's own CodeMirror-vim mode — distinct from the app-level `GlobalMode` (doc/v0-spec.md §3.4). */
 export type EditorVimMode = 'normal' | 'insert' | 'visual' | 'replace';
@@ -58,13 +59,37 @@ export function activeEditorBuffer(state: Pick<EditorState, 'activeBufferId' | '
   return state.buffers.find((buffer) => buffer.id === state.activeBufferId) ?? null;
 }
 
+/**
+ * Steps the *navigation history* and activates the buffer it lands on, in one atomic update.
+ *
+ * It deliberately does not go through `activateBuffer`, which pushes — moving through the stack
+ * must not rewrite it.
+ */
+function stepHistory(state: EditorState, direction: NavigationDirection): Partial<EditorState> {
+  const isOpen = (path: string) => state.buffers.some((buffer) => buffer.filePath === path);
+  const { history, path } = navigateHistory(state.history, direction, isOpen);
+  const buffer = path === null ? undefined : state.buffers.find((candidate) => candidate.filePath === path);
+
+  // The pruned history still applies when nothing was found, so the controls settle to disabled.
+  return buffer === undefined ? { history } : { history, activeBufferId: buffer.id };
+}
+
 interface EditorState {
   buffers: EditorBuffer[];
   activeBufferId: string | null;
   cursor: EditorCursor;
   saveRequests: EditorSaveRequest[];
+  /** Back/forward over buffer activations, keyed by file path (ADR 0037). A renamed buffer's old
+   *  entry simply goes stale and is pruned on the next walk past it. */
+  history: NavigationHistory;
 
   activateBuffer: (bufferId: string) => void;
+  /** Activates the previous entry in the *navigation history*, skipping any closed since. */
+  goBack: () => void;
+  /** Activates the next entry in the *navigation history*, skipping any closed since. */
+  goForward: () => void;
+  /** Empties the stack — every entry of a switched-away vault points where nothing is open. */
+  clearHistory: () => void;
   updateBufferContent: (bufferId: string, content: string) => void;
   setCursor: (cursor: EditorCursor) => void;
   setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
@@ -87,8 +112,20 @@ export const useEditorStore = create<EditorState>((set) => ({
   activeBufferId: null,
   cursor: { line: 1, col: 1 },
   saveRequests: [],
+  history: EMPTY_NAVIGATION_HISTORY,
 
-  activateBuffer: (bufferId) => set((state) => (state.buffers.some((buffer) => buffer.id === bufferId) ? { activeBufferId: bufferId } : state)),
+  activateBuffer: (bufferId) =>
+    set((state) => {
+      const buffer = state.buffers.find((candidate) => candidate.id === bufferId);
+      if (buffer === undefined) return state;
+      return { activeBufferId: bufferId, history: pushEntry(state.history, buffer.filePath) };
+    }),
+
+  goBack: () => set((state) => stepHistory(state, 'back')),
+
+  goForward: () => set((state) => stepHistory(state, 'forward')),
+
+  clearHistory: () => set({ history: EMPTY_NAVIGATION_HISTORY }),
 
   updateBufferContent: (bufferId, content) =>
     set((state) => ({
@@ -180,7 +217,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   openFile: (filePath, content, source = 'vault') =>
     set((state) => {
       const existing = state.buffers.find((buffer) => buffer.filePath === filePath && buffer.source === source);
-      if (existing !== undefined) return { activeBufferId: existing.id };
+      if (existing !== undefined) return { activeBufferId: existing.id, history: pushEntry(state.history, existing.filePath) };
 
       const fileBuffer: EditorBuffer = {
         id: `buffer-${nextBufferId++}`,
@@ -197,6 +234,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       return {
         activeBufferId: fileBuffer.id,
         buffers: [...state.buffers, fileBuffer],
+        history: pushEntry(state.history, filePath),
       };
     }),
 }));

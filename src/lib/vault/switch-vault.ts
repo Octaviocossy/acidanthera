@@ -94,6 +94,11 @@ export async function switchVault(newPath: string): Promise<VaultSwitchOutcome> 
     useEditorStore.getState().closeBuffer(buffer.id);
   }
 
+  // Past the Cancel branch, so the *navigation history* is emptied only on the path that actually
+  // applies the switch (decision 37) — every entry would otherwise point into a vault that is no
+  // longer open. Cancel returns above with the vault, the buffers and the stack untouched.
+  useEditorStore.getState().clearHistory();
+
   try {
     const root = await openVaultRoot(newPath);
     useAppStore.getState().setVaultRoot(root);

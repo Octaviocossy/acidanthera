@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
@@ -9,6 +9,7 @@ import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
 import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { executeAppCommand } from '@/lib/app-command';
+import { canGoBack, canGoForward } from '@/lib/editor/navigation-history';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
@@ -40,14 +41,54 @@ function TooltipHint({ label, chord }: { label: string; chord?: string }) {
 }
 
 /**
- * The sidebar's *chrome strip*: bare, carrying only the drag region the native traffic lights sit
- * on (decisions 16, 31). A separate strip gives the drag region the whole row rather than the gap
- * between a mark and two icons, and at 40px collapsed it is the only thing left to grab.
+ * The sidebar's *chrome strip*: the drag region the native traffic lights sit on (decisions 16,
+ * 31). A separate strip gives the drag region the whole row rather than the gap between a mark
+ * and two icons, and at 40px collapsed it is the only thing left to grab.
+ *
+ * It carries **no state** and only controls acting on what the window is currently showing (ADR
+ * 0037, amending ADR 0035's blanket "no controls" — invariant 23). Anything app-level stays in
+ * the sidebar proper, which is what keeps the strip from drifting back into a titlebar one
+ * convenience at a time. Children stay clickable through Tauri's clickable-tag exemption, exactly
+ * as `EditorTabs`' chips do — the drag attribute never goes on a button.
  *
  * `trafficLightPosition` is unchanged — the band is still 40px, so `y: 21.5` still centres them.
  */
-function SidebarChromeStrip() {
-  return <div data-tauri-drag-region="deep" className="h-[var(--rail-titlebar)] w-full shrink-0" />;
+function SidebarChromeStrip({ children }: { children?: React.ReactNode }) {
+  return (
+    <div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] w-full shrink-0 items-center justify-end gap-0.5 px-[14px]">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The *navigation history* controls: back and forward over **buffer activations**, the first
+ * controls the *chrome strip* has ever carried (ADR 0037).
+ *
+ * `ArrowLeft`/`ArrowRight` rather than chevrons (decision 38): `ChevronLeft` is already the
+ * collapse toggle ~40px below in the brand row, and two identical glyphs meaning different things
+ * in one 224px column is a misclick waiting to happen.
+ *
+ * **Pointer-only** (decision 36): no `AppCommandId`, so no chord and no `Kbd` — deliberately
+ * against `doc/v0-spec.md` §5.5, and reversible by adding two command ids. Not mirrored onto the
+ * *sidebar rail* (decision 33): a navigation control with no visible destination does not earn a
+ * tooltip-identified 40px glyph.
+ */
+function NavigationHistoryControls() {
+  const history = useEditorStore((state) => state.history);
+  const goBack = useEditorStore((state) => state.goBack);
+  const goForward = useEditorStore((state) => state.goForward);
+
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Back" disabled={!canGoBack(history)} {...tooltipTarget('Back')} onClick={goBack}>
+        <Icon icon={ArrowLeft} size={15} />
+      </Button>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Forward" disabled={!canGoForward(history)} {...tooltipTarget('Forward')} onClick={goForward}>
+        <Icon icon={ArrowRight} size={15} />
+      </Button>
+    </>
+  );
 }
 
 /**
@@ -380,7 +421,9 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-[var(--rail-sidebar)] shrink-0 flex-col bg-panel" aria-label="Vault explorer">
-      <SidebarChromeStrip />
+      <SidebarChromeStrip>
+        <NavigationHistoryControls />
+      </SidebarChromeStrip>
       <div className="flex items-center justify-between gap-1 px-[14px] pb-2">
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="flex items-center gap-0.5">
