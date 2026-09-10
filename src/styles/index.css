@@ -48,6 +48,7 @@
   --text-h2: var(--font-size-h2);
   --text-h1: var(--font-size-h1);
   --text-display: var(--font-size-display);
+  --text-hero: var(--font-size-hero);
 
   --tracking-label: var(--tracking-label);
   --tracking-display: var(--tracking-display);

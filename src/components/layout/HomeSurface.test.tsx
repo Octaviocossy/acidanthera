@@ -64,12 +64,15 @@ describe('HomeSurface', () => {
     expect(screen.getByRole('button', { name: /Open an existing vault/ })).toBeInTheDocument();
   });
 
-  it('greets a vault that has notes, and relabels the create row without changing its command', () => {
+  it('renders no greeting for a vault that has notes, and relabels the create row without changing its command', () => {
     useSidebarStore.setState({ tree: [note] });
 
     render(<HomeSurface />);
 
-    expect(screen.getByText('No note open.')).toBeInTheDocument();
+    // `No note open.` only restated the surface itself; the other two states keep their greeting.
+    expect(screen.queryByText('No note open.')).not.toBeInTheDocument();
+    // The subtitle survives the greeting's removal — the wrapper did not go with it.
+    expect(screen.getByText(/Everything stays local/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /New note/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Write your first note/ })).not.toBeInTheDocument();
     // The row set does not shrink once the vault has notes — only the greeting and this label move.

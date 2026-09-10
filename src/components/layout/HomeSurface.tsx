@@ -55,7 +55,9 @@ export function HomeSurface() {
 
   const hasVault = vaultRoot !== null;
   const isEmptyVault = hasVault && countNotes(tree) === 0;
-  const greeting = !hasVault ? 'No vault open.' : isEmptyVault ? 'Your vault is empty.' : 'No note open.';
+  // A vault with notes gets no greeting: `No note open.` only restates the surface you are already
+  // looking at. The other two states name a condition you can act on, so they keep theirs.
+  const greeting = !hasVault ? 'No vault open.' : isEmptyVault ? 'Your vault is empty.' : null;
 
   // The dock is absent without a vault, where `sendMessage` could only produce an error item
   // (spec decision 4), and hidden while the panel is open, because two composers addressing one
@@ -103,10 +105,10 @@ export function HomeSurface() {
           {/* The mark sits above the wordmark (spec decision 6), carrying its ember ring as it does
               wherever it renders — identity rather than signal, so this is not an accent use
               (ADR 0036, invariant 21). */}
-          <AcidantheraMarkGlyph className="text-text-secondary" />
-          <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
+          <AcidantheraMarkGlyph className="h-[65px] w-[56px] text-text-secondary" />
+          <span className="font-sans text-hero font-medium text-text-primary tracking-display">acidanthera</span>
           <div className="flex flex-col items-center gap-1.5">
-            <span className="font-sans text-h1 text-text-primary">{greeting}</span>
+            {greeting !== null && <span className="font-sans text-h1 text-text-primary">{greeting}</span>}
             {/* The path is inlined in the sentence rather than given a line of its own, and is
                 always `displayPath` — never a literal `~/acidanthera` (spec decision 8). There is
                 no path to name without a vault, so the whole subtitle goes. */}
