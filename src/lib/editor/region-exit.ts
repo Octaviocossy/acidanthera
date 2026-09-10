@@ -7,14 +7,25 @@ import { useKeymapStore } from '@/stores/keymap-store';
 
 const CTRL_W_PREFIX_TIMEOUT_MS = 1500;
 
-type RegionExitCommandId = 'global.focus-previous' | 'global.focus-next' | 'global.toggle-sidebar' | 'global.toggle-chat' | 'global.toggle-settings' | 'global.find-file';
+type RegionExitCommandId =
+  | 'global.focus-previous'
+  | 'global.focus-next'
+  | 'global.toggle-sidebar'
+  | 'global.toggle-chat'
+  | 'global.toggle-settings'
+  | 'global.find-file'
+  | 'global.new-note';
 
 /**
- * The six `[global]` commands this handler completes after arming on a Ctrl-w prefix (epic #94,
- * child #99 step 4), and the effect each runs. Both this handler and the window dispatcher
- * (`useGlobalKeymap`) read the very same `resolved.layers.global` bindings, so rebinding one of
- * these in `keymaps.toml` changes what it does here too — there is exactly one source of truth
- * for the gesture, not two independently-hardcoded copies.
+ * The `[global]` commands this handler completes after arming on a Ctrl-w prefix (epic #94,
+ * child #99 step 4), and the effect each runs. `global.new-note` is here because a create verb
+ * promoted to the global layer must fire from *any* region, and the editor is the one region the
+ * window dispatcher deliberately never sees a keydown from (it bails on a `contenteditable`).
+ *
+ * Both this handler and the window dispatcher (`useGlobalKeymap`) read the very same
+ * `resolved.layers.global` bindings, so rebinding one of these in `keymaps.toml` changes what it
+ * does here too — there is exactly one source of truth for the gesture, not two
+ * independently-hardcoded copies.
  */
 const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => void }> = [
   { id: 'global.focus-previous', run: () => useAppStore.getState().focusPrevious() },
@@ -23,6 +34,7 @@ const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => 
   { id: 'global.toggle-chat', run: () => useAppStore.getState().toggleAgent() },
   { id: 'global.toggle-settings', run: () => useAppStore.getState().toggleSettings() },
   { id: 'global.find-file', run: () => executeAppCommand('global.find-file') },
+  { id: 'global.new-note', run: () => executeAppCommand('global.new-note') },
 ];
 
 function isCtrlWPrefixStep(step: ChordKey): boolean {

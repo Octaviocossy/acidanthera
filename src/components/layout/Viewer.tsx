@@ -7,15 +7,11 @@ import { useCommandChord } from '@/hooks/use-chord-title';
 import { saveBuffer } from '@/lib/editor/save-buffer';
 import { cn } from '@/lib/utils';
 import { displayPath } from '@/lib/vault/display-path';
-import type { VaultEntry } from '@/services/vault.service';
+import { countNotes } from '@/lib/vault/note-count';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, createEditorSaveRequest, useEditorStore } from '@/stores/editor-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { useToastStore } from '@/stores/toast-store';
-
-function hasVaultNotes(entries: readonly VaultEntry[]): boolean {
-  return entries.some((entry) => !entry.isDir || (entry.children !== null && hasVaultNotes(entry.children)));
-}
 
 /** The editor region, keeping every open buffer mounted to retain CodeMirror state. */
 export function Viewer() {
@@ -78,7 +74,7 @@ export function Viewer() {
           {buffers.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <span className="font-sans text-display font-medium text-text-primary tracking-display">acidanthera</span>
-              <span className="font-sans text-ui text-text-secondary">{!hasVaultNotes(vaultTree) ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
+              <span className="font-sans text-ui text-text-secondary">{countNotes(vaultTree) === 0 ? 'Your vault is empty. Good — clean slate.' : 'No note open.'}</span>
               <span className="font-mono text-meta text-text-muted">{vaultRoot === null ? '' : displayPath(vaultRoot)}</span>
               {findFileChord !== undefined && <Kbd>{findFileChord}</Kbd>}
             </div>

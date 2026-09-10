@@ -62,6 +62,7 @@ export function useGlobalKeymap() {
       { id: 'global.toggle-chat', chords: layerBindings.get('global.toggle-chat') ?? [], run: () => useAppStore.getState().toggleAgent() },
       { id: 'global.toggle-settings', chords: layerBindings.get('global.toggle-settings') ?? [], run: () => useAppStore.getState().toggleSettings() },
       { id: 'global.find-file', chords: layerBindings.get('global.find-file') ?? [], run: () => executeAppCommand('global.find-file') },
+      { id: 'global.new-note', chords: layerBindings.get('global.new-note') ?? [], run: () => executeAppCommand('global.new-note') },
       {
         id: 'global.command-mode',
         chords: layerBindings.get('global.command-mode') ?? [],

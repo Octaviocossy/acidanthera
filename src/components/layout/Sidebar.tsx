@@ -11,20 +11,21 @@ import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
-import { createVaultEntry, draftPlacement, resolveDraftParent } from '@/lib/vault/create-entry';
+import { createVaultEntry, draftPlacement } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
 import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
 import { countNotes } from '@/lib/vault/note-count';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import { renameVaultEntry } from '@/lib/vault/rename-entry';
+import { startNoteDraft } from '@/lib/vault/start-draft';
 import { type VaultEntry, vaultService } from '@/services/vault.service';
 import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
-import { type EntryDraftKind, useSidebarStore } from '@/stores/sidebar-store';
+import { useSidebarStore } from '@/stores/sidebar-store';
 
 /** A chrome control's hover reveal: its label, plus the live chord bound to its command. */
 function TooltipHint({ label, chord }: { label: string; chord?: string }) {
@@ -117,7 +118,6 @@ export function Sidebar() {
   const setTree = useSidebarStore((state) => state.setTree);
   const toggleExpanded = useSidebarStore((state) => state.toggleExpanded);
   const setCursor = useSidebarStore((state) => state.setCursor);
-  const beginDraft = useSidebarStore((state) => state.beginDraft);
   const cancelDraft = useSidebarStore((state) => state.cancelDraft);
   const cancelRename = useSidebarStore((state) => state.cancelRename);
 
@@ -148,14 +148,6 @@ export function Sidebar() {
   // rename deliberately stopped at the wire (#143, spec decision 28).
   const agentChord = formatChord(globalBindings.get('global.toggle-chat'));
   const settingsChord = formatChord(globalBindings.get('global.toggle-settings'));
-
-  /** The mouse twin of the keymap's `a`/`A` (#40) — same parent resolution, same draft. */
-  const startDraft = (kind: EntryDraftKind) => {
-    const parentPath = resolveDraftParent(vaultRows, cursorPath, vaultRoot);
-    if (parentPath === null) return;
-    focusRegion('sidebar');
-    beginDraft(kind, parentPath);
-  };
 
   /** The rail is a launcher, not a preview: files open in place; directories expand first. */
   const openRailEntry = (entry: VaultEntry) => {
@@ -197,10 +189,7 @@ export function Sidebar() {
                 className="h-6 w-6 shrink-0 p-0"
                 aria-label="New note"
                 {...tooltipTarget(<TooltipHint label="New note" chord={newNoteChord} />)}
-                onClick={() => {
-                  expandSidebar();
-                  startDraft('note');
-                }}
+                onClick={() => startNoteDraft('note')}
               >
                 <Icon icon={FilePlus} size={14} />
               </Button>
@@ -210,10 +199,7 @@ export function Sidebar() {
                 className="h-6 w-6 shrink-0 p-0"
                 aria-label="New folder"
                 {...tooltipTarget(<TooltipHint label="New folder" chord={newDirectoryChord} />)}
-                onClick={() => {
-                  expandSidebar();
-                  startDraft('directory');
-                }}
+                onClick={() => startNoteDraft('directory')}
               >
                 <Icon icon={FolderPlus} size={14} />
               </Button>
@@ -370,8 +356,8 @@ export function Sidebar() {
       <nav aria-label="Primary" className="flex shrink-0 flex-col gap-0.5 px-[10px] pb-3">
         {vaultRoot !== null && (
           <>
-            <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startDraft('note')} />
-            <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startDraft('directory')} />
+            <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startNoteDraft('note')} />
+            <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startNoteDraft('directory')} />
           </>
         )}
         <NavRow
