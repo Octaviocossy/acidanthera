@@ -1,25 +1,37 @@
+import { invoke } from '@tauri-apps/api/core';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
+import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
 import { useKeymapStore } from '@/stores/keymap-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { Sidebar } from './Sidebar';
 import { TooltipHost } from './TooltipHost';
 
-const { openVaultFile, readVaultTree, onVaultChanged } = vi.hoisted(() => ({
+const { openVaultFile, readVaultTree, onVaultChanged, executeAppCommand } = vi.hoisted(() => ({
   openVaultFile: vi.fn(),
   readVaultTree: vi.fn(),
   onVaultChanged: vi.fn(),
+  executeAppCommand: vi.fn(),
 }));
 
 vi.mock('@/lib/vault/open-file', () => ({ openVaultFile }));
 vi.mock('@/services/vault.service', () => ({ vaultService: { readVaultTree, onVaultChanged } }));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
+// Partial: `APP_COMMANDS` is what `resolveKeymap` reads, so the registry has to stay real.
+vi.mock('@/lib/app-command', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/app-command')>()),
+  executeAppCommand,
+}));
 
 const initialAppState = useAppStore.getState();
 const initialSidebarState = useSidebarStore.getState();
+const initialSettingsState = useSettingsStore.getState();
+const SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault' };
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 // Pinned relative to load so the rendered `edited` strings are deterministic: every elapsed value
@@ -49,12 +61,16 @@ const tree = [
 describe('Sidebar', () => {
   beforeEach(() => {
     openVaultFile.mockReset();
+    executeAppCommand.mockReset();
+    vi.mocked(invoke).mockReset();
     readVaultTree.mockResolvedValue(tree);
     onVaultChanged.mockResolvedValue(() => {});
     useAppStore.setState(initialAppState, true);
     useAppStore.setState({ vaultRoot: '/vault', sidebarExpanded: false });
     useSidebarStore.setState(initialSidebarState, true);
     useSidebarStore.setState({ tree, expanded: new Set(), cursorPath: null, draft: null });
+    useSettingsStore.setState(initialSettingsState, true);
+    useSettingsStore.setState({ settings: SETTINGS, diagnostics: [] });
   });
 
   afterEach(() => {
@@ -64,6 +80,7 @@ describe('Sidebar', () => {
     resetTooltip();
     useAppStore.setState(initialAppState, true);
     useSidebarStore.setState(initialSidebarState, true);
+    useSettingsStore.setState(initialSettingsState, true);
     useKeymapStore.setState({ resolved: resolveKeymap(null) });
   });
 
@@ -153,6 +170,111 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByRole('button', { name: 'New note' })).toHaveTextContent('Ctrl+n');
+  });
+
+  it('renders the four primary nav rows in order', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const nav = screen.getByRole('navigation', { name: 'Primary' });
+
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((row) => row.getAttribute('aria-label'))
+    ).toEqual(['New note', 'Daily note', 'New folder', 'Agent']);
+  });
+
+  it('dispatches the daily-note command from the primary nav', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    await user.click(screen.getByRole('button', { name: 'Daily note' }));
+
+    expect(executeAppCommand).toHaveBeenCalledWith('global.daily-note');
+  });
+
+  it("renders the daily note row's chord from the global layer it is bound in", () => {
+    useKeymapStore.setState({ resolved: resolveKeymap({ 'global.daily-note': ['ctrl-w j'] }) });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Daily note' })).toHaveTextContent('Ctrl+wj');
+  });
+
+  it('says the empty tree is empty rather than showing nothing under NOTES', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(await screen.findByText('Nothing here yet.')).toBeInTheDocument();
+  });
+
+  it('never renders the empty line as a row the cursor could land on', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    await screen.findByText('Nothing here yet.');
+
+    expect(within(screen.getByRole('tree')).queryAllByRole('treeitem')).toHaveLength(0);
+  });
+
+  it('drops the empty line as soon as the vault holds a note', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.queryByText('Nothing here yet.')).not.toBeInTheDocument();
+  });
+
+  it('drops the empty line while the first note is being named', async () => {
+    readVaultTree.mockResolvedValue([]);
+    useSidebarStore.setState({ tree: [] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    await screen.findByText('Nothing here yet.');
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'New note' }));
+
+    expect(screen.queryByText('Nothing here yet.')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'New note name' })).toBeInTheDocument();
+  });
+
+  it('writes the opposite theme through the same store the settings dialog writes through', async () => {
+    const user = userEvent.setup();
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    await user.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(useSettingsStore.getState().settings?.theme).toBe('light');
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith('write_settings', { settings: { ...SETTINGS, theme: 'light' } });
+  });
+
+  it('disables the theme toggle while settings.toml has a syntax error', () => {
+    useSettingsStore.setState({ diagnostics: [{ kind: 'syntax', message: 'expected `=`', line: 3 }] });
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeDisabled();
+  });
+
+  it('gives the footer the theme toggle and the brand row Settings', () => {
+    useAppStore.getState().expandSidebar();
+    render(<Sidebar />);
+    const footer = screen.getByText('2 notes').closest('footer') as HTMLElement;
+
+    expect(within(footer).getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
+    expect(within(footer).queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+  });
+
+  it('mirrors both controls onto the rail while collapsed', () => {
+    render(<Sidebar />);
+
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
   });
 
   it('keeps the primary nav out of the cursor row source', () => {

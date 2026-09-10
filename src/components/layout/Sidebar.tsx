@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Search, Settings } from '@/components/ui/icon';
+import { CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
@@ -8,6 +8,7 @@ import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
 import { InlineNameInput } from '@/components/vault/InlineNameInput';
 import { useSidebarKeymap } from '@/hooks/use-sidebar-keymap';
+import { executeAppCommand } from '@/lib/app-command';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { useContextMenuStore } from '@/stores/context-menu-store';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 /** A chrome control's hover reveal: its label, plus the live chord bound to its command. */
@@ -46,6 +48,41 @@ function TooltipHint({ label, chord }: { label: string; chord?: string }) {
  */
 function SidebarChromeStrip() {
   return <div data-tauri-drag-region="deep" className="h-[var(--rail-titlebar)] w-full shrink-0" />;
+}
+
+/**
+ * The *theme toggle*, in the *footer identity block*'s right slot and mirrored as the *sidebar
+ * rail*'s bottom pin (decisions 31, 33) — one implementation, two mounts, so the pair cannot drift.
+ *
+ * It writes through the same `useSettingsStore.updateSettings` the *settings dialog*'s `Segmented`
+ * calls: one write path with two call sites, so ADR 0003 keeps `settings.toml` authoritative and
+ * the *settings dialog write* preserves comments and key order. Its icon states the **current**
+ * theme, never the destination. Disabled while a `Syntax` diagnostic is present, exactly as the
+ * dialog's rows are — `updateSettings` refuses that write anyway, so the click would silently do
+ * nothing — and before the boot-time load resolves.
+ */
+function ThemeToggle({ className }: { className?: string }) {
+  const settings = useSettingsStore((state) => state.settings);
+  const diagnostics = useSettingsStore((state) => state.diagnostics);
+  const updateSettings = useSettingsStore((state) => state.updateSettings);
+  const blocked = settings === null || diagnostics.some((diagnostic) => diagnostic.kind === 'syntax');
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn('h-6 w-6 shrink-0 p-0', className)}
+      aria-label="Toggle theme"
+      disabled={blocked}
+      {...tooltipTarget('Toggle theme')}
+      onClick={() => {
+        if (settings === null) return;
+        void updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
+      }}
+    >
+      <Icon icon={settings?.theme === 'light' ? Moon : Sun} size={15} />
+    </Button>
+  );
 }
 
 /**
@@ -144,6 +181,8 @@ export function Sidebar() {
   const findFileChord = formatChord(globalBindings.get('global.find-file'));
   const newNoteChord = formatChord(sidebarBindings.get('sidebar.new-note'));
   const newDirectoryChord = formatChord(sidebarBindings.get('sidebar.new-directory'));
+  // `global`-layer, so unlike `a`/`Shift+A` beside it this chord is not focus-gated.
+  const dailyNoteChord = formatChord(globalBindings.get('global.daily-note'));
   // The command id keeps its old name: `keymaps.toml` is user-visible, so the chat-to-agent
   // rename deliberately stopped at the wire (#143, spec decision 28).
   const agentChord = formatChord(globalBindings.get('global.toggle-chat'));
@@ -218,6 +257,20 @@ export function Sidebar() {
               ✦
             </span>
           </Button>
+          {/* A brand-row control now, so the rail carries it in the stack rather than pinned
+              (decision 33): the rail mirrors whatever the expanded sidebar's hidden surfaces
+              carry, and Settings is no longer one of the footer's. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 shrink-0 p-0"
+            aria-label="Settings"
+            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Icon icon={Settings} size={15} />
+          </Button>
           {vaultRoot !== null && tree.length > 0 && (
             <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto">
               {tree.map((entry) => (
@@ -236,19 +289,10 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        {/* Pinned outside the launcher column's scroll: `⚙` lives in a footer the rail hides, so
-            without this it has no pointer affordance while collapsed (decision 30). */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 mb-3 h-6 w-6 shrink-0 p-0"
-          aria-label="Settings"
-          {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
-          aria-haspopup="dialog"
-          onClick={openSettings}
-        >
-          <Icon icon={Settings} size={15} />
-        </Button>
+        {/* Pinned outside the launcher column's scroll, standing in for the *footer identity
+            block* the rail hides — so the pin holds whatever that footer's right slot holds,
+            which is the *theme toggle* now (decision 33, invariant 24). */}
+        <ThemeToggle className="mt-2 mb-3" />
       </aside>
     );
   }
@@ -351,12 +395,33 @@ export function Sidebar() {
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" {...tooltipTarget('Collapse sidebar')} onClick={collapseSidebar}>
             <Icon icon={ChevronLeft} size={15} />
           </Button>
+          {/* Rehomed from the footer, whose right slot is the *theme toggle* now. ADR 0035 lets
+              that slot be reassigned but not vacated: Settings still needs a pointer affordance
+              in the expanded sidebar (decision 32). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            aria-label="Settings"
+            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
+            aria-haspopup="dialog"
+            onClick={openSettings}
+          >
+            <Icon icon={Settings} size={15} />
+          </Button>
         </div>
       </div>
       <nav aria-label="Primary" className="flex shrink-0 flex-col gap-0.5 px-[10px] pb-3">
         {vaultRoot !== null && (
           <>
             <NavRow icon={<Icon icon={FilePlus} size={15} className="shrink-0" />} label="New note" chord={newNoteChord} onClick={() => startNoteDraft('note')} />
+            {/* The two note-producing verbs adjacent, then the folder verb, then the agent. */}
+            <NavRow
+              icon={<Icon icon={CalendarDays} size={15} className="shrink-0" />}
+              label="Daily note"
+              chord={dailyNoteChord}
+              onClick={() => executeAppCommand('global.daily-note')}
+            />
             <NavRow icon={<Icon icon={FolderPlus} size={15} className="shrink-0" />} label="New folder" chord={newDirectoryChord} onClick={() => startNoteDraft('directory')} />
           </>
         )}
@@ -392,7 +457,10 @@ export function Sidebar() {
               showContextMenu(event.clientX, event.clientY, null);
             }}
           >
-            {rowElements}
+            {/* Not a row: absent from `flattenVisibleTree`, so `j`/`k` never land on it and it
+                carries no `treeitem` role. Suppressed while a draft is open, or naming the first
+                note would show the placeholder and the input at once (decision 29). */}
+            {vaultRows.length === 0 && draft === null ? <span className="font-sans text-ui text-text-secondary">Nothing here yet.</span> : rowElements}
           </div>
         </>
       )}
@@ -409,17 +477,7 @@ export function Sidebar() {
               {noteCount} {noteCount === 1 ? 'note' : 'notes'}
             </span>
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto h-6 w-6 shrink-0 p-0"
-            aria-label="Settings"
-            {...tooltipTarget(<TooltipHint label="Settings" chord={settingsChord} />)}
-            aria-haspopup="dialog"
-            onClick={openSettings}
-          >
-            <Icon icon={Settings} size={15} />
-          </Button>
+          <ThemeToggle className="ml-auto" />
         </footer>
       )}
     </aside>
