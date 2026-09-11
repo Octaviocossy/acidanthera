@@ -39,11 +39,20 @@ entries from the keyboard or a right-click menu. Renaming a note rewrites the `[
 that point at it, behind a confirmation that names them. Deleting moves the entry to the
 system Trash. Every filesystem operation is root-guarded and rejects symlink escapes.
 
-**Editor**
+**Editor and read view**
 CodeMirror 6 with vim emulation on by default. Multi-buffer tabs that preserve undo history
 and cursor position across switches. `[[wikilink]]` decoration, markdown syntax highlighting,
 a live line:col and vim-submode readout, and dirty-close confirmation. `yy`, `y{motion}`, and
 visual-line `y` write to the vim register **and** the system clipboard.
+
+Every note also has a **read view** — rendered prose in sans, a header block with the note's
+breadcrumb and `edited · links · read time`, and no markdown syntax. A note opens in read; one
+you just created opens in edit. `Ctrl-w` `e` or the `Read`/`Edit` control toggles, and both
+surfaces stay mounted, so toggling costs no undo history and no scroll position. It renders the
+buffer you are editing, unsaved edits included, and writes nothing back except a ticked `- [ ]`
+checkbox. Links are colored where they resolve and struck through where they don't — in **both**
+views. Markdown is rendered by walking the editor's own parse tree, never through an HTML
+string, so there is no sanitizer and no injection surface.
 
 **Agent**
 An agent panel that renders agent output as native UI — message bubbles, tool chips, a thinking
@@ -119,6 +128,7 @@ or the owning layer going inactive silently cancels it.
 | `Ctrl-w` `h` / `l` | Cycle regions (sidebar → viewer → chat) |
 | `Ctrl-w` `f` | Open the file finder |
 | `Ctrl-w` `b` / `c` / `s` | Toggle sidebar / chat / settings |
+| `Ctrl-w` `e` | Toggle the active note between read and edit |
 | `j` `k` / `l` / `h` | Sidebar: move, open, collapse |
 | `a` / `A` | New note / new folder |
 | `r` / `D` / `d` `d` | Rename / duplicate / move to Trash |
@@ -193,7 +203,7 @@ else. Deleted notes go to the system Trash — there is no in-app undo, by desig
 src/                      React 19 + TypeScript frontend
 ├── components/
 │   ├── ai/               chat surface — transcript, input, tool chips, thinking indicator, history
-│   ├── editor/           CodeMirror buffer view, tabs, dirty-close dialog
+│   ├── editor/           the two buffer surfaces — CodeMirror editor and read view — tabs, dialogs
 │   ├── layout/           app chrome — sidebar, viewer, agent panel, dialogs
 │   ├── ui/               presentational primitives (button, chip, icon, kbd, modal, …)
 │   └── vault/            file-tree rows, entry drafts, context menu, glyphs
@@ -203,7 +213,7 @@ src/                      React 19 + TypeScript frontend
 │   ├── chat/             chat-file codec and resume-prompt building
 │   ├── config/           config-entry catalog and open routing
 │   ├── dom/              small DOM predicates (editable-target detection)
-│   ├── editor/           CodeMirror wiring — vim, highlighting, save, yank, wikilinks
+│   ├── editor/           CodeMirror wiring — vim, highlighting, save, yank, wikilinks; markdown walker
 │   ├── keymap/           chord parsing, defaults, resolution, dispatcher
 │   └── vault/            vault helpers — search, open, switch, tree flattening
 ├── services/             the only callers of @tauri-apps/api

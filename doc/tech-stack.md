@@ -3,7 +3,7 @@
 acidanthera is a Tauri 2 desktop app with two source trees: `src/` (React 19 + Vite 7 frontend,
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
-**snapshot as of 2026-09-04**. For architecture rationale, see `doc/v0-spec.md`; for what each
+**snapshot as of 2026-09-11**. For architecture rationale, see `doc/v0-spec.md`; for what each
 module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md`.
 
 ## At a glance
@@ -24,18 +24,20 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `@uiw/react-codemirror` | ^4.25.10 | React wrapper mounting the CodeMirror 6 editor (`src/components/layout/Viewer.tsx`) |
 | `@codemirror/view` | ^6.43.6 | CM6 view layer — decorations, keymaps, `Prec` (`src/lib/editor/*`) |
 | `@codemirror/state` | ^6.7.1 | CM6 state/extension primitives (`src/lib/editor/*`) |
-| `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support for the editor |
+| `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support for the editor — and, via `markdownLanguage.parser`, the single parser the read view's walker shares with it (ADR 0039); brings `@lezer/markdown` in transitively |
 | `@codemirror/language` | ^6.12.4 | `HighlightStyle` + `StreamLanguage` (`src/lib/editor/highlight.ts`, `toml-language.ts`) |
 | `@codemirror/legacy-modes` | ^6.5.3 | The TOML stream mode backing config buffers |
-| `@lezer/highlight` | ^1.2.3 | Syntax tags the markdown `HighlightStyle` binds against |
+| `@lezer/common` | ^1.5.2 | Lezer tree types (`SyntaxNode`, `Tree`) the read view's markdown walker names in its signatures — promoted from transitive to direct by #159 |
+| `@lezer/highlight` | ^1.2.3 | Syntax tags the markdown `HighlightStyle` binds against, and `highlightCode` for the read view's code blocks |
 | `@replit/codemirror-vim` | ^6.3.0 | Vim emulation + `Vim.defineEx` for `:w` (`src/lib/editor/save.ts`, `vim-mode-sync.ts`) |
 | `tailwindcss` | ^4.3.2 | Utility CSS framework (Tailwind v4), imported in `src/styles/index.css` |
 | `@tailwindcss/vite` | ^4.3.2 | Tailwind v4 Vite plugin (wired in `vite.config.ts`) |
 | `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/button.tsx` |
 | `clsx` + `tailwind-merge` | ^2.1.1 / ^3.6.0 | The `cn()` classname helper — **only** in `src/lib/utils.ts` |
 | `@radix-ui/react-slot` | ^1.3.0 | `asChild` slot pattern — **only** in `src/components/ui/button.tsx` |
-| `@fontsource-variable/geist` | ^5.2.9 | Self-hosted sans variable font — UI chrome; imported in `src/styles/index.css` |
-| `@fontsource-variable/jetbrains-mono` | ^5.3.0 | Self-hosted mono variable font — editor and content |
+| `lucide-react` | ^1.30.0 | Every drawn icon, reached **only** through `src/components/ui/icon.tsx` (ADR 0017) |
+| `@fontsource-variable/geist` | ^5.2.9 | Self-hosted sans variable font — UI chrome **and the read view's rendered prose**; imported in `src/styles/index.css` |
+| `@fontsource-variable/jetbrains-mono` | ^5.3.0 | Self-hosted mono variable font — the editor, code blocks, and metadata (mono is for source, sans is for rendered prose) |
 | `@tauri-apps/api` | ^2 | Frontend↔Rust bridge (`invoke`, event `listen`) — used **only** in `src/services/*` and `src/lib/agent/backends/*` |
 | `@tauri-apps/plugin-clipboard-manager` | ^2 | Native system clipboard writes (`src/services/clipboard.service.ts`) |
 | `@tauri-apps/plugin-opener` | ^2 | JS side of the opener plugin |
@@ -50,6 +52,12 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `@biomejs/biome` | 2.2.0 | Lint + format (`biome.json`); replaces ESLint + Prettier |
 | `@tauri-apps/cli` | ^2 | `tauri` CLI (dev/build orchestration) |
 | `@types/react` / `@types/react-dom` | ^19.1.x | React type definitions |
+| `vitest` | ^4.1.10 | Frontend test runner; config lives in `vite.config.ts`'s `test` block, not a separate file |
+| `jsdom` | ^29.1.1 | The DOM environment every Vitest test runs in |
+| `@testing-library/react` | ^16.3.2 | Component rendering and queries (`screen.getByRole`, …) |
+| `@testing-library/user-event` | ^14.6.1 | Realistic user interaction in component tests |
+| `@testing-library/jest-dom` | ^6.9.1 | DOM matchers + their types, extended in `src/test/setup.ts` |
+| `@vitest/coverage-v8` | ^4.1.10 | v8 coverage provider behind `pnpm coverage` |
 
 ### What each directory is built with
 
@@ -58,10 +66,10 @@ module *does* (entities, stores, relationships), see `.agents/ubiquitous-languag
 | `main.tsx` | React DOM client (`react-dom/client`), `StrictMode` |
 | `App.tsx` | React; mounts the app's hooks |
 | `components/ui/` | Radix `Slot` (`asChild`) + `class-variance-authority` + `cn()` |
-| `components/{ai,layout,vault}/` | React + Tailwind + Zustand store selectors |
+| `components/{ai,editor,layout,vault}/` | React + Tailwind + Zustand store selectors; `components/editor/` holds the two mounted buffer surfaces (`BufferEditor` + `ReadView`) and the pane that owns them |
 | `hooks/` | React hooks composed over the `services/` layer |
 | `lib/agent/` | Plain TS event contract + backend registry; the concrete backends call `@tauri-apps/api` |
-| `lib/editor/` | CodeMirror 6 (`@codemirror/view` + `@codemirror/state` + `@codemirror/lang-markdown` + `@replit/codemirror-vim`); custom system clipboard yank |
+| `lib/editor/` | CodeMirror 6 (`@codemirror/view` + `@codemirror/state` + `@codemirror/lang-markdown` + `@replit/codemirror-vim`); custom system clipboard yank; the read view's **markdown walker** (`markdown-walker.tsx` — `@lezer/common` + `@lezer/highlight` over the editor's own parser) |
 | `lib/vault/` + `lib/dom/` | Plain TS helpers, no external runtime deps |
 | `lib/utils.ts` | `clsx` + `tailwind-merge` → the `cn()` helper |
 | `services/` | `@tauri-apps/api` (`invoke` / `listen`) plus native plugin wrappers such as the system clipboard service |
