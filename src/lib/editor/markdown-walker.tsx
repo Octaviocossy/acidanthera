@@ -1,28 +1,35 @@
-import type { SyntaxNode, Tree } from '@lezer/common';
-import { highlightCode } from '@lezer/highlight';
-import { parser as commonmarkParser, GFM } from '@lezer/markdown';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { openUrl } from '@tauri-apps/plugin-opener';
-import { Fragment, type ReactNode } from 'react';
-import { acidantheraHighlightStyle } from '@/lib/editor/highlight';
-import { joinVaultPath } from '@/lib/vault/create-entry';
-import { useToastStore } from '@/stores/toast-store';
-
 /**
  * The *markdown walker* (ADR 0039) — the one renderer behind the *read view*.
  *
- * It is a **walker, not a parser**: the tree comes from `@lezer/markdown`, the same parser
- * `@codemirror/lang-markdown` builds the editor's tree with and the one `acidantheraHighlightStyle`
- * binds against, so the two views can never disagree about what a heading is (invariant 36). GFM —
- * tables, task lists, strikethrough — comes from the same extension the editor uses; footnotes are
- * outside it and render as literal text.
+ * It is a **walker, not a parser**: the tree comes from `markdownLanguage.parser` — the very object
+ * `@codemirror/lang-markdown` hands the editor as its own base (`BufferEditor`), and the one
+ * `acidantheraHighlightStyle` binds against. Not two matching configurations but **one**, so the
+ * two views cannot drift apart about what a heading, a table or a task list is (invariant 36).
+ *
+ * That object is the package's *extended* parser, so GFM — tables, task lists, strikethrough — is
+ * a fact about the shared base rather than something configured here. Configuring GFM locally is
+ * exactly the split this must not have: `markdown()` defaults its base to **commonmark**, so a
+ * walker that added GFM on its own would render a table the editor beside it could not see. The
+ * editor layers one thing on top, `parseCode`'s nested HTML parser, which only refines the *inside*
+ * of an HTML block — a region the read view renders as escaped text either way, so no block or
+ * inline construct can mean two things. Footnotes are outside GFM and render as literal text in
+ * both, as do the extended parser's subscript, superscript and emoji spans.
  *
  * It emits **React elements and never an HTML string**, which is what makes it sanitizer-free
  * rather than sanitizer-deferred: raw HTML in a note is handed to React as a string child and comes
  * out as escaped, visible text. There is no `dangerouslySetInnerHTML` here and there must never be
  * one — an agent writes these notes.
  */
-const parser = commonmarkParser.configure(GFM);
+
+import { markdownLanguage } from '@codemirror/lang-markdown';
+import type { SyntaxNode, Tree } from '@lezer/common';
+import { highlightCode } from '@lezer/highlight';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Fragment, type ReactNode } from 'react';
+import { acidantheraHighlightStyle } from '@/lib/editor/highlight';
+import { joinVaultPath } from '@/lib/vault/create-entry';
+import { useToastStore } from '@/stores/toast-store';
 
 export interface MarkdownRenderOptions {
   /** The open vault root. A relative image target resolves against it; `null` renders alt text. */
@@ -93,7 +100,7 @@ const STYLE = {
  * possible at all.
  */
 export function renderMarkdown(source: string, options: MarkdownRenderOptions = {}): ReactNode {
-  const tree = parser.parse(source);
+  const tree = markdownLanguage.parser.parse(source);
   return renderBlockChildren(tree.topNode, { source, tree, vaultRoot: options.vaultRoot ?? null });
 }
 
@@ -294,8 +301,8 @@ function renderTask(node: SyntaxNode, ctx: WalkContext): ReactNode {
  *
  * Its text goes through `@lezer/highlight`'s `highlightCode` driven by the editor's own
  * `acidantheraHighlightStyle`, so a highlighted block carries the editor's exact palette for free
- * (ADR 0039). The parser here is configured with GFM and no nested code parsing, so a language with
- * no Lezer parser in the tree renders as plain mono — the consequence ADR 0039 records. The classes
+ * (ADR 0039). The shared base configures no nested code parsing, so a language with no Lezer parser
+ * in the tree renders as plain mono — the consequence ADR 0039 records. The classes
  * `highlightCode` emits belong to `acidantheraHighlightStyle`'s style module, which
  * `acidantheraHighlighting` mounts; a `ReadView` never exists without a `BufferEditor` beside it in
  * the same `BufferPane`, and without those rules the block still reads correctly as plain mono.
@@ -530,10 +537,11 @@ function renderExternalLink(key: number, href: string, children: ReactNode): Rea
 /**
  * An image.
  *
- * **Vault-local only** (spec decision 10): a relative target resolves against the open vault root
- * and is served through the asset protocol, while a target carrying any URI scheme — `https:`,
- * `data:` — renders **its alt text alone and no `<img>`**. A local-first app does not make an
- * outbound request because of something an agent wrote into a note.
+ * **Vault-local only** (spec decision 10): a target resolves against the open vault root, must be
+ * contained by it, and is then served through the asset protocol — while a target carrying any URI
+ * scheme — `https:`, `data:` — renders **its alt text alone and no `<img>`**. A local-first app does
+ * not make an outbound request because of something an agent wrote into a note, and does not read
+ * outside the vault because of one either (`localImageSrc`).
  */
 function renderImage(node: SyntaxNode, ctx: WalkContext): ReactNode {
   const { labelFrom, labelTo, href } = linkParts(node, ctx);
@@ -546,12 +554,29 @@ function renderImage(node: SyntaxNode, ctx: WalkContext): ReactNode {
 /** A URI scheme (`https:`, `data:`, `file:`) — anything that is not a plain filesystem path. */
 const URI_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 
+/**
+ * The `asset://` URL for a vault-local image, or `null` for anything this app will not read.
+ *
+ * Containment is enforced **here**, not only at Tauri's scope layer: `allow_vault_assets`
+ * (`src-tauri/src/vault.rs`) widens the protocol scope to the adopted root and would refuse an
+ * outside path anyway, so this is defence in depth rather than the only guard — but that function's
+ * doc comment asserts the frontend *only ever builds a URL from the root it currently holds*, and
+ * without this check that sentence is not true. An absolute target used to be handed over
+ * unexamined, and a relative one was joined without collapsing `..`, so `![](../../elsewhere.png)`
+ * escaped too. Both failed closed one layer down; neither should have got that far.
+ *
+ * With no vault open there is nothing to contain a path against, so **every** local target renders
+ * its alt text — the absolute ones included, which previously bypassed the check entirely.
+ */
 function localImageSrc(href: string, vaultRoot: string | null): string | null {
   if (URI_SCHEME.test(href) || href.startsWith('//')) return null;
+  if (vaultRoot === null) return null;
+  const separator = vaultRoot.includes('\\') ? '\\' : '/';
   const decoded = decodePath(href);
-  const isAbsolute = decoded.startsWith('/') || /^[a-z]:[\\/]/i.test(decoded);
-  if (!isAbsolute && vaultRoot === null) return null;
-  const path = isAbsolute ? decoded : joinVaultPath(vaultRoot as string, decoded);
+  const root = normalizePath(vaultRoot, separator);
+  const joined = isAbsolutePath(decoded) ? decoded : joinVaultPath(root, decoded);
+  const path = normalizePath(joined, separator);
+  if (!isWithin(root, path, separator)) return null;
   try {
     return convertFileSrc(path);
   } catch {
@@ -559,6 +584,39 @@ function localImageSrc(href: string, vaultRoot: string | null): string | null {
     // honest fallback rather than a broken image.
     return null;
   }
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith('/') || path.startsWith('\\') || /^[a-z]:[\\/]/i.test(path);
+}
+
+/**
+ * Collapses `.` and `..` segments, so a target cannot walk out of the root it was joined onto by
+ * spelling its way back up. A `..` that would climb above an absolute prefix is dropped, which is
+ * what the filesystem itself does at `/`.
+ */
+function normalizePath(path: string, separator: string): string {
+  const prefix = /^(\/|\\|[a-z]:[\\/])/i.exec(path)?.[0] ?? '';
+  const segments: string[] = [];
+  for (const segment of path.slice(prefix.length).split(/[\\/]+/)) {
+    if (segment === '' || segment === '.') continue;
+    if (segment !== '..') {
+      segments.push(segment);
+    } else if (segments.length > 0 && segments[segments.length - 1] !== '..') {
+      segments.pop();
+    } else if (prefix === '') {
+      // A relative path may legitimately still be climbing; containment is what rejects it below.
+      segments.push(segment);
+    }
+  }
+  return prefix + segments.join(separator);
+}
+
+/** Whether `path` is `root` or sits under it — compared on a **separator boundary**, so a sibling
+ *  directory whose name merely starts with the root's (`…/vault-backup`) does not pass. */
+function isWithin(root: string, path: string, separator: string): boolean {
+  if (path === root) return true;
+  return path.startsWith(root.endsWith(separator) ? root : root + separator);
 }
 
 function decodePath(href: string): string {

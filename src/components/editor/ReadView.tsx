@@ -25,8 +25,8 @@ interface ReadViewProps {
  *
  * It renders the **in-memory buffer**, dirty edits included (decision 5), so toggling is an instant
  * preview of what was just typed rather than a second read from disk. That content goes through
- * the *markdown walker*, which walks the same `@lezer/markdown` tree the editor parses against, so
- * the two views can never disagree about what the source means (invariant 36).
+ * the *markdown walker*, which parses with `markdownLanguage` — the very base `BufferEditor` hands
+ * `markdown()` — so the two views can never disagree about what the source means (invariant 36).
  *
  * Deliberately **not** a fourth *focus region*: it is what the viewer is showing, so its scroll
  * container is simply the third claimant of viewer DOM focus (invariant 20).

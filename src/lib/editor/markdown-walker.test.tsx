@@ -1,3 +1,4 @@
+import { commonmarkLanguage, markdownLanguage } from '@codemirror/lang-markdown';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,6 +92,19 @@ describe('renderMarkdown', () => {
     expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['1', '2']);
   });
 
+  it('parses with the editor’s own base, so neither view can see markdown the other cannot', () => {
+    // The regression this pins: the walker used to configure GFM onto the bare commonmark parser
+    // while `BufferEditor` called `markdown()`, whose `base` **defaults** to commonmark — so a
+    // table, a task list and `~~strikethrough~~` rendered as GFM in read and as plain text in edit,
+    // the split invariant 36 exists to prevent. Both now parse with `markdownLanguage`. Asserted
+    // against `commonmarkLanguage` directly rather than by rendering, so the test states the
+    // difference instead of restating the table case above; `BufferEditor.test.tsx` asserts that
+    // the editor is given the same base.
+    const table = '| a | b |\n|---|---|\n| 1 | 2 |';
+    expect(commonmarkLanguage.parser.parse(table).topNode.firstChild?.name).not.toBe('Table');
+    expect(markdownLanguage.parser.parse(table).topNode.firstChild?.name).toBe('Table');
+  });
+
   it('renders a task list as checkboxes reflecting each marker', () => {
     renderNote('- [ ] open\n- [x] done');
 
@@ -154,6 +168,42 @@ describe('renderMarkdown', () => {
     expect(screen.getByRole('img', { name: 'a diagram' })).toBeInTheDocument();
   });
 
+  it('serves an absolute image path that is inside the vault', () => {
+    renderNote('![a diagram](/vault/notes/diagram.png)');
+
+    expect(convertFileSrc).toHaveBeenCalledWith('/vault/notes/diagram.png');
+    expect(screen.getByRole('img', { name: 'a diagram' })).toBeInTheDocument();
+  });
+
+  it('renders an absolute image path outside the vault as alt text, building no URL for it', () => {
+    const container = renderNote('![a secret](/etc/passwd.png)');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(convertFileSrc).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('a secret');
+  });
+
+  it('renders a `..` escape as alt text, so a relative target cannot climb out of the vault', () => {
+    const container = renderNote('![elsewhere](../../elsewhere/x.png)');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(convertFileSrc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a sibling directory sharing the vault’s name prefix', () => {
+    // Containment compares on a separator boundary; a bare `startsWith` would let this through.
+    const container = renderNote('![backup](/vault-backup/x.png)');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(convertFileSrc).not.toHaveBeenCalled();
+  });
+
+  it('resolves a `.`/`..` path that stays inside the vault', () => {
+    renderNote('![a diagram](notes/../notes/./diagram.png)');
+
+    expect(convertFileSrc).toHaveBeenCalledWith('/vault/notes/diagram.png');
+  });
+
   it('renders a remote image as its alt text alone, never as an <img>', () => {
     const container = renderNote('![a remote picture](https://example.com/p.png)');
 
@@ -162,11 +212,13 @@ describe('renderMarkdown', () => {
     expect(container.textContent).toContain('a remote picture');
   });
 
-  it('renders a local image as alt text while no vault is open', () => {
-    const container = renderNote('![a diagram](diagram.png)', null);
+  it('renders a local image as alt text while no vault is open — absolute ones included', () => {
+    const container = renderNote('![a diagram](diagram.png)\n\n![a secret](/etc/passwd.png)', null);
 
     expect(container.querySelector('img')).toBeNull();
+    expect(convertFileSrc).not.toHaveBeenCalled();
     expect(container.textContent).toContain('a diagram');
+    expect(container.textContent).toContain('a secret');
   });
 
   it('renders a footnote reference literally, GFM covering no such syntax', () => {

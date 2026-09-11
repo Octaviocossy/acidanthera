@@ -6,8 +6,8 @@ import { BufferEditor } from './BufferEditor';
 
 /** Builds the buffer through the store rather than by hand so the `EditorBuffer` shape can never
  *  drift out of sync with `openFile`. */
-function openBuffer(filePath: string): EditorBuffer {
-  useEditorStore.getState().openFile(filePath, '# Note');
+function openBuffer(filePath: string, content = '# Note'): EditorBuffer {
+  useEditorStore.getState().openFile(filePath, content);
   const buffer = useEditorStore.getState().buffers.find((candidate) => candidate.filePath === filePath);
   if (buffer === undefined) throw new Error('expected the buffer to be open');
   return buffer;
@@ -62,6 +62,19 @@ describe('BufferEditor', () => {
     act(() => useAppStore.getState().focusEditor());
 
     expect(content).toHaveFocus();
+  });
+
+  it('parses GFM, so the read view beside it cannot see markdown the editor cannot', () => {
+    render(<BufferEditor buffer={openBuffer('/vault/note.md', 'a ~~gone~~ b')} active hidden={false} />);
+
+    // Strikethrough is GFM, which `markdown()` does **not** carry: its `base` defaults to bare
+    // commonmark, under which this whole line is one undifferentiated run of text. Passing
+    // `markdownLanguage` — the base the *markdown walker* parses with — is what makes the editor
+    // tokenize it at all, so `acidantheraHighlightStyle`'s `tags.strikethrough` rule can reach it.
+    // Asserted through the token the highlighter emits rather than its generated class name, which
+    // is not ours to name (invariant 36).
+    const struck = [...screen.getByRole('textbox').querySelectorAll('span')].map((span) => span.textContent);
+    expect(struck).toContain('gone');
   });
 
   it('gives up DOM focus when the focused region leaves the viewer', () => {
