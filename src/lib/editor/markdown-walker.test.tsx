@@ -264,22 +264,24 @@ describe('renderMarkdown', () => {
     expect(container.textContent).toContain('[^1]');
   });
 
-  it('hands a wikilink to `renderInlineText` whole, brackets included', () => {
+  it('renders a wikilink as its own span, brackets gone and prose intact', () => {
     // lezer reports the inner `[My Note]` as a bracket link, so the surrounding text, that node and
     // the trailing bracket are three separate pieces of the walk. Coalescing them into one text run
-    // is what lets #162 match `[[…]]` at all — asserted structurally, since the seam is still the
-    // identity and the rendered text alone would look the same either way.
+    // is what lets `renderInlineText` match `[[…]]` at all — without it the link would reach the
+    // seam in three pieces and could never be recognized.
     const container = renderNote('See [[My Note]] here');
     const paragraph = container.querySelector('p');
 
-    expect(paragraph?.textContent).toBe('See [[My Note]] here');
-    expect(paragraph?.childNodes).toHaveLength(1);
+    // No vault tree is loaded here, so the target is missing — which is the *resolver's* business
+    // (`resolve-wikilink.test.ts`); what this asserts is that the walk found the link at all.
+    expect(paragraph?.textContent).toBe('See My Note here');
+    expect(paragraph?.querySelector('[title]')?.textContent).toBe('My Note');
   });
 });
 
 describe('renderInlineText', () => {
-  // The seam #162 replaces. Asserting the identity pins the contract the walk relies on: every run
-  // of plain inline text goes through this one function, so wikilink resolution lands in one place.
+  // Every run of plain inline text goes through this one function, which is what keeps wikilink
+  // resolution in one place; prose with no link in it must still cost nothing.
   it('passes a run of plain text through unchanged', () => {
     expect(renderInlineText('just words')).toBe('just words');
   });
