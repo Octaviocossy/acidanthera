@@ -91,4 +91,29 @@ describe('ReadView task checkboxes', () => {
     expect(currentBuffer().content).toBe('# Tasks\n\n- [ ] buy milk\n\nSome prose.\n');
     expect(currentBuffer().dirty).toBe(false);
   });
+
+  // The interaction between this slice and the *note header block*: `ReadView` strips a leading
+  // `# H1` before parsing, so every offset the walker reports is short by that heading's width,
+  // while the buffer rewritten here is the original. Without `stripLeadingH1`'s offset added back,
+  // the marker range lands to the left of the real one, `toggleTaskAt` refuses to recognise it, and
+  // the checkbox goes silently inert in a note that opens with a title — which is most of them.
+  // Several tests above happen to cover this by using `# Tasks`; this one names it.
+  it('ticks the right marker in a note whose leading H1 the header block strips', async () => {
+    const source = '# Groceries\n\n- [ ] buy milk\n- [ ] pay rent\n';
+    renderBuffer(openBuffer(source));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'pay rent' }));
+
+    expect(currentBuffer().content).toBe('# Groceries\n\n- [ ] buy milk\n- [x] pay rent\n');
+  });
+
+  it('ticks the right marker when the stripped heading is unusually long', async () => {
+    // The offset is the heading's own width, not a constant, so a long title shifts further.
+    const source = '#' + ' A rather long note title that shifts every offset'.repeat(2) + '\n\n- [ ] one\n';
+    renderBuffer(openBuffer(source));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'one' }));
+
+    expect(currentBuffer().content).toBe(source.replace('- [ ] one', '- [x] one'));
+  });
 });

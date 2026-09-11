@@ -7,6 +7,18 @@ import { useKeymapStore } from '@/stores/keymap-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { Viewer } from './Viewer';
 
+/**
+ * Asserts that nothing on screen states a read time.
+ *
+ * Scoped to visibility rather than to the document, because the read view stays **mounted** beside
+ * the editor with its `hidden` attribute set (spec decision 6) and its *note header block* states a
+ * read time of its own. What the editing state must not show is a *visible* one — the claim these
+ * tests were written to make about the *editor status cluster*.
+ */
+function expectNoVisibleReadTime() {
+  for (const node of screen.queryAllByText(/min read/)) expect(node).not.toBeVisible();
+}
+
 describe('Viewer', () => {
   afterEach(cleanup);
 
@@ -66,7 +78,7 @@ describe('Viewer', () => {
 
     expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
     expect(screen.getByText('normal')).toBeInTheDocument();
-    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
+    expectNoVisibleReadTime();
   });
 
   it('shows the word count and read time in the status cluster while reading', () => {
@@ -93,6 +105,6 @@ describe('Viewer', () => {
     rerender(<Viewer />);
 
     expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
-    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
+    expectNoVisibleReadTime();
   });
 });

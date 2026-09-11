@@ -27,6 +27,7 @@ import { highlightCode } from '@lezer/highlight';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { Fragment, type ReactNode } from 'react';
+import { WikilinkSpan } from '@/components/editor/WikilinkSpan';
 import { acidantheraHighlightStyle } from '@/lib/editor/highlight';
 import { joinVaultPath } from '@/lib/vault/create-entry';
 import { useToastStore } from '@/stores/toast-store';
@@ -111,18 +112,33 @@ export function renderMarkdown(source: string, options: MarkdownRenderOptions = 
   return renderBlockChildren(tree.topNode, { source, tree, vaultRoot: options.vaultRoot ?? null, onToggleTask: options.onToggleTask ?? null });
 }
 
+/** The app's own link syntax. Brackets inside a candidate invalidate it, as they do in Rust's
+ *  `find_wikilinks` and in the editor's decoration — one grammar, three call sites. */
+const WIKILINK_RE = /\[\[[^[\]]+\]\]/g;
+
 /**
- * Every run of plain inline text in a rendered note passes through here.
+ * Every run of plain inline text in a rendered note passes through here, split on `[[…]]`.
  *
- * Today it is the identity: markdown's own inline syntax is already handled by the walk, and
- * nothing else in a text run means anything yet. **Seam for #162 (wikilink resolution)**, which
- * replaces this body with a split on `[[…]]` that resolves each target against the cached vault
- * tree and renders the three link states. It is exported and used from exactly one place for that
- * reason — #162 edits this function, while #163 edits `renderTask`, so the two land without
- * touching each other's lines.
+ * Markdown's own inline syntax is handled by the walk; the one construct left in a plain run is the
+ * app's, and each match becomes a `WikilinkSpan` that resolves against the cached vault tree. The
+ * gaps between matches stay bare strings, so prose costs no element it did not already cost.
+ *
+ * This is why `renderInline` coalesces adjacent plain text first: `[[My Note]]` parses as a literal
+ * `[`, a bracket `Link` node and a literal `]`, and the three pieces could never be matched apart.
  */
 export function renderInlineText(text: string): ReactNode {
-  return text;
+  const out: ReactNode[] = [];
+  let pos = 0;
+  WIKILINK_RE.lastIndex = 0;
+  for (let match = WIKILINK_RE.exec(text); match !== null; match = WIKILINK_RE.exec(text)) {
+    if (match.index > pos) out.push(text.slice(pos, match.index));
+    out.push(<WikilinkSpan key={match.index} raw={match[0]} />);
+    pos = match.index + match[0].length;
+  }
+  // Prose with no link in it stays the bare string it was, rather than a one-element array.
+  if (out.length === 0) return text;
+  if (pos < text.length) out.push(text.slice(pos));
+  return out;
 }
 
 function slice(node: SyntaxNode, ctx: WalkContext): string {
