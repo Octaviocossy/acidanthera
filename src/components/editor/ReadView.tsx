@@ -1,7 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { renderMarkdown } from '@/lib/editor/markdown-walker';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import type { EditorBuffer } from '@/stores/editor-store';
+
+/**
+ * Prose measure and rhythm (spec decisions 12-13): proportional **sans**, not the editor's mono —
+ * the documented rule sharpens to "mono is for source, sans is for rendered prose" — capped near
+ * 680px and centred, over the editor's own `28px 36px` padding. `[&>*:first-child]:mt-0` keeps the
+ * first block flush with that padding instead of adding its own heading margin on top of it.
+ */
+const PROSE = 'mx-auto max-w-[680px] px-9 py-7 font-sans text-body text-text-body leading-[var(--leading-prose)] [&>*:first-child]:mt-0';
 
 interface ReadViewProps {
   buffer: EditorBuffer;
@@ -15,8 +24,9 @@ interface ReadViewProps {
  * (spec decision 6).
  *
  * It renders the **in-memory buffer**, dirty edits included (decision 5), so toggling is an instant
- * preview of what was just typed rather than a second read from disk. This slice renders that
- * content as preformatted text — a deliberate placeholder that the *markdown walker* replaces.
+ * preview of what was just typed rather than a second read from disk. That content goes through
+ * the *markdown walker*, which parses with `markdownLanguage` — the very base `BufferEditor` hands
+ * `markdown()` — so the two views can never disagree about what the source means (invariant 36).
  *
  * Deliberately **not** a fourth *focus region*: it is what the viewer is showing, so its scroll
  * container is simply the third claimant of viewer DOM focus (invariant 20).
@@ -24,6 +34,11 @@ interface ReadViewProps {
 export function ReadView({ buffer, active, hidden }: ReadViewProps) {
   const viewerActive = useAppStore((state) => state.activeRegion === 'viewer');
   const focusRequest = useAppStore((state) => state.editorFocusRequest);
+  const vaultRoot = useAppStore((state) => state.vaultRoot);
+
+  // The walk is the expensive part of a keystroke in the edit view beside it, since both surfaces
+  // stay mounted and this one re-renders on every `updateBufferContent`.
+  const rendered = useMemo(() => renderMarkdown(buffer.content, { vaultRoot }), [buffer.content, vaultRoot]);
 
   // Held in state rather than a ref, for the reason `BufferEditor` holds its `EditorView` in state
   // and `HomeSurface` its dock input: the focus effect below has to re-run at the moment the
@@ -60,7 +75,7 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
       aria-label={`${buffer.title}, read view`}
       className={cn('h-full min-h-0 overflow-y-auto outline-none', hidden && 'hidden')}
     >
-      <div className="whitespace-pre-wrap px-6 py-4 font-sans text-body text-text-body">{buffer.content}</div>
+      <div className={PROSE}>{rendered}</div>
     </article>
   );
 }

@@ -1,4 +1,4 @@
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
@@ -53,7 +53,15 @@ export function BufferEditor({ buffer, active, hidden }: BufferEditorProps) {
       regionExit(),
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
-      buffer.source === 'config' ? tomlLanguage : markdown(),
+      // `base: markdownLanguage` is the GFM-extended parser, and the *markdown walker* the read view
+      // runs on parses with that same object. Without it `markdown()` defaults to bare **commonmark**,
+      // so a table, a task list or `~~strikethrough~~` would render as GFM in read and as plain text
+      // here — the disagreement invariant 36 exists to prevent, and load-bearing for #163, which
+      // toggles task checkboxes. One shared base is what makes the invariant hold by construction
+      // rather than by two call sites happening to agree; it also makes
+      // `acidantheraHighlightStyle`'s `tags.strikethrough` rule reachable in the editor for the
+      // first time.
+      buffer.source === 'config' ? tomlLanguage : markdown({ base: markdownLanguage }),
       acidantheraHighlighting,
       vimModeSync(buffer.id),
       // Wikilinks are a Markdown-note concept and meaningless in TOML.

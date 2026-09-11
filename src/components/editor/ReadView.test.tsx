@@ -21,14 +21,16 @@ describe('ReadView', () => {
     useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
   });
 
-  it('renders the in-memory buffer, so a dirty edit previews without a re-read', () => {
+  it('renders the in-memory buffer through the walker, so a dirty edit previews without a re-read', () => {
     const buffer = openBuffer('/vault/note.md');
     act(() => useEditorStore.getState().updateBufferContent(buffer.id, '# Typed just now'));
     const dirty = useEditorStore.getState().buffers[0];
 
     render(<ReadView buffer={dirty} active hidden={false} />);
 
-    expect(screen.getByText('# Typed just now')).toBeInTheDocument();
+    // A heading, not the `# Typed just now` source it was written as: the *markdown walker* is what
+    // the buffer's content now goes through.
+    expect(screen.getByRole('heading', { level: 1, name: 'Typed just now' })).toBeInTheDocument();
   });
 
   it('is hidden while the editor is the surface showing, and visible while it is', () => {
