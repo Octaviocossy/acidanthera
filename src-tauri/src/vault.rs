@@ -11,7 +11,7 @@ use std::{
 
 use notify::{RecursiveMode, Watcher};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use thiserror::Error;
 
@@ -610,6 +610,20 @@ fn rewrite_wikilinks_in(
     })
 }
 
+/// Widens the asset-protocol scope to the adopted vault root, so the *read view* can serve the
+/// images inside it through `asset://` and nothing else.
+///
+/// The scope in `tauri.conf.json` is deliberately **empty**: the root is picked by the user at
+/// runtime, so a static pattern could only name it by being far broader than the one directory
+/// that may be read. Widening is additive — a previously opened root stays allowed for the rest of
+/// the session, which costs nothing, since the frontend only ever builds a URL from the root it
+/// currently holds.
+fn allow_vault_assets(app: &AppHandle, root: &Path) {
+    if let Err(error) = app.asset_protocol_scope().allow_directory(root, true) {
+        log::warn!("allow_vault_assets: {} ({error})", root.display());
+    }
+}
+
 /// (Re)starts the `notify` watcher over `root` — replacing, and thus stopping, any prior one —
 /// emitting `vault-changed` with the touched paths on every subsequent filesystem event.
 fn watch(app: &AppHandle, state: &VaultState, root: PathBuf) -> VaultResult<()> {
@@ -646,6 +660,7 @@ pub async fn pick_vault(app: AppHandle, state: State<'_, VaultState>) -> VaultRe
             .map_err(|_| VaultError::InvalidPath)?;
         let root = prepare_vault_root(&root)?;
         scaffold_agent_context_or_warn(&root);
+        allow_vault_assets(&app, &root);
         watch(&app, &state, root.clone())?;
         log::info!("pick_vault: adopted vault root {}", root.display());
         Ok(root.to_string_lossy().into_owned())
@@ -667,6 +682,7 @@ pub fn open_vault(
     (|| {
         let root = prepare_vault_root(Path::new(&path))?;
         scaffold_agent_context_or_warn(&root);
+        allow_vault_assets(&app, &root);
         watch(&app, &state, root.clone())?;
         log::info!("open_vault: adopted vault root {}", root.display());
         Ok(root.to_string_lossy().into_owned())

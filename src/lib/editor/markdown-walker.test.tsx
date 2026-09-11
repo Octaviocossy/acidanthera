@@ -1,0 +1,197 @@
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderInlineText, renderMarkdown } from './markdown-walker';
+
+const convertFileSrc = vi.fn((path: string) => `asset://localhost/${encodeURIComponent(path)}`);
+const openUrl = vi.fn((_url: string) => Promise.resolve());
+
+vi.mock('@tauri-apps/api/core', () => ({ convertFileSrc: (path: string) => convertFileSrc(path) }));
+vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: (url: string) => openUrl(url) }));
+
+/** Renders a note's source the way `ReadView` does, and hands back the rendered container. */
+function renderNote(source: string, vaultRoot: string | null = '/vault') {
+  return render(<div>{renderMarkdown(source, { vaultRoot })}</div>).container;
+}
+
+describe('renderMarkdown', () => {
+  afterEach(cleanup);
+
+  beforeEach(() => {
+    convertFileSrc.mockClear();
+    openUrl.mockClear();
+  });
+
+  it('renders an ATX heading at its level, without the syntax that spelled it', () => {
+    renderNote('## A section');
+
+    expect(screen.getByRole('heading', { level: 2, name: 'A section' })).toBeInTheDocument();
+  });
+
+  it('renders a setext heading, whose only mark sits at the end', () => {
+    renderNote('Underlined\n==========');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Underlined' })).toBeInTheDocument();
+  });
+
+  it('renders inline emphasis as elements rather than as its delimiters', () => {
+    const container = renderNote('Plain *em* **strong** ~~gone~~ `code`.');
+
+    expect(container.querySelector('em')).toHaveTextContent('em');
+    expect(container.querySelector('strong')).toHaveTextContent('strong');
+    expect(container.querySelector('del')).toHaveTextContent('gone');
+    expect(container.querySelector('code')).toHaveTextContent('code');
+    expect(container.textContent).not.toContain('*');
+  });
+
+  it('renders a bullet list as list items', () => {
+    renderNote('- one\n- two');
+
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['one', 'two']);
+  });
+
+  it('renders an ordered list, carrying a start other than 1', () => {
+    const container = renderNote('3. three\n4. four');
+
+    expect(container.querySelector('ol')).toHaveAttribute('start', '3');
+  });
+
+  it('renders a blockquote without its quote marks', () => {
+    const container = renderNote('> quoted line');
+
+    expect(container.querySelector('blockquote')).toHaveTextContent('quoted line');
+    expect(container.textContent).not.toContain('>');
+  });
+
+  it('renders a thematic break as a rule', () => {
+    const container = renderNote('above\n\n---\n\nbelow');
+
+    expect(container.querySelector('hr')).toBeInTheDocument();
+  });
+
+  it('preserves a fenced block’s text, and never shows its fence', () => {
+    const container = renderNote('```js\nconst a = 1;\nconst b = 2;\n```');
+
+    const code = container.querySelector('pre code');
+    expect(code).toHaveTextContent('const a = 1;');
+    expect(code?.textContent).toBe('const a = 1;\nconst b = 2;');
+    expect(container.textContent).not.toContain('```');
+  });
+
+  it('preserves an indented block’s lines without their indentation', () => {
+    const container = renderNote('    first\n    second');
+
+    expect(container.querySelector('pre code')?.textContent).toBe('first\nsecond');
+  });
+
+  it('renders a GFM table as header cells and body cells', () => {
+    renderNote('| a | b |\n|---|---|\n| 1 | 2 |');
+
+    expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(['a', 'b']);
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['1', '2']);
+  });
+
+  it('renders a task list as checkboxes reflecting each marker', () => {
+    renderNote('- [ ] open\n- [x] done');
+
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes.map((box) => (box as HTMLInputElement).checked)).toEqual([false, true]);
+    expect(screen.getByText('open')).toBeInTheDocument();
+  });
+
+  it('leaves task checkboxes disabled — the read view renders and does not write (invariant 37)', () => {
+    renderNote('- [ ] not yet interactive');
+
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+  });
+
+  it('renders a raw HTML block as visible text and creates no element from it', () => {
+    const container = renderNote('<script>alert(1)</script>');
+
+    expect(container.querySelector('script')).toBeNull();
+    expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument();
+  });
+
+  it('renders an inline HTML tag as visible text', () => {
+    const container = renderNote('Before <img src="x" onerror="alert(1)"> after');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('<img src="x" onerror="alert(1)">');
+  });
+
+  it('renders an escaped character without its backslash', () => {
+    const container = renderNote('\\*not emphasis\\*');
+
+    expect(container.querySelector('em')).toBeNull();
+    expect(container.textContent).toBe('*not emphasis*');
+  });
+
+  it('renders an external link as an anchor', () => {
+    renderNote('[the docs](https://example.com/docs)');
+
+    expect(screen.getByRole('link', { name: 'the docs' })).toHaveAttribute('href', 'https://example.com/docs');
+  });
+
+  it('hands an external link to the OS browser instead of navigating the webview', async () => {
+    renderNote('[the docs](https://example.com/docs)');
+
+    await userEvent.click(screen.getByRole('link', { name: 'the docs' }));
+
+    expect(openUrl).toHaveBeenCalledWith('https://example.com/docs');
+  });
+
+  it('renders a non-http link target as plain text, since nothing can open it', () => {
+    const container = renderNote('[a file](file:///etc/passwd)');
+
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.textContent).toContain('a file');
+  });
+
+  it('serves a vault-local image through the asset protocol', () => {
+    renderNote('![a diagram](notes/diagram.png)');
+
+    expect(convertFileSrc).toHaveBeenCalledWith('/vault/notes/diagram.png');
+    expect(screen.getByRole('img', { name: 'a diagram' })).toBeInTheDocument();
+  });
+
+  it('renders a remote image as its alt text alone, never as an <img>', () => {
+    const container = renderNote('![a remote picture](https://example.com/p.png)');
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(convertFileSrc).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('a remote picture');
+  });
+
+  it('renders a local image as alt text while no vault is open', () => {
+    const container = renderNote('![a diagram](diagram.png)', null);
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain('a diagram');
+  });
+
+  it('renders a footnote reference literally, GFM covering no such syntax', () => {
+    const container = renderNote('A claim[^1]');
+
+    expect(container.textContent).toContain('[^1]');
+  });
+
+  it('hands a wikilink to `renderInlineText` whole, brackets included', () => {
+    // lezer reports the inner `[My Note]` as a bracket link, so the surrounding text, that node and
+    // the trailing bracket are three separate pieces of the walk. Coalescing them into one text run
+    // is what lets #162 match `[[…]]` at all — asserted structurally, since the seam is still the
+    // identity and the rendered text alone would look the same either way.
+    const container = renderNote('See [[My Note]] here');
+    const paragraph = container.querySelector('p');
+
+    expect(paragraph?.textContent).toBe('See [[My Note]] here');
+    expect(paragraph?.childNodes).toHaveLength(1);
+  });
+});
+
+describe('renderInlineText', () => {
+  // The seam #162 replaces. Asserting the identity pins the contract the walk relies on: every run
+  // of plain inline text goes through this one function, so wikilink resolution lands in one place.
+  it('passes a run of plain text through unchanged', () => {
+    expect(renderInlineText('just words')).toBe('just words');
+  });
+});
