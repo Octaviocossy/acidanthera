@@ -59,12 +59,40 @@ describe('Viewer', () => {
     expect(screen.getByRole('textbox', { hidden: true })).not.toBeVisible();
   });
 
-  it('shows the editor status cluster while a buffer is open', () => {
-    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
+  it('shows cursor position and the vim mode in the status cluster while editing', () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note', 'vault', 'edit'));
 
     render(<Viewer />);
 
     expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
     expect(screen.getByText('normal')).toBeInTheDocument();
+    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
+  });
+
+  it('shows the word count and read time in the status cluster while reading', () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# A short note'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('4 words · 1 min read')).toBeInTheDocument();
+    // The cursor readout and the vim mode belong to the surface that has a cursor.
+    expect(screen.queryByText(/^ln /)).not.toBeInTheDocument();
+    expect(screen.queryByText('normal')).not.toBeInTheDocument();
+  });
+
+  it('swaps the cluster in place when the buffer view toggles, rather than adding a mode indicator', () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# A short note'));
+
+    const { rerender } = render(<Viewer />);
+
+    // The *view toggle* is the read view's only mode indicator (spec decision 29), so the word
+    // never appears in the cluster — boxed or bare.
+    expect(screen.queryByText('READ')).not.toBeInTheDocument();
+
+    act(() => useEditorStore.getState().toggleActiveBufferView());
+    rerender(<Viewer />);
+
+    expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
+    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
   });
 });
