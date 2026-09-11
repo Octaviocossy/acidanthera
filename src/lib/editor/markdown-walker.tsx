@@ -421,17 +421,94 @@ function renderInline(node: SyntaxNode, from: number, to: number, ctx: WalkConte
 }
 
 /**
- * The source of an inline node that is really just text, or `null` when it renders as an element.
+ * The text of an inline node that is really just text, or `null` when it renders as an element.
+ * Two cases, both of which join the surrounding run rather than splitting it.
  *
- * A `[…]` span with no `(target)` is the only case: lezer reports one for every bracket pair, so
- * this covers an unresolved reference link (`[ref][1]`), a footnote marker (`[^1]`) and — the one
- * that matters — the inner half of a `[[wikilink]]`. CommonMark already calls an unresolved
- * reference literal text, and definitions are not resolved here at all, so rendering the brackets
- * is both correct and the only thing that keeps a wikilink in one piece.
+ * A `[…]` span with **no `(target)`**: lezer reports one for every bracket pair, so this covers an
+ * unresolved reference link (`[ref][1]`), a footnote marker (`[^1]`) and — the one that matters —
+ * the inner half of a `[[wikilink]]`. CommonMark already calls an unresolved reference literal
+ * text, and definitions are not resolved here at all, so rendering the brackets is both correct and
+ * the only thing that keeps a wikilink in one piece. Taken as one verbatim slice, so a character
+ * reference *inside* the brackets stays literal — a wikilink target is a filename, spelled the way
+ * the file is named.
+ *
+ * A **character reference** (`&amp;`, `&#38;`, `&#x26;`), decoded to the character it names.
+ * CommonMark decodes these, and a character reference is *not* HTML markup — it is how markdown
+ * spells a character that would otherwise be syntax, so it belongs with the prose and not with the
+ * raw-HTML nodes spec decision 8 governs.
  */
 function plainInlineText(node: SyntaxNode, ctx: WalkContext): string | null {
   if (node.name === 'Link' && childNamed(node, 'URL') === null) return slice(node, ctx);
+  if (node.name === 'Entity') return decodeEntity(slice(node, ctx));
   return null;
+}
+
+/**
+ * The named character references a note realistically carries. The HTML5 list runs to ~2000 names
+ * and shipping it would cost more than every other table in this file put together; an unlisted
+ * name renders as its own literal source, which is also what CommonMark says of an *invalid* one.
+ */
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+  copy: '©',
+  reg: '®',
+  trade: '™',
+  hellip: '…',
+  mdash: '—',
+  ndash: '–',
+  lsquo: '‘',
+  rsquo: '’',
+  ldquo: '“',
+  rdquo: '”',
+  laquo: '«',
+  raquo: '»',
+  bull: '•',
+  middot: '·',
+  dagger: '†',
+  sect: '§',
+  para: '¶',
+  deg: '°',
+  plusmn: '±',
+  times: '×',
+  divide: '÷',
+  ne: '≠',
+  le: '≤',
+  ge: '≥',
+  infin: '∞',
+  larr: '←',
+  rarr: '→',
+  harr: '↔',
+  euro: '€',
+  pound: '£',
+  yen: '¥',
+  cent: '¢',
+};
+
+/**
+ * Decodes `&amp;` / `&#38;` / `&#x26;` to the character it names, or returns the source unchanged
+ * when the reference is unrecognized or names no valid code point.
+ *
+ * **This is not a relaxation of spec decision 8.** The decoded result is handed to React as a
+ * *string child* exactly as everything else here is, so `&lt;script&gt;` decodes to the **text**
+ * `<script>` and React escapes it on output — visible text, never markup. Nothing here gains a
+ * `dangerouslySetInnerHTML` path, and nothing may. Decoding happens on the string, never through
+ * the DOM: an `innerHTML`/`DOMParser` round-trip would be the injection surface ADR 0039 exists to
+ * refuse, however it is spelled.
+ */
+function decodeEntity(source: string): string {
+  const body = source.slice(1, -1);
+  const numeric = /^#(x)?([0-9a-f]+)$/i.exec(body);
+  if (numeric === null) return NAMED_ENTITIES[body] ?? source;
+  const code = Number.parseInt(numeric[2], numeric[1] === undefined ? 10 : 16);
+  // A surrogate half, a zero, or anything past the last plane names no character CommonMark would
+  // render — it substitutes U+FFFD, but leaving the source visible says more to whoever wrote it.
+  if (code <= 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return source;
+  return String.fromCodePoint(code);
 }
 
 function renderInlineNode(node: SyntaxNode, ctx: WalkContext): ReactNode {
@@ -467,11 +544,11 @@ function renderInlineNode(node: SyntaxNode, ctx: WalkContext): ReactNode {
     // `\*` renders the escaped character, without its backslash.
     case 'Escape':
       return <Fragment key={node.from}>{ctx.source.slice(node.from + 1, node.to)}</Fragment>;
-    // An inline HTML tag, an HTML comment and a character entity are all handed to React as string
-    // children, so each renders as the visible text it is written as (spec decision 8).
+    // Raw HTML — an inline tag or a comment — is handed to React as a string child, so it renders
+    // as the visible text it is written as (spec decision 8). A character reference is **not** raw
+    // HTML and is not here: it is decoded, in `plainInlineText`.
     case 'HTMLTag':
     case 'Comment':
-    case 'Entity':
       return <Fragment key={node.from}>{slice(node, ctx)}</Fragment>;
     default:
       if (SKIPPED_NODES.has(node.name)) return null;

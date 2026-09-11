@@ -133,6 +133,43 @@ describe('renderMarkdown', () => {
     expect(container.textContent).toContain('<img src="x" onerror="alert(1)">');
   });
 
+  it('decodes a named character reference, which is markdown text and not raw HTML', () => {
+    const container = renderNote('Tom &amp; Jerry');
+
+    expect(container.textContent).toBe('Tom & Jerry');
+  });
+
+  it('decodes a numeric character reference in both its decimal and hex forms', () => {
+    const container = renderNote('&#38; and &#x26;');
+
+    expect(container.textContent).toBe('& and &');
+  });
+
+  it('renders an unrecognized character reference as its own literal source', () => {
+    const container = renderNote('&notanentity; and &#xd800;');
+
+    expect(container.textContent).toBe('&notanentity; and &#xd800;');
+  });
+
+  it('escapes a decoded reference on output, so decoding is no relaxation of the HTML rule', () => {
+    // `&lt;script&gt;` decodes to the *text* `<script>`; React escapes a string child on output, so
+    // what lands in the DOM is visible text and never markup (spec decision 8).
+    const container = renderNote('&lt;script&gt;alert(1)&lt;/script&gt;');
+
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.textContent).toBe('<script>alert(1)</script>');
+  });
+
+  it('keeps a decoded reference inside its surrounding text run', () => {
+    // A character reference is prose, so it must not split the run the way a rendering element
+    // does: what reaches `renderInlineText` is one piece, which is what #162 matches `[[…]]` over.
+    const container = renderNote('See A &amp; B here');
+    const paragraph = container.querySelector('p');
+
+    expect(paragraph?.textContent).toBe('See A & B here');
+    expect(paragraph?.childNodes).toHaveLength(1);
+  });
+
   it('renders an escaped character without its backslash', () => {
     const container = renderNote('\\*not emphasis\\*');
 
