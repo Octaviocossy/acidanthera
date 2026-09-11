@@ -1,3 +1,4 @@
+import { ViewToggle } from '@/components/editor/ViewToggle';
 import { FileText, Icon, X } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
@@ -44,6 +45,10 @@ interface EditorTabsProps {
  * Tabs are **detached** `--radius-tab` chips on the panel ground (decision 20): the card is inset
  * on all four sides, so the negative-margin trick that used to fuse the active tab into the canvas
  * has no shared edge left to erase, and the strip needs no seam of its own.
+ *
+ * The strip is a row of two, not one scroller: the tab list scrolls, and the *view toggle* sits in
+ * a `shrink-0` sibling beside it. Appending the toggle to the scroller instead would scroll it out
+ * of reach at the eighth tab — a control that acts on what the window is showing has to stay put.
  */
 export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: EditorTabsProps) {
   const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
@@ -51,54 +56,55 @@ export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: Edi
   const leftInset = Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
 
   return (
-    <div
-      role="tablist"
-      aria-label="Open files"
-      data-tauri-drag-region="deep"
-      className="flex h-[var(--rail-titlebar)] shrink-0 items-center gap-1 overflow-x-auto bg-panel pr-2"
-      style={{ paddingLeft: leftInset }}
-    >
-      {buffers.map((buffer) => {
-        const active = buffer.id === activeBufferId;
-        return (
-          <div
-            key={buffer.id}
-            className={cn('group flex shrink-0 items-center rounded-tab border border-transparent', active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted')}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-controls={`editor-buffer-${buffer.id}`}
-              aria-label={buffer.dirty ? `${buffer.title}, unsaved changes` : buffer.title}
-              className="flex items-center gap-2 px-[14px] py-[7px] font-mono text-[12px] outline-none focus-visible:ring-1 focus-visible:ring-border-strong"
-              onClick={() => onActivate(buffer.id)}
+    <div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] shrink-0 items-center bg-panel" style={{ paddingLeft: leftInset }}>
+      <div role="tablist" aria-label="Open files" data-tauri-drag-region="deep" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        {buffers.map((buffer) => {
+          const active = buffer.id === activeBufferId;
+          return (
+            <div
+              key={buffer.id}
+              className={cn('group flex shrink-0 items-center rounded-tab border border-transparent', active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted')}
             >
-              {/* Every chip carries the file icon, reversing the icon clause of decision 42: an
-                  active-only icon changes the chip's width on activation, reflowing the whole strip
-                  on every tab switch. The icon inherits the chip's colour, so it dims with the label
-                  rather than encoding active/inactive a fourth time. The `×` stays hover-only on an
-                  inactive chip — that half of decision 42 is what its noise rationale supports — and
-                  the dirty dot is untouched, being one of the two indicators invariant 21 permits
-                  the ember. */}
-              <Icon icon={FileText} size={15} />
-              <span>{buffer.title}</span>
-              {buffer.dirty && <span aria-hidden="true" className="h-[6px] w-[6px] rounded-pill bg-accent" />}
-            </button>
-            <button
-              type="button"
-              className={cn(
-                'px-2 text-text-muted outline-none transition-opacity duration-[var(--dur)] ease-acidanthera hover:text-text-primary focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-border-strong',
-                !active && 'opacity-0 group-hover:opacity-100'
-              )}
-              aria-label={`Close ${buffer.title}`}
-              onClick={() => onClose(buffer.id)}
-            >
-              <Icon icon={X} size={16} />
-            </button>
-          </div>
-        );
-      })}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`editor-buffer-${buffer.id}`}
+                aria-label={buffer.dirty ? `${buffer.title}, unsaved changes` : buffer.title}
+                className="flex items-center gap-2 px-[14px] py-[7px] font-mono text-[12px] outline-none focus-visible:ring-1 focus-visible:ring-border-strong"
+                onClick={() => onActivate(buffer.id)}
+              >
+                {/* Every chip carries the file icon, reversing the icon clause of decision 42: an
+                    active-only icon changes the chip's width on activation, reflowing the whole strip
+                    on every tab switch. The icon inherits the chip's colour, so it dims with the label
+                    rather than encoding active/inactive a fourth time. The `×` stays hover-only on an
+                    inactive chip — that half of decision 42 is what its noise rationale supports — and
+                    the dirty dot is untouched, being one of the two indicators invariant 21 permits
+                    the ember. */}
+                <Icon icon={FileText} size={15} />
+                <span>{buffer.title}</span>
+                {buffer.dirty && <span aria-hidden="true" className="h-[6px] w-[6px] rounded-pill bg-accent" />}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'px-2 text-text-muted outline-none transition-opacity duration-[var(--dur)] ease-acidanthera hover:text-text-primary focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-border-strong',
+                  !active && 'opacity-0 group-hover:opacity-100'
+                )}
+                aria-label={`Close ${buffer.title}`}
+                onClick={() => onClose(buffer.id)}
+              >
+                <Icon icon={X} size={16} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {/* Outside the scroller, so enough open tabs scroll the list without taking the toggle with
+          them. It draws nothing at all when no vault buffer is active. */}
+      <div className="flex shrink-0 items-center pr-2">
+        <ViewToggle />
+      </div>
     </div>
   );
 }

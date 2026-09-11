@@ -243,3 +243,70 @@ describe('navigation history', () => {
     expect(useEditorStore.getState().history).toEqual({ entries: [], index: -1 });
   });
 });
+
+describe('buffer view', () => {
+  it('opens a vault note in read, the view a note is read in', () => {
+    useEditorStore.getState().openFile('/vault/notes.md', '# Notes');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('read');
+  });
+
+  it('opens a note its caller just created in edit', () => {
+    useEditorStore.getState().openFile('/vault/fresh.md', '', 'vault', 'edit');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
+  it('forces a config buffer to edit even when read is asked for', () => {
+    useEditorStore.getState().openFile('settings.toml', 'theme = "dark"', 'config', 'read');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
+  it('leaves an already-open buffer in whatever view it was left in', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes.md', '# Notes');
+    store.toggleActiveBufferView();
+
+    store.openFile('/vault/notes.md', '# Notes', 'vault', 'read');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
+  it('flips the active vault buffer both ways', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes.md', '# Notes');
+
+    store.toggleActiveBufferView();
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+
+    store.toggleActiveBufferView();
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('read');
+  });
+
+  it('does not flip a config buffer, which has no read view to flip into', () => {
+    const store = useEditorStore.getState();
+    store.openFile('settings.toml', 'theme = "dark"', 'config');
+
+    store.toggleActiveBufferView();
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
+  it('leaves every other buffer alone when one is toggled', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/one.md', 'one');
+    const one = getActiveBufferId();
+    store.openFile('/vault/two.md', 'two');
+
+    store.toggleActiveBufferView();
+
+    expect(useEditorStore.getState().buffers.find((buffer) => buffer.id === one)?.view).toBe('read');
+  });
+
+  it('does nothing with no buffer open', () => {
+    useEditorStore.getState().toggleActiveBufferView();
+
+    expect(useEditorStore.getState().buffers).toEqual([]);
+  });
+});

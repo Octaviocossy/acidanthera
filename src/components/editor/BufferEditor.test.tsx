@@ -22,26 +22,34 @@ describe('BufferEditor', () => {
   });
 
   it('takes DOM focus when its buffer is active and the viewer is the focused region', () => {
-    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active />);
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden={false} />);
 
     expect(screen.getByRole('textbox')).toHaveFocus();
   });
 
   it('does not take DOM focus while its buffer is inactive', () => {
-    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active={false} />);
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active={false} hidden={false} />);
 
+    expect(screen.getByRole('textbox')).not.toHaveFocus();
+  });
+
+  it('does not take DOM focus while its buffer is showing the read view instead', () => {
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden />);
+
+    // Both surfaces stay mounted, so without this guard the editor and the `ReadView` beside it
+    // would fight over DOM focus on every toggle.
     expect(screen.getByRole('textbox')).not.toHaveFocus();
   });
 
   it('does not take DOM focus while another region is focused', () => {
     useAppStore.setState({ activeRegion: 'sidebar' });
-    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active />);
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden={false} />);
 
     expect(screen.getByRole('textbox')).not.toHaveFocus();
   });
 
   it('re-takes DOM focus for a repeat request that changes nothing else', () => {
-    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active />);
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden={false} />);
     const content = screen.getByRole('textbox');
     // What the file finder's unmounting input leaves behind when the selected note is the buffer
     // that was already active: no store state changes, but DOM focus fell back to `<body>`.
@@ -54,7 +62,7 @@ describe('BufferEditor', () => {
   });
 
   it('gives up DOM focus when the focused region leaves the viewer', () => {
-    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active />);
+    render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden={false} />);
 
     act(() => useAppStore.getState().focusRegion('sidebar'));
 

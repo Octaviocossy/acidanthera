@@ -48,6 +48,17 @@ describe('Viewer', () => {
     expect(card).not.toHaveClass('border-border-strong');
   });
 
+  it('mounts both surfaces of a buffer, so a toggle never unmounts CodeMirror', () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
+
+    render(<Viewer />);
+
+    // The note opens in read, and the editor is hidden beside it rather than absent — which is what
+    // keeps undo history and cursor position across a toggle (spec decision 6).
+    expect(screen.getByLabelText('note.md, read view')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
   it('shows the editor status cluster while a buffer is open', () => {
     act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
 

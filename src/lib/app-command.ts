@@ -1,5 +1,6 @@
 import { openDailyNote } from '@/lib/vault/daily-note';
 import { startNoteDraft } from '@/lib/vault/start-draft';
+import { useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 
 /** Which input layer an {@link AppCommandId} belongs to — the namespace before its dotted id
@@ -22,6 +23,7 @@ export type AppCommandId =
   | 'global.command-mode'
   | 'global.new-note'
   | 'global.daily-note'
+  | 'global.toggle-view'
   | 'sidebar.cursor-down'
   | 'sidebar.cursor-up'
   | 'sidebar.open'
@@ -68,6 +70,10 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   // is what lets the *home surface* advertise a chord that works from the viewer.
   { id: 'global.new-note', label: 'New note', layer: 'global' },
   { id: 'global.daily-note', label: 'Daily note', layer: 'global' },
+  // `global.` rather than `editor.` by necessity, not by preference: `useCommandChord` returns
+  // `undefined` for any `editor.*` id outside `EDITOR_COMMAND_IDS`, so an `editor.`-namespaced
+  // toggle would render no chord on any surface (spec decision 20).
+  { id: 'global.toggle-view', label: 'Toggle read/edit view', layer: 'global' },
   { id: 'sidebar.cursor-down', label: 'Move cursor down', layer: 'sidebar' },
   { id: 'sidebar.cursor-up', label: 'Move cursor up', layer: 'sidebar' },
   { id: 'sidebar.open', label: 'Open entry', layer: 'sidebar' },
@@ -100,6 +106,9 @@ export function executeAppCommand(command: AppCommandId): void {
       break;
     case 'global.daily-note':
       void openDailyNote();
+      break;
+    case 'global.toggle-view':
+      useEditorStore.getState().toggleActiveBufferView();
       break;
     default:
       break;

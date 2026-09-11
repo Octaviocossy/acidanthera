@@ -65,7 +65,9 @@ function resolveFolder(): string {
  * stops — a folder the app cannot write into must not read as a note that failed to open.
  *
  * The note is created **empty**, exactly what *vault entry creation* produces, so the app keeps no
- * opinion about the inside of a note. The tree is never touched: the create trips the `notify`
+ * opinion about the inside of a note — which is why the branch that actually creates it opens in
+ * the *edit view* while the branch that merely found it takes the `'read'` default (spec decision
+ * 4). The distinction is *creation*, not emptiness. The tree is never touched: the create trips the `notify`
  * watcher, whose `vault-changed` drives the sidebar's own refetch (invariant 5).
  */
 export async function openDailyNote(now: Date = new Date()): Promise<void> {
@@ -85,6 +87,7 @@ export async function openDailyNote(now: Date = new Date()): Promise<void> {
     }
   }
 
+  let created = true;
   try {
     await vaultService.createNote(notePath);
   } catch (error: unknown) {
@@ -92,9 +95,10 @@ export async function openDailyNote(now: Date = new Date()): Promise<void> {
       showToast(`Daily note failed: ${errorMessage(error)}`, 'error');
       return;
     }
+    created = false;
   }
 
-  await openVaultFile(notePath).catch((error: unknown) => {
+  await openVaultFile(notePath, created ? 'edit' : undefined).catch((error: unknown) => {
     showToast(`Open failed: ${errorMessage(error)}`, 'error');
   });
 }

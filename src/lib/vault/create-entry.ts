@@ -90,7 +90,9 @@ export async function createVaultEntry(draft: EntryDraft, rawName: string): Prom
   cancelDraft();
   setCursor(path);
   if (draft.kind === 'note') {
-    await openVaultFile(path).catch((err: unknown) => {
+    // A note you just made is a note you made in order to write in (spec decision 4): it is empty,
+    // so the `'read'` default would mean pressing `Ctrl-w e` every single time.
+    await openVaultFile(path, 'edit').catch((err: unknown) => {
       showToast(`Open failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
     });
   }
