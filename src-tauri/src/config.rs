@@ -53,6 +53,7 @@ const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps
 # "global.command-mode"    = [":"]
 # "global.new-note"        = ["ctrl-w n"]
 # "global.daily-note"      = ["ctrl-w d"]
+# "global.toggle-view"     = ["ctrl-w e"]
 
 # [sidebar] — every command, with its default chords.
 # Uncomment a line and edit it to change it.

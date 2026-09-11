@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BufferEditor } from '@/components/editor/BufferEditor';
+import { BufferPane } from '@/components/editor/BufferPane';
 import { CloseBufferDialog } from '@/components/editor/CloseBufferDialog';
 import { EditorTabs } from '@/components/editor/EditorTabs';
 import { HomeSurface } from '@/components/layout/HomeSurface';
@@ -64,7 +64,7 @@ export function Viewer() {
         className={cn('relative mr-2 mb-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border bg-canvas', isActive ? 'border-border-strong' : 'border-hairline')}
       >
         <div className="min-h-0 flex-1">
-          {buffers.length === 0 ? <HomeSurface /> : buffers.map((buffer) => <BufferEditor key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)}
+          {buffers.length === 0 ? <HomeSurface /> : buffers.map((buffer) => <BufferPane key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)}
         </div>
         {activeBufferId !== null && (
           <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-2">

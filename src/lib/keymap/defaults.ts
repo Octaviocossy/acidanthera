@@ -28,6 +28,7 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'global.command-mode': [':'],
   'global.new-note': ['ctrl-w n'],
   'global.daily-note': ['ctrl-w d'],
+  'global.toggle-view': ['ctrl-w e'],
 
   // [sidebar]
   'sidebar.cursor-down': ['j'],

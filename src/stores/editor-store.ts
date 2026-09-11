@@ -10,6 +10,13 @@ export type EditorVimMode = 'normal' | 'insert' | 'visual' | 'replace';
  *  suppression, so no call site re-derives it from the path. */
 export type EditorBufferSource = 'vault' | 'config';
 
+/** Which of the two surfaces a buffer is currently shown through — the *edit view*'s CodeMirror or
+ *  the rendered *read view*. A field on the buffer exactly as `vimMode` is, so two open notes can
+ *  sit in different views (spec decision 1), and **session-only**: nothing persists it. Only a
+ *  `source: 'vault'` buffer has a meaningful one — a config buffer is forced to `'edit'`, since
+ *  TOML has nothing to render (decision 2). */
+export type BufferView = 'edit' | 'read';
+
 export interface EditorBuffer {
   id: string;
   filePath: string;
@@ -19,6 +26,7 @@ export interface EditorBuffer {
   revision: number;
   savedRevision: number;
   vimMode: EditorVimMode;
+  view: BufferView;
   source: EditorBufferSource;
 }
 
@@ -93,6 +101,13 @@ interface EditorState {
   updateBufferContent: (bufferId: string, content: string) => void;
   setCursor: (cursor: EditorCursor) => void;
   setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
+  /** Sets one buffer's *buffer view*. A no-op on a config buffer, which has none (spec decision 2)
+   *  — the same applicability rule `openFile` and `toggleActiveBufferView` already enforce. */
+  setBufferView: (bufferId: string, view: BufferView) => void;
+  /** Flips the active buffer's *buffer view*. A no-op with no buffer open, and on a config buffer,
+   *  which has no read view to flip into — the same applicability rule that hides the *view
+   *  toggle* there (spec decision 2). */
+  toggleActiveBufferView: () => void;
   requestSave: (bufferId?: string) => void;
   completeSaveRequest: (request: EditorSaveRequest) => void;
   failSaveRequest: (requestId: number) => void;
@@ -103,8 +118,11 @@ interface EditorState {
   rewriteBufferPaths: (oldPath: string, newPath: string) => void;
   /** Replaces a clean vault buffer's content after an external wikilink rewrite. */
   reloadCleanBuffer: (filePath: string, content: string) => void;
-  /** Opens a file read from disk, activating an existing buffer of the same source instead of overwriting it. */
-  openFile: (filePath: string, content: string, source?: EditorBufferSource) => void;
+  /** Opens a file read from disk, activating an existing buffer of the same source instead of
+   *  overwriting it. `view` defaults to `'read'` for a vault note (spec decision 3) and is forced
+   *  to `'edit'` for a config buffer; a caller passes `'edit'` for a note it just created
+   *  (decision 4). The dedupe branch ignores it — an already-open buffer keeps the view it had. */
+  openFile: (filePath: string, content: string, source?: EditorBufferSource, view?: BufferView) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -138,6 +156,28 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => ({
       buffers: state.buffers.map((buffer) => (buffer.id === bufferId ? { ...buffer, vimMode } : buffer)),
     })),
+
+  setBufferView: (bufferId, view) =>
+    set((state) => {
+      const buffer = state.buffers.find((candidate) => candidate.id === bufferId);
+      // A config buffer has no *buffer view* to set (decision 2), so the write is dropped rather
+      // than coerced to `'edit'`: a silent write is worse than no write. No caller can reach this
+      // today — `ViewToggle` draws nothing for config — but the rule is enforced in `openFile` and
+      // `toggleActiveBufferView` already, and an invariant held in two of three places is not held.
+      if (buffer === undefined || buffer.source === 'config') return state;
+      return {
+        buffers: state.buffers.map((candidate) => (candidate.id === bufferId ? { ...candidate, view } : candidate)),
+      };
+    }),
+
+  toggleActiveBufferView: () =>
+    set((state) => {
+      const buffer = activeEditorBuffer(state);
+      if (buffer === null || buffer.source === 'config') return state;
+      return {
+        buffers: state.buffers.map((candidate) => (candidate.id === buffer.id ? { ...candidate, view: candidate.view === 'read' ? 'edit' : 'read' } : candidate)),
+      };
+    }),
 
   requestSave: (bufferId) =>
     set((state) => {
@@ -214,7 +254,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       buffers: state.buffers.map((buffer) => (buffer.source === 'vault' && buffer.filePath === filePath && !buffer.dirty ? { ...buffer, content } : buffer)),
     })),
 
-  openFile: (filePath, content, source = 'vault') =>
+  openFile: (filePath, content, source = 'vault', view) =>
     set((state) => {
       const existing = state.buffers.find((buffer) => buffer.filePath === filePath && buffer.source === source);
       if (existing !== undefined) return { activeBufferId: existing.id, history: pushEntry(state.history, existing.filePath) };
@@ -228,6 +268,9 @@ export const useEditorStore = create<EditorState>((set) => ({
         revision: 0,
         savedRevision: 0,
         vimMode: 'normal',
+        // A config buffer has no read view at all, so the requested one is not merely ignored here
+        // — it cannot exist. A vault note falls back to `'read'`, the default a note opens into.
+        view: source === 'config' ? 'edit' : (view ?? 'read'),
         source,
       };
 

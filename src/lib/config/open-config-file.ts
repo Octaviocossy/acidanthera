@@ -17,6 +17,8 @@ export async function openConfigFile(name: ConfigFileName): Promise<void> {
   }
 
   const content = await configService.readConfigFile(name);
+  // No *buffer view* is passed: a `source: 'config'` buffer is forced to `'edit'` by the store,
+  // because TOML has nothing to render and the *view toggle* is not drawn for it (spec decision 2).
   useEditorStore.getState().openFile(name, content, 'config');
   useAppStore.getState().focusEditor();
 }

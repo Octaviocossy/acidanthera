@@ -11,6 +11,7 @@ const savedBuffer = {
   revision: 1,
   savedRevision: 0,
   vimMode: 'normal' as const,
+  view: 'read' as const,
   source: 'vault' as const,
 };
 describe('CloseBufferDialog', () => {
