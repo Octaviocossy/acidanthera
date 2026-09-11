@@ -31,6 +31,19 @@ describe('ReadView', () => {
     expect(screen.getByText('# Typed just now')).toBeInTheDocument();
   });
 
+  it('is hidden while the editor is the surface showing, and visible while it is', () => {
+    const buffer = openBuffer('/vault/note.md');
+    const { rerender } = render(<ReadView buffer={buffer} active hidden />);
+
+    // Both surfaces stay mounted, so `hidden` is the entire mechanism keeping them from being
+    // visible at once — the toggle's observable effect, not an implementation detail.
+    expect(screen.getByLabelText('note.md, read view')).not.toBeVisible();
+
+    rerender(<ReadView buffer={buffer} active hidden={false} />);
+
+    expect(screen.getByLabelText('note.md, read view')).toBeVisible();
+  });
+
   it('takes DOM focus when its buffer is active, showing, and the viewer is the focused region', () => {
     render(<ReadView buffer={openBuffer('/vault/note.md')} active hidden={false} />);
 

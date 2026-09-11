@@ -24,8 +24,8 @@ describe('Segmented', () => {
 
     // The accent asserts AI agency (invariant 21), which neither of this primitive's consumers —
     // the theme row or the *view toggle* — is. The active state is a surface step, not a colour.
-    const active = screen.getByRole('button', { name: 'dark' });
-    expect(active.className).not.toMatch(/accent/);
-    expect(active).toHaveClass('bg-elevated', 'border-border');
+    // The selected semantics are already asserted through `aria-pressed` in the test above; only
+    // the negative colour claim needs a class handle, having no behavioral equivalent.
+    expect(screen.getByRole('button', { name: 'dark' }).className).not.toMatch(/accent/);
   });
 });

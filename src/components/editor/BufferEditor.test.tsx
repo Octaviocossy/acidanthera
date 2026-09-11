@@ -37,8 +37,11 @@ describe('BufferEditor', () => {
     render(<BufferEditor buffer={openBuffer('/vault/note.md')} active hidden />);
 
     // Both surfaces stay mounted, so without this guard the editor and the `ReadView` beside it
-    // would fight over DOM focus on every toggle.
-    expect(screen.getByRole('textbox')).not.toHaveFocus();
+    // would fight over DOM focus on every toggle. `{ hidden: true }` because a hidden surface is
+    // out of the accessible tree, which is the other half of what hiding it means.
+    const content = screen.getByRole('textbox', { hidden: true });
+    expect(content).not.toHaveFocus();
+    expect(content).not.toBeVisible();
   });
 
   it('does not take DOM focus while another region is focused', () => {

@@ -97,7 +97,9 @@ export function BufferEditor({ buffer, active, hidden }: BufferEditorProps) {
   }, [view, active, viewerActive, hidden, focusRequest]);
 
   return (
-    <div className={cn('h-full min-h-0', hidden && 'hidden')}>
+    // The native `hidden` attribute as well as the utility class, for the reason `ReadView` carries
+    // it: the surface that is not showing leaves the accessible tree, not just the paint.
+    <div hidden={hidden} className={cn('h-full min-h-0', hidden && 'hidden')}>
       <CodeMirror
         className="h-full"
         value={buffer.content}

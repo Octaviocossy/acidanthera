@@ -101,6 +101,8 @@ interface EditorState {
   updateBufferContent: (bufferId: string, content: string) => void;
   setCursor: (cursor: EditorCursor) => void;
   setBufferVimMode: (bufferId: string, mode: EditorVimMode) => void;
+  /** Sets one buffer's *buffer view*. A no-op on a config buffer, which has none (spec decision 2)
+   *  — the same applicability rule `openFile` and `toggleActiveBufferView` already enforce. */
   setBufferView: (bufferId: string, view: BufferView) => void;
   /** Flips the active buffer's *buffer view*. A no-op with no buffer open, and on a config buffer,
    *  which has no read view to flip into — the same applicability rule that hides the *view
@@ -156,9 +158,17 @@ export const useEditorStore = create<EditorState>((set) => ({
     })),
 
   setBufferView: (bufferId, view) =>
-    set((state) => ({
-      buffers: state.buffers.map((buffer) => (buffer.id === bufferId ? { ...buffer, view } : buffer)),
-    })),
+    set((state) => {
+      const buffer = state.buffers.find((candidate) => candidate.id === bufferId);
+      // A config buffer has no *buffer view* to set (decision 2), so the write is dropped rather
+      // than coerced to `'edit'`: a silent write is worse than no write. No caller can reach this
+      // today — `ViewToggle` draws nothing for config — but the rule is enforced in `openFile` and
+      // `toggleActiveBufferView` already, and an invariant held in two of three places is not held.
+      if (buffer === undefined || buffer.source === 'config') return state;
+      return {
+        buffers: state.buffers.map((candidate) => (candidate.id === bufferId ? { ...candidate, view } : candidate)),
+      };
+    }),
 
   toggleActiveBufferView: () =>
     set((state) => {

@@ -50,7 +50,16 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
   // `contenteditable` and the *agent dock*'s `INPUT`, the window dispatcher does see this
   // container's keydowns and every global chord already works natively (invariant 20).
   return (
-    <article ref={setContainer} tabIndex={-1} aria-label={`${buffer.title}, read view`} className={cn('h-full min-h-0 overflow-y-auto outline-none', hidden && 'hidden')}>
+    // The native `hidden` attribute as well as the utility class: both surfaces stay mounted, so
+    // the one that is not showing must leave the accessible tree too rather than merely stop being
+    // painted — a screen reader would otherwise read the note twice.
+    <article
+      ref={setContainer}
+      tabIndex={-1}
+      hidden={hidden}
+      aria-label={`${buffer.title}, read view`}
+      className={cn('h-full min-h-0 overflow-y-auto outline-none', hidden && 'hidden')}
+    >
       <div className="whitespace-pre-wrap px-6 py-4 font-sans text-body text-text-body">{buffer.content}</div>
     </article>
   );

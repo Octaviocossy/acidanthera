@@ -273,6 +273,26 @@ describe('buffer view', () => {
     expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
   });
 
+  it('sets a vault buffer to the requested view', () => {
+    const store = useEditorStore.getState();
+    store.openFile('/vault/notes.md', '# Notes');
+    const bufferId = getActiveBufferId();
+
+    store.setBufferView(bufferId, 'edit');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
+  it('leaves a config buffer unchanged, which has no buffer view to set', () => {
+    const store = useEditorStore.getState();
+    store.openFile('settings.toml', 'theme = "dark"', 'config');
+    const bufferId = getActiveBufferId();
+
+    store.setBufferView(bufferId, 'read');
+
+    expect(activeEditorBuffer(useEditorStore.getState())?.view).toBe('edit');
+  });
+
   it('flips the active vault buffer both ways', () => {
     const store = useEditorStore.getState();
     store.openFile('/vault/notes.md', '# Notes');

@@ -55,8 +55,8 @@ describe('Viewer', () => {
 
     // The note opens in read, and the editor is hidden beside it rather than absent — which is what
     // keeps undo history and cursor position across a toggle (spec decision 6).
-    expect(screen.getByLabelText('note.md, read view')).toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.getByLabelText('note.md, read view')).toBeVisible();
+    expect(screen.getByRole('textbox', { hidden: true })).not.toBeVisible();
   });
 
   it('shows the editor status cluster while a buffer is open', () => {
