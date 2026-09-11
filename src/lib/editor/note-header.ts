@@ -60,6 +60,21 @@ export function countWikilinks(content: string): number {
 }
 
 /**
+ * A source with its leading `# H1` removed, and the number of characters that removal took off the
+ * front.
+ *
+ * The offset is the load-bearing half. The *markdown walker* reports every node's `from`/`to`
+ * against the string it was handed, so a *read view* that strips before parsing gets offsets short
+ * by exactly this much — while the task-checkbox toggle (invariant 37) rewrites the **original**
+ * buffer by those offsets. Adding it back is what keeps a checkbox clickable in a note that opens
+ * with a title, which is most of them.
+ */
+export interface StrippedSource {
+  source: string;
+  offset: number;
+}
+
+/**
  * Removes a note's leading `# H1` so the *note header block*'s title is not immediately repeated by
  * the body (spec decision 23).
  *
@@ -72,13 +87,17 @@ export function countWikilinks(content: string): number {
  * Setext headings (`Title` over `=====`) are deliberately **not** handled: recognising one means
  * looking ahead a line, and the app writes ATX.
  */
-export function stripLeadingH1(source: string): string {
+export function stripLeadingH1(source: string): StrippedSource {
   const lines = source.split('\n');
   const index = lines.findIndex((line) => line.trim().length > 0);
-  if (index === -1 || !/^ {0,3}#\s+/.test(lines[index])) return source;
+  if (index === -1 || !/^ {0,3}#\s+/.test(lines[index])) return { source, offset: 0 };
 
+  // The heading line plus the newline that ended it. Every offset the walker reports against the
+  // remaining source is short by exactly this much, which is why it is returned rather than
+  // discarded — see `StrippedSource`.
+  const offset = lines[index].length + 1;
   lines.splice(index, 1);
-  return lines.join('\n');
+  return { source: lines.join('\n'), offset };
 }
 
 /**

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NoteHeader } from '@/components/editor/NoteHeader';
 import { renderMarkdown } from '@/lib/editor/markdown-walker';
 import { findNoteModified, stripLeadingH1 } from '@/lib/editor/note-header';
+import { toggleTaskAt } from '@/lib/editor/toggle-task';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
-import type { EditorBuffer } from '@/stores/editor-store';
+import { type EditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 /**
@@ -54,11 +55,41 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
   const tree = useSidebarStore((state) => state.tree);
   const modified = useMemo(() => findNoteModified(tree, buffer.filePath), [tree, buffer.filePath]);
 
+  // A leading `# H1` is taken off the **source** before the parse, so the *markdown walker* the
+  // editor shares is untouched and the title above is not immediately repeated by the body (spec
+  // decision 23). `offset` is what that removal cost the front of the string.
+  const { source, offset } = useMemo(() => stripLeadingH1(buffer.content), [buffer.content]);
+
+  // The read view's **only** write (invariant 37): ticking a checkbox rewrites that one marker in
+  // the buffer, which marks it dirty and commits through the existing `EditorSaveRequest` lifecycle
+  // on `:w` — no second save path, no autosave, no direct disk write.
+  //
+  // The walker's offsets are relative to the **stripped** source, while the buffer this rewrites is
+  // the original, so `offset` is added back before the marker range is used. Without it a note that
+  // opens with a title — most of them — would land the rewrite a heading's width to the left, and
+  // `toggleTaskAt`'s marker check would reject it, leaving the checkbox silently inert.
+  //
+  // The content is read from the store at call time rather than closed over, so two quick clicks
+  // cannot both write from the same stale snapshot and lose the first tick. Keyed on `buffer.id`
+  // and `offset` alone, the callback stays referentially stable, so it costs the walk below no
+  // extra runs.
+  const bufferId = buffer.id;
+  const onToggleTask = useCallback(
+    (markerFrom: number, markerTo: number) => {
+      const { buffers, updateBufferContent } = useEditorStore.getState();
+      const current = buffers.find((candidate) => candidate.id === bufferId);
+      if (current === undefined) return;
+      const next = toggleTaskAt(current.content, markerFrom + offset, markerTo + offset);
+      // A stale offset leaves the content untouched, and a note must not go dirty for a click that
+      // changed nothing — `updateBufferContent` would bump the revision either way.
+      if (next !== current.content) updateBufferContent(bufferId, next);
+    },
+    [bufferId, offset]
+  );
+
   // The walk is the expensive part of a keystroke in the edit view beside it, since both surfaces
-  // stay mounted and this one re-renders on every `updateBufferContent`. A leading `# H1` is taken
-  // off the **source** before the parse, so the *markdown walker* the editor shares is untouched
-  // and the title above is not immediately repeated by the body (spec decision 23).
-  const rendered = useMemo(() => renderMarkdown(stripLeadingH1(buffer.content), { vaultRoot }), [buffer.content, vaultRoot]);
+  // stay mounted and this one re-renders on every `updateBufferContent`.
+  const rendered = useMemo(() => renderMarkdown(source, { vaultRoot, onToggleTask }), [source, vaultRoot, onToggleTask]);
 
   // Held in state rather than a ref, for the reason `BufferEditor` holds its `EditorView` in state
   // and `HomeSurface` its dock input: the focus effect below has to re-run at the moment the

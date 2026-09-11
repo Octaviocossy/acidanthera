@@ -113,10 +113,29 @@ describe('renderMarkdown', () => {
     expect(screen.getByText('open')).toBeInTheDocument();
   });
 
-  it('leaves task checkboxes disabled — the read view renders and does not write (invariant 37)', () => {
-    renderNote('- [ ] not yet interactive');
+  it('leaves task checkboxes disabled without an `onToggleTask`, rather than dropping their clicks', () => {
+    renderNote('- [ ] nobody is listening');
 
     expect(screen.getByRole('checkbox')).toBeDisabled();
+  });
+
+  it('hands a ticked checkbox its own marker range, which is what makes the one write exact', async () => {
+    const onToggleTask = vi.fn();
+    const source = '- [ ] open\n- [x] done';
+    render(<div>{renderMarkdown(source, { vaultRoot: '/vault', onToggleTask })}</div>);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'done' }));
+
+    // The *second* row's marker, located by the parse rather than by a search for the first `[`.
+    const from = source.lastIndexOf('[x]');
+    expect(onToggleTask).toHaveBeenCalledWith(from, from + 3);
+  });
+
+  it('names each checkbox after its own row, so a note of tasks does not announce one label', () => {
+    renderNote('- [ ] buy milk\n- [x] pay **rent**');
+
+    expect(screen.getByRole('checkbox', { name: 'buy milk' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'pay **rent**' })).toBeChecked();
   });
 
   it('renders a raw HTML block as visible text and creates no element from it', () => {

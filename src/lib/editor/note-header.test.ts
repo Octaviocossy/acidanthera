@@ -80,39 +80,60 @@ describe('countWikilinks', () => {
 
 describe('stripLeadingH1', () => {
   it('removes a leading H1 so the title is not repeated', () => {
-    expect(stripLeadingH1('# Repository Pattern\n\nProse.')).toBe('\nProse.');
+    expect(stripLeadingH1('# Repository Pattern\n\nProse.').source).toBe('\nProse.');
   });
 
   it('removes it past leading blank lines', () => {
-    expect(stripLeadingH1('\n\n# Title\nProse.')).toBe('\n\nProse.');
+    expect(stripLeadingH1('\n\n# Title\nProse.').source).toBe('\n\nProse.');
   });
 
   it('tolerates the three leading spaces CommonMark still calls a heading', () => {
-    expect(stripLeadingH1('   # Title\nProse.')).toBe('Prose.');
+    expect(stripLeadingH1('   # Title\nProse.').source).toBe('Prose.');
   });
 
   it('leaves a note that opens with prose untouched', () => {
     const source = 'Prose first.\n\n# A heading further down.';
-    expect(stripLeadingH1(source)).toBe(source);
+    expect(stripLeadingH1(source).source).toBe(source);
   });
 
   it('leaves a note that opens with an H2 untouched', () => {
     const source = '## Subheading\n\nProse.';
-    expect(stripLeadingH1(source)).toBe(source);
+    expect(stripLeadingH1(source).source).toBe(source);
   });
 
   it('leaves a note that opens with a fence untouched, H1 inside it included', () => {
     const source = '```\n# not a heading\n```\n';
-    expect(stripLeadingH1(source)).toBe(source);
+    expect(stripLeadingH1(source).source).toBe(source);
   });
 
   it('leaves `#Title` untouched, which is not a heading', () => {
     const source = '#Title\n\nProse.';
-    expect(stripLeadingH1(source)).toBe(source);
+    expect(stripLeadingH1(source).source).toBe(source);
   });
 
   it('leaves an empty note untouched', () => {
-    expect(stripLeadingH1('')).toBe('');
+    expect(stripLeadingH1('').source).toBe('');
+  });
+
+  // The offset is what lets the *read view*'s task toggle rewrite the original buffer from offsets
+  // the walker reported against the stripped source (invariant 37).
+  it('reports what the removal took off the front, so a caller can add it back', () => {
+    expect(stripLeadingH1('# Title\n\n- [ ] a\n').offset).toBe('# Title'.length + 1);
+  });
+
+  it('counts the heading where it actually sits, past leading blank lines', () => {
+    expect(stripLeadingH1('\n\n# Title\nProse.').offset).toBe('# Title'.length + 1);
+  });
+
+  it('reports a zero offset when nothing is stripped', () => {
+    expect(stripLeadingH1('Prose only.').offset).toBe(0);
+  });
+
+  it('puts the stripped source back where it came from when the offset is re-applied', () => {
+    const source = '# Title\n\n- [x] done\n';
+    const { source: stripped, offset } = stripLeadingH1(source);
+    // Every index in `stripped` names the same character in `source`, shifted by `offset`.
+    expect(source.slice(offset)).toBe(stripped);
   });
 });
 
