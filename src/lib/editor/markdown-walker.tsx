@@ -34,12 +34,19 @@ import { useToastStore } from '@/stores/toast-store';
 export interface MarkdownRenderOptions {
   /** The open vault root. A relative image target resolves against it; `null` renders alt text. */
   vaultRoot?: string | null;
+  /**
+   * Called with a task marker's source range when its checkbox is ticked — the *read view*'s one
+   * write (invariant 37). Omitted, every checkbox renders inert, which is what a caller that only
+   * displays a note wants.
+   */
+  onToggleTask?: (markerFrom: number, markerTo: number) => void;
 }
 
 interface WalkContext {
   source: string;
   tree: Tree;
   vaultRoot: string | null;
+  onToggleTask: ((markerFrom: number, markerTo: number) => void) | null;
 }
 
 /**
@@ -101,7 +108,7 @@ const STYLE = {
  */
 export function renderMarkdown(source: string, options: MarkdownRenderOptions = {}): ReactNode {
   const tree = markdownLanguage.parser.parse(source);
-  return renderBlockChildren(tree.topNode, { source, tree, vaultRoot: options.vaultRoot ?? null });
+  return renderBlockChildren(tree.topNode, { source, tree, vaultRoot: options.vaultRoot ?? null, onToggleTask: options.onToggleTask ?? null });
 }
 
 /**
@@ -274,22 +281,38 @@ function renderListItem(node: SyntaxNode, ctx: WalkContext): ReactNode {
 }
 
 /**
- * A GFM task list row.
+ * A GFM task list row, and the one interactive thing the *read view* renders.
  *
- * The checkbox is **disabled** here — the read view renders and does not write (invariant 37).
- * **Seam for #163 (task-checkbox toggling)**, which makes exactly this input interactive: it
- * rewrites the marker's source range through `updateBufferContent`, marking the buffer dirty so
- * the change commits through the existing save loop rather than a second save path. `marker.from`
- * is the offset that write needs, which is why the walk slices by offset at all.
+ * Ticking the checkbox hands the marker's source range to `onToggleTask`, whose caller rewrites it
+ * through `updateBufferContent` — marking the buffer dirty so the change commits through the
+ * existing save loop rather than a second save path (invariant 37). `marker.from`/`marker.to` are
+ * the offsets that write needs, which is why the walk slices by offset at all.
+ *
+ * Without that callback the checkbox is `disabled`, so a caller that only displays a note cannot
+ * accidentally offer a control that drops its clicks.
  */
 function renderTask(node: SyntaxNode, ctx: WalkContext): ReactNode {
   const marker = childNamed(node, 'TaskMarker');
   const checked = marker !== null && /\[[xX]\]/.test(slice(marker, ctx));
   let from = marker === null ? node.from : marker.to;
   while (from < node.to && /[^\S\n]/.test(ctx.source[from])) from += 1;
+  const toggle = ctx.onToggleTask;
+  const onChange = marker !== null && toggle !== null ? () => toggle(marker.from, marker.to) : undefined;
+  // The row's own text is the checkbox's name: `completed task` states only what `checked` already
+  // says, which leaves every box on a note announcing the same thing. A wrapped task spans a
+  // newline, so the source run is collapsed to one line before it becomes a label.
+  const label = ctx.source.slice(from, node.to).replace(/\s+/g, ' ').trim();
   return (
     <span key={node.from} className={STYLE.task}>
-      <input type="checkbox" checked={checked} disabled readOnly aria-label={checked ? 'completed task' : 'incomplete task'} className={STYLE.taskBox} />
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={onChange === undefined}
+        readOnly={onChange === undefined}
+        onChange={onChange}
+        aria-label={label.length > 0 ? label : checked ? 'completed task' : 'incomplete task'}
+        className={STYLE.taskBox}
+      />
       <span>{renderInline(node, from, node.to, ctx)}</span>
     </span>
   );

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { renderMarkdown } from '@/lib/editor/markdown-walker';
+import { toggleTaskAt } from '@/lib/editor/toggle-task';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
-import type { EditorBuffer } from '@/stores/editor-store';
+import { type EditorBuffer, useEditorStore } from '@/stores/editor-store';
 
 /**
  * Prose measure and rhythm (spec decisions 12-13): proportional **sans**, not the editor's mono —
@@ -36,9 +37,30 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
   const focusRequest = useAppStore((state) => state.editorFocusRequest);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
 
+  // The read view's **only** write (invariant 37): ticking a checkbox rewrites that one marker in
+  // the buffer, which marks it dirty and commits through the existing `EditorSaveRequest` lifecycle
+  // on `:w` — no second save path, no autosave, no direct disk write.
+  //
+  // The content is read from the store at call time rather than closed over, so two quick clicks
+  // cannot both write from the same stale snapshot and lose the first tick. Keyed on `buffer.id`
+  // alone, the callback stays referentially stable, so it costs the walk below no extra runs.
+  const bufferId = buffer.id;
+  const onToggleTask = useCallback(
+    (markerFrom: number, markerTo: number) => {
+      const { buffers, updateBufferContent } = useEditorStore.getState();
+      const current = buffers.find((candidate) => candidate.id === bufferId);
+      if (current === undefined) return;
+      const next = toggleTaskAt(current.content, markerFrom, markerTo);
+      // A stale offset leaves the content untouched, and a note must not go dirty for a click that
+      // changed nothing — `updateBufferContent` would bump the revision either way.
+      if (next !== current.content) updateBufferContent(bufferId, next);
+    },
+    [bufferId]
+  );
+
   // The walk is the expensive part of a keystroke in the edit view beside it, since both surfaces
   // stay mounted and this one re-renders on every `updateBufferContent`.
-  const rendered = useMemo(() => renderMarkdown(buffer.content, { vaultRoot }), [buffer.content, vaultRoot]);
+  const rendered = useMemo(() => renderMarkdown(buffer.content, { vaultRoot, onToggleTask }), [buffer.content, vaultRoot, onToggleTask]);
 
   // Held in state rather than a ref, for the reason `BufferEditor` holds its `EditorView` in state
   // and `HomeSurface` its dock input: the focus effect below has to re-run at the moment the
