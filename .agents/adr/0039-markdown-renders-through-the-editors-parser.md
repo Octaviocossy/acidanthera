@@ -20,7 +20,12 @@ notes.
 
 ## Consequences
 
-`@lezer/markdown` and `@lezer/common` are promoted from transitive to direct dependencies. Raw HTML
+`@lezer/common` alone is promoted from transitive to direct — for the `SyntaxNode`/`Tree` types the
+walker's signatures name. `@lezer/markdown` is deliberately *not*: the walker parses with
+`markdownLanguage.parser` from `@codemirror/lang-markdown`, which the app already depends on for the
+editor. That is stronger than the direct dependency this ADR first planned for, not weaker — the two
+views share one parser **object** rather than two configurations of the same package, so they cannot
+drift apart through configuration, which is what invariant 36 actually asks for. Raw HTML
 in a note renders as **escaped text**, never executed — that is what makes this choice
 sanitizer-free rather than sanitizer-deferred. Code blocks are highlighted by `@lezer/highlight`'s
 `highlightCode` driven by the existing `acidantheraHighlightStyle`, so they carry the editor's exact

@@ -2,11 +2,34 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useAppStore } from '@/stores/app-store';
+import { useEditorStore } from '@/stores/editor-store';
 import { EditorTabs } from './EditorTabs';
 
 const buffers = [
-  { id: 'one', filePath: '/vault/one.md', title: 'one.md', content: '', dirty: false, revision: 0, savedRevision: 0, vimMode: 'normal' as const, source: 'vault' as const },
-  { id: 'two', filePath: '/vault/two.md', title: 'two.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal' as const, source: 'vault' as const },
+  {
+    id: 'one',
+    filePath: '/vault/one.md',
+    title: 'one.md',
+    content: '',
+    dirty: false,
+    revision: 0,
+    savedRevision: 0,
+    vimMode: 'normal' as const,
+    view: 'read' as const,
+    source: 'vault' as const,
+  },
+  {
+    id: 'two',
+    filePath: '/vault/two.md',
+    title: 'two.md',
+    content: '',
+    dirty: true,
+    revision: 1,
+    savedRevision: 0,
+    vimMode: 'normal' as const,
+    view: 'read' as const,
+    source: 'vault' as const,
+  },
 ];
 
 const initialAppState = useAppStore.getState();
@@ -15,6 +38,7 @@ describe('EditorTabs', () => {
   afterEach(() => {
     cleanup();
     useAppStore.setState(initialAppState, true);
+    useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
   });
 
   it('exposes the active and dirty buffers through tab semantics', () => {
@@ -66,14 +90,26 @@ describe('EditorTabs', () => {
   it('marks the strip as a window drag region without putting the attribute on a tab', () => {
     render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
-    expect(screen.getByRole('tablist')).toHaveAttribute('data-tauri-drag-region', 'deep');
+    expect(screen.getByRole('tablist').parentElement).toHaveAttribute('data-tauri-drag-region', 'deep');
     expect(screen.getByRole('tab', { name: 'one.md' })).not.toHaveAttribute('data-tauri-drag-region');
+  });
+
+  it('keeps the view toggle out of the scrolling tab list', () => {
+    useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
+    act(() => useEditorStore.getState().openFile('/vault/one.md', '# One'));
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+    // Inside the `overflow-x-auto` tablist it would scroll out of reach once enough tabs are open;
+    // it lives in the strip's `shrink-0` sibling instead.
+    const toggle = screen.getByRole('button', { name: 'Read' });
+    expect(screen.getByRole('tablist')).not.toContainElement(toggle);
+    expect(screen.getByRole('tablist').parentElement).toContainElement(toggle);
   });
 
   it('insets the strip past the traffic lights only while the sidebar is collapsed', () => {
     useAppStore.setState({ sidebarExpanded: true });
     const { rerender } = render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '0px' });
+    expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '0px' });
 
     act(() => {
       useAppStore.setState({ sidebarExpanded: false });
@@ -81,6 +117,6 @@ describe('EditorTabs', () => {
     rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
     // 87px of measured clearance, minus the 40px rail the lights already sit on.
-    expect(screen.getByRole('tablist')).toHaveStyle({ paddingLeft: '47px' });
+    expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '47px' });
   });
 });

@@ -20,7 +20,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# `protocol-asset` registers the `asset://` scheme the read view serves vault-local images
+# through. Its scope starts empty and is widened at runtime to the adopted vault root alone
+# (`allow_vault_assets` in `vault.rs`) — the root is chosen by the user, so no static pattern
+# could name it without being far broader than the one directory that may be read.
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

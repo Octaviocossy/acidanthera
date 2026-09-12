@@ -1,4 +1,4 @@
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
@@ -20,10 +20,14 @@ import { useSettingsStore } from '@/stores/settings-store';
 interface BufferEditorProps {
   buffer: EditorBuffer;
   active: boolean;
+  /** True while this buffer is showing its *read view* instead. The view stays mounted — hiding it
+   *  is what keeps undo history and cursor position across a toggle (spec decision 6). */
+  hidden: boolean;
 }
 
-/** A permanently mounted CodeMirror view for one editor buffer. */
-export function BufferEditor({ buffer, active }: BufferEditorProps) {
+/** A permanently mounted CodeMirror view for one editor buffer — the *edit view* half of a
+ *  `BufferPane`, which owns the tabpanel wrapper this used to render itself. */
+export function BufferEditor({ buffer, active, hidden }: BufferEditorProps) {
   const theme = useSettingsStore((state) => state.settings?.theme ?? 'dark');
   const updateBufferContent = useEditorStore((state) => state.updateBufferContent);
   const setCursor = useEditorStore((state) => state.setCursor);
@@ -49,7 +53,15 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
       regionExit(),
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
-      buffer.source === 'config' ? tomlLanguage : markdown(),
+      // `base: markdownLanguage` is the GFM-extended parser, and the *markdown walker* the read view
+      // runs on parses with that same object. Without it `markdown()` defaults to bare **commonmark**,
+      // so a table, a task list or `~~strikethrough~~` would render as GFM in read and as plain text
+      // here — the disagreement invariant 36 exists to prevent, and load-bearing for #163, which
+      // toggles task checkboxes. One shared base is what makes the invariant hold by construction
+      // rather than by two call sites happening to agree; it also makes
+      // `acidantheraHighlightStyle`'s `tags.strikethrough` rule reachable in the editor for the
+      // first time.
+      buffer.source === 'config' ? tomlLanguage : markdown({ base: markdownLanguage }),
       acidantheraHighlighting,
       vimModeSync(buffer.id),
       // Wikilinks are a Markdown-note concept and meaningless in TOML.
@@ -83,15 +95,19 @@ export function BufferEditor({ buffer, active }: BufferEditorProps) {
     // `view.hasFocus` is deliberately unused — it ANDs in `document.hasFocus()`, so a backgrounded
     // window would report false and skip the blur.
     const holdsFocus = view.dom.contains(view.root.activeElement);
-    if (active && viewerActive) {
+    // `!hidden` as well, or the editor and the `ReadView` beside it fight over DOM focus on every
+    // toggle — both are mounted, and only the visible one may claim it.
+    if (active && viewerActive && !hidden) {
       if (!holdsFocus) view.focus();
     } else if (holdsFocus) {
       view.contentDOM.blur();
     }
-  }, [view, active, viewerActive, focusRequest]);
+  }, [view, active, viewerActive, hidden, focusRequest]);
 
   return (
-    <div id={`editor-buffer-${buffer.id}`} role="tabpanel" className={cn('h-full min-h-0', active ? 'block' : 'hidden')}>
+    // The native `hidden` attribute as well as the utility class, for the reason `ReadView` carries
+    // it: the surface that is not showing leaves the accessible tree, not just the paint.
+    <div hidden={hidden} className={cn('h-full min-h-0', hidden && 'hidden')}>
       <CodeMirror
         className="h-full"
         value={buffer.content}

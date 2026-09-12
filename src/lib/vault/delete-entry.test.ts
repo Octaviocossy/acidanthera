@@ -24,11 +24,44 @@ const tree = [
 ];
 
 const buffers: EditorBuffer[] = [
-  { id: 'first', filePath: '/vault/notes/first.md', title: 'first.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal', source: 'vault' },
-  { id: 'second', filePath: '/vault/notes/nested/second.md', title: 'second.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal', source: 'vault' },
-  { id: 'clean', filePath: '/vault/notes/clean.md', title: 'clean.md', content: '', dirty: false, revision: 1, savedRevision: 1, vimMode: 'normal', source: 'vault' },
-  { id: 'sibling', filePath: '/vault/notebook.md', title: 'notebook.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal', source: 'vault' },
-  { id: 'config', filePath: '/vault/notes/settings.toml', title: 'settings.toml', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal', source: 'config' },
+  { id: 'first', filePath: '/vault/notes/first.md', title: 'first.md', content: '', dirty: true, revision: 1, savedRevision: 0, vimMode: 'normal', view: 'read', source: 'vault' },
+  {
+    id: 'second',
+    filePath: '/vault/notes/nested/second.md',
+    title: 'second.md',
+    content: '',
+    dirty: true,
+    revision: 1,
+    savedRevision: 0,
+    vimMode: 'normal',
+    view: 'read',
+    source: 'vault',
+  },
+  { id: 'clean', filePath: '/vault/notes/clean.md', title: 'clean.md', content: '', dirty: false, revision: 1, savedRevision: 1, vimMode: 'normal', view: 'read', source: 'vault' },
+  {
+    id: 'sibling',
+    filePath: '/vault/notebook.md',
+    title: 'notebook.md',
+    content: '',
+    dirty: true,
+    revision: 1,
+    savedRevision: 0,
+    vimMode: 'normal',
+    view: 'read',
+    source: 'vault',
+  },
+  {
+    id: 'config',
+    filePath: '/vault/notes/settings.toml',
+    title: 'settings.toml',
+    content: '',
+    dirty: true,
+    revision: 1,
+    savedRevision: 0,
+    vimMode: 'normal',
+    view: 'edit',
+    source: 'config',
+  },
 ];
 
 const rows: FlatVaultRow[] = [

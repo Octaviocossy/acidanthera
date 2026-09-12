@@ -13,12 +13,15 @@ type RegionExitCommandId =
   | 'global.toggle-settings'
   | 'global.find-file'
   | 'global.new-note'
-  | 'global.daily-note';
+  | 'global.daily-note'
+  | 'global.toggle-view';
 
 /**
  * The `[global]` commands this gesture completes after arming on a Ctrl-w prefix (epic #94,
- * child #99 step 4), and the effect each runs. `global.new-note` and `global.daily-note` are here
- * because a verb promoted to the global layer must fire from *any* region.
+ * child #99 step 4), and the effect each runs. `global.new-note`, `global.daily-note` and
+ * `global.toggle-view` are here because a verb promoted to the global layer must fire from *any*
+ * region — and the *view toggle*'s is the one that most obviously has to, since the surface it
+ * switches away from is the editor holding focus.
  *
  * Both this gesture and the window dispatcher (`useGlobalKeymap`) read the very same
  * `resolved.layers.global` bindings, so rebinding one of these in `keymaps.toml` changes what it
@@ -34,6 +37,7 @@ const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => 
   { id: 'global.find-file', run: () => executeAppCommand('global.find-file') },
   { id: 'global.new-note', run: () => executeAppCommand('global.new-note') },
   { id: 'global.daily-note', run: () => executeAppCommand('global.daily-note') },
+  { id: 'global.toggle-view', run: () => executeAppCommand('global.toggle-view') },
 ];
 
 function isCtrlWPrefixStep(step: ChordKey): boolean {
