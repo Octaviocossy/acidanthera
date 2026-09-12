@@ -143,13 +143,20 @@ diff base and must not be reported as scope creep.
   standard from them.
 - `.agents/rules/*.md` — the enforceable conventions (plan creation, testing, command creation,
   skill creation, parallel orchestration, issue resolution, ADRs, the glossary rule).
-- `.agents/ubiquitous-language.md` — canonical terms, aliases to avoid, and invariants.
+- `.agents/ubiquitous-language.md` — canonical product terms and aliases to avoid.
+- `.agents/ubiquitous-language-invariants.md` — invariants **1–38**.
+- `.agents/ubiquitous-language-scaffold.md` — harness vocabulary and invariants **39–56**.
+- `.agents/ubiquitous-language-index.md` — the generated term → area pointer table.
 - `.agents/adr/*.md` — decisions the code must not silently reverse.
 
 **Step 3 — one local override to the baseline.** The twelve Fowler smells stay judgement calls,
-exactly as upstream binds them. But a breach of `.agents/ubiquitous-language.md` or of an ADR is a
-**hard violation**, not a judgement call: those are invariants the repo committed to, not
-heuristics. Say which kind each finding is.
+exactly as upstream binds them. But a breach of the glossary family —
+`.agents/ubiquitous-language.md`, **`.agents/ubiquitous-language-invariants.md`** (1–38) or
+**`.agents/ubiquitous-language-scaffold.md`** (39–56) — or of an ADR is a **hard violation**, not
+a judgement call: those are invariants the repo committed to, not heuristics. The two invariant
+files are named explicitly because the invariants used to live inside the vocabulary file; a rule
+that still said only `.agents/ubiquitous-language.md` would silently stop treating an invariant
+breach as hard. Say which kind each finding is.
 
 **Step 4 — how to spawn the two sub-agents.** Invoking this skill is the user's authorization to
 dispatch sub-agents.
@@ -190,14 +197,15 @@ stop to ask.
 **corpus pack** (`.worktrees/.corpus-pack.md`, rebuilt by `.agents/scripts/build-corpus-pack.sh`
 on every `--review` invocation and before every interactive dispatch, ADR-0029 — the verbatim,
 path-separated concatenation of `AGENTS.md`,
-`.agents/rules/*.md`, `.agents/ubiquitous-language.md`, and `.agents/adr/*.md`), skip the
+`.agents/rules/*.md`, the four authoritative glossary files, and `.agents/adr/*.md` — the
+changelog is deliberately excluded), skip the
 source reading in steps 2–3 entirely: verify the named files exist, hand the pack to the
 **Standards** sub-agent as its complete standards sources, and hand the **Spec**
 sub-agent its per-change sources (`.worktrees/<branch>.issue.md`, the linked plan, and
 `.worktrees/.epic-issue.md` when named) — all by path, reading none of them yourself.
 Never give the pack to the Spec sub-agent: each axis gets only its own sources. Axis
 isolation is blindness between findings, never exclusivity over sources
-(`.agents/ubiquitous-language.md`; ADR-0024). The smell baseline still travels as
+(`.agents/ubiquitous-language-scaffold.md`; ADR-0024). The smell baseline still travels as
 always — pasted into the Standards prompt from this file. Without a pack — an invocation
 that names none — nothing changes: read the sources as steps 2–3 describe.
 

@@ -134,7 +134,7 @@ Repeat until no progress:
       **hard violation** (Standards or Spec axis) → **reject** it. Otherwise (judgement
       calls only, or no findings) → **approve** it. This is the whole authority the
       auto path has — judgement calls never block (`parallel-orchestration.md` › The
-      Review Gate; `.agents/ubiquitous-language.md` › Branch review).
+      Review Gate; `.agents/ubiquitous-language-scaffold.md` › Branch review).
    3. **Rework stage** — for every rejected child, write `.worktrees/<branch>.feedback`
       with the full review report (no human text on this path — there is nobody to add
       any) and call:

@@ -22,4 +22,4 @@ sidebar footer, the settings dialog, and the persisted `vaultPath`.
 
 Containment itself is unchanged: `guarded_path` still canonicalizes every target and still
 rejects leaf symlinks, and trusted-source paths still route through it rather than being read
-directly (see `.agents/ubiquitous-language.md` invariant 4).
+directly (see `.agents/ubiquitous-language-invariants.md`, invariant 4).

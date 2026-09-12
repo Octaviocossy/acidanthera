@@ -10,6 +10,33 @@ generated ~4 KB **glossary index** (term → area, one line each, no definitions
 not just code that touches a given term — leaving them in the on-demand body would make the most
 enforcement-critical content in the repo the least-loaded.
 
+## Which invariants
+
+The invariants are **one numbering space split across two files**, and only 1–38 are imported:
+
+| Invariants | File | `@`-imported | Constrains |
+|-----------|------|--------------|-----------|
+| 1–38 | `.agents/ubiquitous-language-invariants.md` | **yes** | product code — `src/`, `src-tauri/src/` |
+| 39–56 | `.agents/ubiquitous-language-scaffold.md` | no | the governance harness — `.agents/`, `.claude/`, `.opencode/` |
+
+The split is not a byte-budget concession dressed up as a principle; it follows the same test the
+rest of this ADR applies. What earns always-on status is content that constrains code the agent
+might write *without knowing it is in scope*. Invariants 1–38 do: any edit under `src/` can breach
+one, and an agent has no way to know which until it already holds them. Scaffold invariants 39–56
+cannot be breached that way — breaching one requires editing the scaffold itself, and every context
+that does so is already holding the scaffold file. A reviewer gets it in the **corpus pack**
+(ADR 0024), which is lossless by construction; an agent editing `.agents/` reaches it through the
+index, whose pointer is always on. So the enforcement-critical reasoning above — "the most
+enforcement-critical content in the repo would be the least-loaded" — does not apply to 39–56: they
+are never less loaded than the work that can violate them.
+
+Importing the scaffold file would add 18,412 B to **every** session, the large majority of which
+never touch `.agents/`. That is the recall problem this ADR exists to fix, reintroduced at a quarter
+scale.
+
+This is stated here because `.agents/rules/domain-glossary.md` marks the scaffold file "no" in its
+five-file table, and a bare "no" reads as an oversight against this ADR's own summary sentence.
+
 ## Considered Options
 
 - **Drop the `@` import entirely**, relying on the two existing MUST-read instructions, whose

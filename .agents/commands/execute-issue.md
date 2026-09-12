@@ -49,7 +49,7 @@ A Linear-style token like `sdp-375` is **not** a GitHub issue number. Fetch the 
    case, create/modify/delete the files listed under **Affected Files** in the chosen source.
 2. Honor all project conventions: the architecture in `AGENTS.md`, the relevant `.agents/rules/*`
    files (read the matching rule before implementing that kind of feature), and
-   `.agents/ubiquitous-language.md` for any domain code.
+   the glossary family (via `.agents/ubiquitous-language-index.md`) for any domain code.
 3. For multi-step work, track progress with the task list (`TaskCreate`/`TaskUpdate`) so the user
    can follow along.
 4. Run the issue's **Acceptance Criteria** checks — use the project's acceptance commands from

@@ -26,7 +26,12 @@ section() { printf '\n%s\n' "$1"; }
 
 # ---- 1. Required root and governance files exist ----
 section "Required files"
-for f in AGENTS.md CLAUDE.md .gitignore .agents/ubiquitous-language.md; do
+for f in AGENTS.md CLAUDE.md .gitignore \
+         .agents/ubiquitous-language.md \
+         .agents/ubiquitous-language-index.md \
+         .agents/ubiquitous-language-invariants.md \
+         .agents/ubiquitous-language-scaffold.md \
+         .agents/ubiquitous-language-changelog.md; do
   if [ -f "$f" ]; then
     pass "$f exists"
   else
@@ -246,6 +251,122 @@ if [ -f .agents/labels.md ]; then
   fi
 else
   fail ".agents/labels.md is missing"
+fi
+
+# ---- 11. Glossary budget (ADR-0043) ----
+# Prose rules were tried here and failed — the 2026-07-22 cleanup wrote anti-append rules into
+# domain-glossary.md and the file grew roughly sixfold afterwards. This is the mechanical half.
+section "Glossary budget"
+
+GLOSSARY_CEILING=600
+GLOSSARY_WARN=80000
+GLOSSARY_FAIL=100000
+
+_body='.agents/ubiquitous-language.md'
+_scaffold='.agents/ubiquitous-language-scaffold.md'
+_invariants='.agents/ubiquitous-language-invariants.md'
+
+# The ceiling is in BYTES (ADR-0043). awk's length() counts characters in a multibyte locale
+# on some awks (gawk), bytes on others (macOS awk) — LC_ALL=C makes every awk below count
+# bytes, so the check means the same thing on every machine.
+#
+# 11a. Per-row ceiling. Column 5 of a vocabulary table row is the Notes cell. Rows are split on
+# UNESCAPED pipes: several cells legitimately contain `\|` (e.g. `'edit' \| 'read'`), and a naive
+# split would both mis-measure them and report the wrong column.
+_oversized_rows() {
+  LC_ALL=C awk -v limit="$GLOSSARY_CEILING" -v file="$1" '
+    /^\| / {
+      if ($0 ~ /^\|[-: |]+\|$/) next
+      line = $0
+      gsub(/\\\|/, "\001", line)          # protect escaped pipes
+      n = split(line, cell, "|")
+      if (n < 6) next
+      term = cell[2]; notes = cell[5]
+      gsub(/^[ \t]+|[ \t]+$/, "", term); gsub(/^[ \t]+|[ \t]+$/, "", notes)
+      if (term == "Term" || term == "File") next
+      if (length(notes) > limit) printf "%s: %s (%d B)\n", file, term, length(notes)
+    }' "$1"
+}
+
+_row_report=$( { _oversized_rows "$_body"; _oversized_rows "$_scaffold"; } 2>/dev/null )
+if [ -z "$_row_report" ]; then
+  pass "no Notes cell exceeds ${GLOSSARY_CEILING} B"
+else
+  fail "Notes cells over ${GLOSSARY_CEILING} B (one-claim rule — move rationale into the ADR):"
+  printf '%s\n' "$_row_report" | while IFS= read -r _l; do printf '      %s\n' "$_l"; done
+fi
+
+# 11b. Per-invariant ceiling. Each invariant is one line, numbered, in either invariant file.
+_oversized_invariants() {
+  LC_ALL=C awk -v limit="$GLOSSARY_CEILING" -v file="$1" '
+    /^[0-9]+\. / {
+      if (length($0) > limit) { num = $1; sub(/\.$/, "", num)
+        printf "%s: invariant %s (%d B)\n", file, num, length($0) }
+    }' "$1"
+}
+
+_inv_report=$( { _oversized_invariants "$_invariants"; _oversized_invariants "$_scaffold"; } 2>/dev/null )
+if [ -z "$_inv_report" ]; then
+  pass "no invariant exceeds ${GLOSSARY_CEILING} B"
+else
+  fail "invariants over ${GLOSSARY_CEILING} B:"
+  printf '%s\n' "$_inv_report" | while IFS= read -r _l; do printf '      %s\n' "$_l"; done
+fi
+
+# 11c. Total cap on the vocabulary body: warn at 80 KB, fail at 100 KB.
+if [ -f "$_body" ]; then
+  _bytes=$(wc -c < "$_body" | tr -d ' ')
+  if [ "$_bytes" -ge "$GLOSSARY_FAIL" ]; then
+    fail "$_body is ${_bytes} B, at or over the ${GLOSSARY_FAIL} B hard cap — retire rows"
+  elif [ "$_bytes" -ge "$GLOSSARY_WARN" ]; then
+    pass "$_body is ${_bytes} B — WARNING: $((_bytes - GLOSSARY_WARN)) B over the ${GLOSSARY_WARN} B soft cap"
+  else
+    pass "$_body is ${_bytes} B (under the ${GLOSSARY_WARN} B soft cap)"
+  fi
+fi
+
+# 11d. Index freshness. `@` imports a path and cannot run a script, so the index is checked in;
+# diffing it against a fresh build is what stops it going stale (ADR-0041, ADR-0024).
+if [ -x .agents/scripts/build-glossary-index.sh ] || [ -f .agents/scripts/build-glossary-index.sh ]; then
+  _tmp_index=$(mktemp 2>/dev/null || echo "/tmp/glossary-index.$$")
+  if sh .agents/scripts/build-glossary-index.sh "$_tmp_index" >/dev/null 2>&1 &&
+     diff -q "$_tmp_index" .agents/ubiquitous-language-index.md >/dev/null 2>&1; then
+    pass "glossary index is current"
+  else
+    fail "glossary index is stale — run sh .agents/scripts/build-glossary-index.sh"
+  fi
+  rm -f "$_tmp_index"
+else
+  fail ".agents/scripts/build-glossary-index.sh is missing"
+fi
+
+# 11e. The `settled ahead of implementation` marker is abolished (ADR-0042), so it must appear in
+# none of the four AUTHORITATIVE files. The changelog is exempt: its rows are verbatim historical
+# record, and several of them describe the convention as it stood on the date they were written.
+# Rewriting the record to satisfy a string check would falsify the record — the abolition is of
+# the convention, not of the fact that it was once used.
+# `|| true`: a no-match grep exits 1. This script runs under `set -u`, not `set -e`, so that is
+# harmless today — but it would abort the run the day anyone adds errexit, and it would abort it
+# precisely when the check PASSES, which is the hardest failure of all to notice.
+_marker_hits=$(grep -l 'settled ahead of implementation' \
+  "$_body" "$_scaffold" "$_invariants" .agents/ubiquitous-language-index.md 2>/dev/null || true)
+if [ -z "$_marker_hits" ]; then
+  pass "no 'settled ahead of implementation' marker in an authoritative glossary file"
+else
+  fail "'settled ahead of implementation' is abolished (ADR-0042) but appears in:"
+  printf '%s\n' "$_marker_hits" | while IFS= read -r _l; do printf '      %s\n' "$_l"; done
+fi
+
+# 11f. The exemption above is only defensible while the changelog SAYS it is a historical record
+# that abolished the marker. Without this check the exemption is indistinguishable from the file
+# simply going unchecked, and would silently widen the moment someone stopped reading 11e.
+_changelog='.agents/ubiquitous-language-changelog.md'
+if ! grep -q 'settled ahead of implementation' "$_changelog" 2>/dev/null; then
+  pass "changelog carries no abolished marker (the 11e exemption is currently unused)"
+elif grep -q 'Historical rows are verbatim and are never rewritten' "$_changelog" 2>/dev/null; then
+  pass "changelog declares its abolished-marker rows historical (11e exemption justified in-file)"
+else
+  fail "$_changelog contains 'settled ahead of implementation' but does not declare its rows historical — state the ADR-0042 abolition in its header, or drop the 11e exemption"
 fi
 
 # ---- Summary ----

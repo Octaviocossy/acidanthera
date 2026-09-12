@@ -31,3 +31,36 @@ sanitizer-free rather than sanitizer-deferred. Code blocks are highlighted by `@
 `highlightCode` driven by the existing `acidantheraHighlightStyle`, so they carry the editor's exact
 palette; a language with no Lezer parser in the tree renders as plain mono. Footnotes are outside
 the GFM extension and render as literal text.
+
+## Walker mechanics
+
+These are the walker's non-obvious behaviors. They live here rather than in the glossary row,
+which states what the walker *is* and cites this ADR for the rest (ADR 0043's one-claim rule).
+
+**Adjacent plain text is coalesced into a single run** before `renderInlineText` sees it. This is
+load-bearing, not tidiness: lezer reports a bracket span for every `[…]` pair, so `[[My Note]]`
+parses as a literal `[`, a bracket link and a literal `]`. Without coalescing the app's own link
+syntax would reach *wikilink resolution* in three pieces and could never be matched. A `[…]` span
+with **no `(target)`** is literal text, not a link; an unresolved reference link and a footnote
+marker render literally for the same reason, which is also what CommonMark says of them.
+
+**Character references are decoded** — `&amp;` renders `&`, numeric forms included, an
+unrecognized one staying literal — then join the surrounding run, because a character reference is
+how markdown spells a character rather than markup of its own. This relaxes nothing about raw
+HTML: the decoded text is still a React string child, so `&lt;script&gt;` is visible text and never
+an element.
+
+**Images are vault-local only.** A target is joined to the open `vaultRoot`, normalized so `..`
+cannot climb out, and must be **contained** by that root before it is served through Tauri's asset
+protocol; a target carrying any URI scheme, or any local target at all with no vault open,
+renders its alt text and no `<img>`. That containment check is **defence in depth, not the only
+guard** — the scope layer below would refuse an outside path anyway, but `allow_vault_assets`'
+doc comment asserts that the frontend only ever builds a URL from the root it currently holds, and
+only `localImageSrc` can make that sentence true. The protocol's configured scope is **empty** and
+is widened at runtime to the adopted vault root alone, the root being user-picked, so no static
+pattern could name it without being far broader than the one directory that may be read.
+
+**A task checkbox is interactive only when the caller passes `onToggleTask`.** Without it every box
+is `disabled`, so a caller that merely displays a note cannot offer a control that silently drops
+its clicks. Each box is named after its own row's source text rather than by its state, which
+`checked` already carries — otherwise every task on a note announces the same label.

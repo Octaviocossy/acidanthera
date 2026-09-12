@@ -206,13 +206,14 @@ is the outcome after that retry.
 **Fallback.** On exit `3` or `4`, say so plainly and run the two axes as fresh in-session
 sub-agents instead, handed the same paths and refs. Degrading to a same-model reviewer is worse
 than an external one and must be stated; skipping the review is not an option — *work is not done
-until an agentic review has seen it* (`.agents/ubiquitous-language.md` › invariants).
+until an agentic review has seen it* (`.agents/ubiquitous-language-scaffold.md` › invariant 50).
 
 ### 4 — Present the gate
 
 - Print the two axis reports under `## Standards` and `## Spec`, verbatim, side by side.
   **Never merge or rerank them** — a change can pass one and fail the other, and combining them
-  lets the passing axis mask the failing one (`.agents/ubiquitous-language.md` › invariants).
+  lets the passing axis mask the failing one (`.agents/ubiquitous-language-scaffold.md` ›
+  invariant 49).
 - Below them print the **gate line**, exactly one line:
 
   ```
@@ -222,7 +223,7 @@ until an agentic review has seen it* (`.agents/ubiquitous-language.md` › invar
   A count is not a rerank. There is no combined verdict, by design.
 - If `N > 0`, **pre-select rework** and list each hard violation's reason. A **judgement call**
   pre-selects nothing — you weigh it yourself. (Severity definitions:
-  `.agents/ubiquitous-language.md` › Branch review.)
+  `.agents/ubiquitous-language-scaffold.md` › Branch review.)
 - Ask for an explicit **approve** or **rework**. On rework, ask for written feedback; it may be
   left blank, in which case the aggregated report alone is the feedback.
 

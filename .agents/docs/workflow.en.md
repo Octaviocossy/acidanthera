@@ -28,7 +28,8 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
    decision whose prerequisites are already settled — as one numbered round, each question
    carrying its recommended answer, then stops and waits for you. Facts are the agent's job
    (it dispatches sub-agents rather than asking you what it could look up); the decisions are
-   yours. While it questions, it sharpens `.agents/ubiquitous-language.md` inline and offers
+   yours. While it questions, it sharpens terminology into the spec's `## Glossary Changes`
+   (promoted to the glossary when the code lands, ADR 0042) and offers
    an ADR for any decision that is hard to reverse *and* surprising *and* a real trade-off.
    When the frontier is empty it writes a settled spec to
    `.agents/specs/[yyyy-mm-dd]-[short-kebab-description].md` and tells you what to run next:
@@ -48,7 +49,7 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
 4. **Implement.** The agent works the plan's Step-by-Step Implementation in order,
    marking status `in-progress`, then `completed` once every Validation Criteria
    item passes. Any domain code touched along the way must first be checked against
-   `.agents/ubiquitous-language.md` (see below).
+   the glossary family (see below).
 5. **Verify.** Run whatever your project's `## Commands` in `AGENTS.md` define for
    lint/build/test. If you're modifying the scaffold itself rather than an adopting
    project, `sh .agents/scripts/verify-scaffold.sh` is the acceptance gate — see
@@ -59,7 +60,7 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
 
 ## Keeping domain vocabulary honest
 
-`.agents/ubiquitous-language.md` is the single source of truth for canonical entity
+`.agents/ubiquitous-language.md` and its four siblings are the single source of truth for canonical entity
 names, types, states, and invariants. `.agents/rules/domain-glossary.md` is the
 enforcement rule: before touching any file that lives in a canonical domain path, or
 that names/exports/imports/changes a glossary concept, read the glossary first. If
@@ -242,7 +243,7 @@ adopting project, where those checks report as skipped and the rest still run.
 
 Fill in the placeholders this scaffold ships with `_not yet documented_` markers:
 `AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
-`## Code Structure`; `.agents/ubiquitous-language.md`'s `Last updated` date and
+`## Code Structure`; the glossary's `Last updated` date and
 canonical domain code path; and the canonical domain paths in
 `.agents/rules/domain-glossary.md`. Leave `AGENTS.md` › `## Skills` alone — it is
 already populated, and it describes skills you inherit rather than a blank to fill.

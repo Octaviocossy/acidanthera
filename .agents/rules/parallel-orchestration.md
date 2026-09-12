@@ -271,7 +271,7 @@ a pushed child and its merge into the epic branch.
   the same `PARALLEL_MAX_CONCURRENCY` semaphore the plain run uses (so `--review` may
   run up to twice that many reviewer processes at once). The fixed
   point is the **epic integration branch**, not `main` — the documented rule for an
-  epic child (`.agents/ubiquitous-language.md` › Branch review). The reviewer is
+  epic child (`.agents/ubiquitous-language-scaffold.md` › Branch review). The reviewer is
   always a fresh headless invocation, never the agent that wrote the code, run under
   `REVIEW_AGENT_EXEC_CMD` (Adapter Contract).
 - **What it needs.** The child's worktree, **retained** through the review and cleaned
@@ -287,7 +287,7 @@ a pushed child and its merge into the epic branch.
 - **What it produces.** `.worktrees/<branch>.review.md` — the Standards + Spec report,
   distinguishing **hard violations** (a breach of the glossary or an ADR) from
   **judgement calls** (everything else, including the whole Fowler smell baseline) —
-  see `.agents/ubiquitous-language.md` › Branch review.
+  see `.agents/ubiquitous-language-scaffold.md` › Branch review.
 - **Its authority differs by execution path:**
   - **`/supervise-epic`** — a hard violation **pre-selects** "reject", with the reason
     loaded; a human may still approve anyway. A judgement call never pre-selects

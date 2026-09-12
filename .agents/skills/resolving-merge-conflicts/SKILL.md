@@ -35,7 +35,7 @@ lint, type-check, and format commands, and honor `## Verification Quirks`. Any e
 reading `_not yet documented_` has no runner yet — say so rather than inventing one. For changes
 touching the scaffold itself, always run `sh .agents/scripts/verify-scaffold.sh` (exit status =
 number of failed checks). If the conflict touches domain code, re-read
-`.agents/ubiquitous-language.md` per `.agents/rules/domain-glossary.md` before resolving — a
+the glossary family per `.agents/rules/domain-glossary.md` before resolving — a
 merge is a common way for two branches to introduce competing names for one concept.
 
 **Scope — the parallel runner is exempt.** `.agents/scripts/run-parallel-issues.sh` runs

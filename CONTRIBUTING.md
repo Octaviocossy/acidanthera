@@ -65,7 +65,8 @@ remove it afterwards; never read or mutate real user directories.
 
 ## The domain glossary
 
-**Read [`.agents/ubiquitous-language.md`](.agents/ubiquitous-language.md) before changing
+**Read the glossary row for the terms you touch — find it through
+[`.agents/ubiquitous-language-index.md`](.agents/ubiquitous-language-index.md) — before changing
 anything in `src/` or `src-tauri/src/`.** It is the canonical source for entity names, types,
 data contracts, and the invariants the app maintains. Those invariants are binding — several are
 the only thing standing between the current behavior and a class of bug that has already

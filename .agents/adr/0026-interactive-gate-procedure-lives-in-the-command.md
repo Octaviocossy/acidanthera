@@ -7,7 +7,7 @@ Phase 3 — which is the same shape that made `parallel-orchestration.md` a shar
 duplicating it, the way `/spec` composes `/spec-breakdown` and `/execute-epic`.
 
 A rule earns its own file when it carries invariants that bind code neither command owns. Here
-the invariants are already elsewhere — in `.agents/ubiquitous-language.md` › Review gate, and
+the invariants are already elsewhere — in `.agents/ubiquitous-language-scaffold.md` › Review gate, and
 in ADR-0025 — leaving a rule file with nothing but the procedure a command spec already holds.
 
 ## Consequences

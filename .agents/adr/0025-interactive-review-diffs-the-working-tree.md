@@ -20,6 +20,6 @@ the working-tree analogue of three-dot, and a superset of it.
 
 ## Consequences
 
-`.agents/ubiquitous-language.md` › Fixed point no longer asserts "always three-dot" — the
+`.agents/ubiquitous-language-scaffold.md` › Fixed point no longer asserts "always three-dot" — the
 comparison form now follows what is under review. `/review-branch committed-only` opts back
 into the three-dot form when the caller wants the branch as pushed, ignoring local edits.

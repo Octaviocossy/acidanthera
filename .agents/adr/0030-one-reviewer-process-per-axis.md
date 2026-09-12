@@ -16,7 +16,7 @@ process's stdout (observed: a Standards axis finishing while the Spec axis ran u
 silently required the reviewer CLI to support sub-agent fan-out — an undocumented adapter
 requirement that a per-axis dispatch removes entirely. Flattening also strengthens axis
 isolation rather than weakening it: two operating-system processes cannot see each other's
-findings at all, which is the property `.agents/ubiquitous-language.md` demands. In-session
+findings at all, which is the property `.agents/ubiquitous-language-scaffold.md` demands. In-session
 sub-agent fan-out survives only as the interactive fallback when no external reviewer is
 configured, and when the skill is invoked directly in a session.
 

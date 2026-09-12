@@ -1,0 +1,62 @@
+# Ubiquitous Language — Invariants
+
+> The relationships this codebase maintains. A breach of one is a **hard violation**
+> at the review gate, never a judgement call.
+>
+> **Last updated:** 2026-09-11
+>
+> Permanently `@`-imported by `CLAUDE.md` (ADR 0041): these constrain all code, not only
+> code that touches a given term. Scaffold invariants 39–56 are in
+> `.agents/ubiquitous-language-scaffold.md`.
+>
+> Each invariant is capped at **600 bytes** — `.agents/scripts/verify-scaffold.sh` §11
+> enforces it (ADR 0043). The reasoning belongs in the ADR the invariant cites.
+
+---
+
+1. Focus regions remain reachable only while their corresponding region is *usable*: the *agent panel* while it is open, the sidebar while it is **expanded** — not merely visible (see invariant 24).
+2. Global mode and editor Vim mode remain separate state machines.
+3. Keyboard layers dispatch shared app commands rather than duplicating command behavior.
+4. Vault filesystem operations remain contained within the canonical vault root and reject symlink escapes. The root is canonicalized **once, at the adopt boundary** — `guarded_path` receives an already-canonical root and canonicalizes only its target, so containment is established at one place rather than re-derived defensively on every call.
+5. Vault creation refreshes through the watcher; callers do not mutate the cached tree directly.
+6. Opening an already-buffered note activates it without replacing dirty in-memory content.
+7. Save requests are immutable snapshots processed in FIFO order, and completion applies only to the captured revision.
+8. Dirty buffer close cannot discard changes without an explicit user decision.
+9. System yank updates the Vim register independently from asynchronous clipboard success.
+10. The selected model determines the agent source; the engine is never persisted separately.
+11. Agent backends translate native output into `AgentEvent`; UI and chat state do not consume raw engine output.
+12. `useChatStore`, chat persistence, and chat-history view state remain distinct concepts.
+13. Chat-file parsing and serialization own the format while persistence owns storage.
+14. Resume prompts are used only when backend session memory cannot be relied upon.
+15. A `vaultPath` change is never applied while dirty buffers are unresolved without an explicit consolidated decision; Cancel leaves it un-applied.
+16. A config file's `EditorBufferSource` and its buffer's `filePath` decide save routing, editor language, and wikilink suppression together; no call site re-derives them from the path independently.
+17. A `config-changed` disk event never mutates an open config buffer's content, dirty or not — it only ever toasts a warning when the buffer is dirty (extends invariant 6).
+18. Keymap resolution replaces a command's chords wholesale; chord lists are never merged entry-by-entry, and an empty list unbinds.
+19. Keymap layers resolve in a single dispatcher, `editor > active region > global`, first match wins with no fallthrough.
+20. **Real DOM focus follows the focus region.** With `activeRegion === 'viewer'` it sits on whatever the viewer is showing: that buffer's CodeMirror view in edit, the *read view*'s container in read, the *agent dock* with no buffer open, released when the region moves. The claimant changes; the rule does not. Two of the three carry the *region-exit gesture*; the read view's container does not, a focused `div` being no editable target. Both halves are load-bearing: region focus without DOM focus leaves a note untypable, and DOM focus without it leaves other regions' keys landing in the buffer.
+21. **The AI accent marks AI agency, or a link into the vault**, and nothing else. No success state, status indicator, or decorative fill may use it: an element rendering it claims that the agent acted there, that an AI action is offered but unavailable, or that this text navigates to another note. The *wikilink* clause is ADR 0040, widening ADR 0007's meaning; it applies in **both** views and only to a link that resolves (invariant 38). Two exemptions: the **brand mark**, identity rather than signal, whose ring renders wherever the mark does (superseding ADR 0032), and the **dirty-note dot**.
+22. acidanthera token names are the only token vocabulary. Factory token names and aliases no longer exist.
+23. **There is no status bar and no titlebar.** Editor state renders inside the editor (the *editor status cluster*) and every global control lives in the sidebar (ADR 0009, extended by ADR 0035). The *chrome strip* carries **no state**, and the only controls it may carry are those acting on *what the window is currently showing*, today the *navigation history* pair and the *view toggle* (ADR 0037). A settings gear, a theme toggle and a create action are app-level and stay in the sidebar, which keeps the strip from drifting back into a titlebar one convenience at a time.
+24. **The sidebar is always visible and never unmounts**; collapsing it yields the *sidebar rail*. A collapsed rail is **not** a reachable focus region, having no visible cursor for `j`/`k`, so `collapseSidebar` moves `activeRegion` off `'sidebar'` and the cycle skips it (ADR 0011). Since ADR 0035 it is also the only surface several global controls have while collapsed, so it mirrors the expanded sidebar's hidden surfaces: `✦` and `⚙` in its stack, and the *theme toggle* `☀` as the bottom pin. Amends ADR 0011 decisions 18 and 20. The *navigation history* pair is **not** mirrored.
+25. While a `modal` layer is active it absorbs every keydown, matched or not, so no lower layer dispatches under an overlay (ADR 0014). Both the *sidebar context menu* and the *delete confirmation* register it, so `j`/`k`/`a`/`A`/`d d` are inert under either. Registration is the *modal shell*'s job, not each dialog's, which is what closes the leak for `CloseBufferDialog` and `SwitchVaultDialog`. `SettingsDialog` and `FileFinder` stay outside both: each already blocks keys its own way, a `stopPropagation` on the panel and a focused input that trips `isEditableTarget`.
+26. A vault deletion moves the entry to the OS trash and never calls `fs::remove_*`. It closes every editor buffer at or under the deleted path, and discards those buffers' unsaved edits only behind an explicit *delete confirmation* — which is why the confirmation is unconditional even though the file itself is recoverable from Finder.
+27. The *destructive color* marks the destructive path, and nothing else — the menu row that initiates it and the button that commits it (ADR 0015, narrowed). A failed operation stays monochrome. Together with invariant 21 this leaves the app exactly two colored fills — ember for "the AI acted here, or this navigates into the vault", red for "this click destroys" — and a UI element rendering either is asserting one of those things, with the brand mark's identity ring standing outside the pair rather than adding a third. ADR 0040 widened what ember means; it did not add a colour.
+28. Renaming a **note** rewrites every `[[wikilink]]` whose target is its old stem, unless that stem is ambiguous — two notes sharing it means nothing is rewritten and the user is told (ADR 0016). Renaming a **directory** rewrites nothing, because a wikilink target is a basename and carries no path. The rename lands first and is never rolled back; the rewrite that follows is best-effort and reports what it could not do.
+29. A rename never closes a buffer. Every buffer at or under the old path has its `filePath` rewritten in place, dirty ones included — the mirror of invariant 26, where deletion closes them, because deletion removes the file and a rename does not.
+30. Every drawn icon comes from Lucide through the `Icon` primitive (ADR 0017), which is the only place `strokeWidth={1.2}`/`absoluteStrokeWidth` is set. Hand-drawn SVG survives in exactly one component, `AcidantheraMarkGlyph`; the *Unicode glyph vocabulary* stays characters inside text and is not an exception to this, because it is typography.
+
+31. **Every user-facing chord comes from the *resolved keymap*.** No chord is written as a string literal: one is wrong the moment anyone edits `keymaps.toml`, and nothing in the app can notice. `formatChord` renders one hint, `formatChords` every chord a command has, and the `useCommandChord` **hook** supplies a control's chord, never a plain function since a `getState()` read in render survives no live-reload. The native-`title` path and `useChordTitle` are **gone** with the titlebar. The *primary nav* is the one surface rendering its chord **persistently**, as an unboxed `Kbd`.
+
+32. **A clipped surface carries a hover reveal, and inside the sidebar that reveal is drawn** (ADR 0034). `FileTreeItem` was the only truncating surface carrying none while four others followed the truncate-plus-`title` idiom. The *Tooltip* is deliberately **not** a modal layer, unlike every other overlay: invariant 25 would otherwise have it swallow `j`/`k` while the pointer merely rests on a row. Outside the sidebar the reveal is the native `title`, the *home row* being its one live consumer. The split is by construction: the *Tooltip* is anchored and mounted for the sidebar's own overflow.
+
+33. **The zero-buffer viewer is the *home surface*, never a blank canvas.** One component covers all three conditions, no vault, empty vault, vault with notes, and only the greeting and the row set change. It always offers something to do. This supersedes decision 13 of `.agents/specs/2026-08-08-orbit-design-system.md` and the "No onboarding" line in `doc/v0-spec.md` §1: the app has one user, so this is the surface that user sees whenever no note is open. What that ruling refused was verbs pointing at features that do not exist, and no *home row* may do that.
+
+34. **One transcript; every composer routes to it** (ADR 0038). The *agent dock* is a second mount of `ChatInput`, never a second conversation: submitting opens the *agent panel* and sends the turn there, and the dock hides while that panel is open. This is load-bearing rather than tidy — `useChatStore.sendMessage` reads only `vaultRoot` and never `agentOpen`, so a composer that sent without opening would start a real turn whose events stream into an unmounted transcript. Any further entry point obeys the same order: open, then send.
+
+35. **A verb may live in two *keymap layers*, and each surface renders whichever chord fires where it is drawn.** `sidebar.new-note` (`a`) and `global.new-note` (`Ctrl-w n`) are one action reachable two ways: the *primary nav* shows the single key that genuinely works there, the *home row* the global chord that is the only one working from the viewer. Both read from the *resolved keymap* (invariant 31); the rule is about which command a surface asks about, never about writing a literal. Collapsing the pair would either strand the home surface or cost the sidebar its single-key create.
+
+36. **One markdown parser serves both views** (ADR 0039). The *read view* walks the same `@lezer/markdown` tree the editor's `acidantheraHighlightStyle` binds against — never a second parser, and never an HTML string. Both halves are load-bearing: a second parser would let the two views disagree about what the source means, and an HTML string would need a sanitizer in an app where an agent writes the notes. Adding `react-markdown`, `marked`, or any `dangerouslySetInnerHTML` path for note content breaks this.
+
+37. **The *read view* renders; its only write is the task checkbox.** Clicking `- [ ]` rewrites that line through `updateBufferContent`, marks the buffer dirty, and commits through the existing `EditorSaveRequest` lifecycle — no second save path, no autosave, no direct disk write. Everything else that would edit a note belongs in the *edit view*. This is the boundary that stops the read view becoming a second editor with its own half of the save machinery.
+
+38. **A *wikilink* has three states, and they mean the same thing in both views** (ADR 0040). Resolving → ember and navigable; **missing or ambiguous** → muted, struck through, and inert. Ambiguity is *marked, never guessed*, extending ADR 0016's stance from renames to navigation: two notes sharing a basename means the link model cannot say which was meant. This is why the editor's decoration stopped being a pure regex and learned to resolve against the cached tree — a link reading as fine in edit and broken in read would be worse than either alone.

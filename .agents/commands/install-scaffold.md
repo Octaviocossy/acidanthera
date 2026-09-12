@@ -33,7 +33,7 @@ and copies each entry into the target unless a file of the same name already exi
 4. If `Created` is greater than 0, remind the user to:
    - Fill in the TODO placeholders in `AGENTS.md` (`## Workspace`, `## Commands`,
      `## Testing`, `## Verification Quirks`, `## Code Structure`).
-   - Customize `.agents/ubiquitous-language.md` (the `Last updated` date and the canonical
+   - Customize the `.agents/ubiquitous-language*.md` family (the `Last updated` date and the canonical
      domain code path).
    - Fill in the canonical domain code paths in `.agents/rules/domain-glossary.md`, and the
      runner, file placement, and test command in `.agents/rules/testing.md` — that rule and

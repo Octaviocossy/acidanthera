@@ -7,4 +7,5 @@
 @.agents/rules/skill-creation.md
 @.agents/rules/parallel-orchestration.md
 @.agents/rules/testing.md
-@.agents/ubiquitous-language.md
+@.agents/ubiquitous-language-index.md
+@.agents/ubiquitous-language-invariants.md

@@ -12,6 +12,10 @@
 # The source list below mirrors the "Step 3 — standards sources" grounding in
 # .agents/skills/standards-and-spec-review/SKILL.md — keep both in sync.
 #
+# The glossary is a five-file family; four of them are standards sources and are listed
+# below. .agents/ubiquitous-language-changelog.md is deliberately NOT — it is historical
+# record, self-declared non-authoritative, and 74 KB per reviewer process (ADR-0041).
+#
 # Usage:  sh .agents/scripts/build-corpus-pack.sh <output-path>
 #
 # Exit codes:
@@ -34,7 +38,10 @@ mkdir -p "$(dirname -- "$_out")"
 for _src in \
   "AGENTS.md" \
   .agents/rules/*.md \
+  ".agents/ubiquitous-language-index.md" \
   ".agents/ubiquitous-language.md" \
+  ".agents/ubiquitous-language-invariants.md" \
+  ".agents/ubiquitous-language-scaffold.md" \
   .agents/adr/*.md
 do
   [ -f "$_src" ] || continue

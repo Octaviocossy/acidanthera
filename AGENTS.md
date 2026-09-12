@@ -7,8 +7,9 @@
   prerequisites are settled — in one numbered round, each question carrying a recommended
   answer, then stops and waits. Facts are the agent's job (dispatch sub-agents); decisions are
   the user's. Done when the frontier is empty.
-- Terminology is sharpened **during** the session against `.agents/ubiquitous-language.md` — see
-  the Active mode section of `.agents/rules/domain-glossary.md`.
+- Terminology is sharpened **during** the session against the glossary — see the Active mode
+  section of `.agents/rules/domain-glossary.md`. Resolved terms land in the spec's
+  `## Glossary Changes` and are promoted into the glossary when the code merges (ADR 0042).
 - Output: a settled **design spec** at `.agents/specs/[yyyy-mm-dd]-[short-kebab-description].md`,
   plus any ADRs raised in `.agents/adr/` (`.agents/rules/adr.md`).
 - The spec then routes to `/planning` (local), `/create-issue` (one issue), or
@@ -24,9 +25,19 @@
 - Keep the plan status updated through `draft`, `approved`, `in-progress`, `completed`, or `abandoned`.
 
 ## Domain
-- The canonical domain glossary lives at `.agents/ubiquitous-language.md`.
+- The domain glossary is a **five-file family**: `.agents/ubiquitous-language.md` (product
+  vocabulary), `-index.md` (generated term → area pointers), `-invariants.md` (invariants 1–38),
+  `-scaffold.md` (harness vocabulary + invariants 39–56), `-changelog.md` (historical record).
+- Only the **index** and **invariants 1–38** are `@`-imported into every session (ADR 0041); the
+  vocabulary body is read on demand via the index. Scaffold invariants 39–56 load with the scaffold
+  file, because breaching one requires editing the scaffold, which already holds it (ADR 0041 ›
+  Which invariants). A breach of either range is a hard violation.
 - Full enforcement rules are in `.agents/rules/domain-glossary.md`. Follow without exception.
-- Read `.agents/ubiquitous-language.md` before writing or reviewing any code that touches domain entities, type names, or data contracts.
+- Read the row for a term before writing or reviewing any code that touches domain entities, type
+  names, or data contracts. Find it through the index.
+- A term enters the glossary **when its code lands**, never when the design settles (ADR 0042).
+- The glossary has a **byte budget** (ADR 0043): 600 B per Notes cell and per invariant, warn at
+  80 KB and fail at 100 KB on the vocabulary file. `verify-scaffold.sh` §11 enforces it.
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
 - Decisions that outlive the task that produced them belong in an ADR under `.agents/adr/`, not in
   the glossary or a plan file. Format and the three-part offer test are in `.agents/rules/adr.md`.
@@ -96,7 +107,7 @@ _None documented yet._
 - Canonical specs live in `.agents/commands/<name>.md`; thin wrappers in `.claude/commands/` and `.opencode/commands/` reference them with identical bodies (only frontmatter differs).
 - Invoke in either agent with `/<name>`.
 - Available: `commit-message` — generate a Conventional-Commits message from the current diff.
-- Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens the glossary inline, and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
+- Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens terminology into that spec's `## Glossary Changes` (promoted to the glossary when the code lands, ADR 0042), and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
 - Available: `planning` — create a thorough implementation plan and persist it in `.agents/plans/`.
 - Available: `install-scaffold` — install the cross-agent governance scaffold into a target project directory; never overwrites, safe to re-run.
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.

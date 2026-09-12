@@ -32,7 +32,8 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
    están resueltos — como una única ronda numerada, con una respuesta recomendada por
    pregunta, y luego se detiene y te espera. Encontrar *hechos* es tarea del agente
    (despacha subagentes en lugar de preguntarte algo que podría consultar); las
-   *decisiones* son tuyas. Mientras pregunta, afina `.agents/ubiquitous-language.md` en
+   *decisiones* son tuyas. Mientras pregunta, afina la terminología en la sección
+   `## Glossary Changes` del spec (se promueve al glosario cuando aterriza el código, ADR 0042),
    el momento y ofrece un ADR para cualquier decisión que sea difícil de revertir *y*
    sorprendente *y* fruto de una disyuntiva real. Cuando la frontera queda vacía escribe
    una especificación definida en
@@ -57,7 +58,7 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
    orden, marcando el estado como `in-progress`, y luego `completed` una vez que
    todos los Criterios de Validación se cumplen. Cualquier código de dominio tocado
    en el camino debe primero verificarse contra
-   `.agents/ubiquitous-language.md` (ver más abajo).
+   la familia del glosario (ver más abajo).
 5. **Verificar.** Ejecuta lo que definan las `## Commands` de tu proyecto en
    `AGENTS.md` para lint/build/test. Si estás modificando el andamiaje mismo en
    lugar de un proyecto que lo adoptó, `sh .agents/scripts/verify-scaffold.sh` es la
@@ -69,7 +70,7 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
 
 ## Mantener honesto el vocabulario de dominio
 
-`.agents/ubiquitous-language.md` es la fuente única de verdad para los nombres
+`.agents/ubiquitous-language.md` y sus cuatro archivos hermanos son la fuente única de verdad para los nombres
 canónicos de entidades, tipos, estados e invariantes. `.agents/rules/domain-glossary.md`
 es la regla de cumplimiento: antes de tocar cualquier archivo que viva en una ruta
 de dominio canónica, o que nombre/exporte/importe/cambie un concepto del glosario,
@@ -273,7 +274,7 @@ donde esas verificaciones se reportan como omitidas y el resto igual se ejecuta.
 Completa los marcadores que este andamiaje trae con `_not yet documented_`:
 `AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
 `## Code Structure`; la fecha `Last updated` y la ruta canónica de código de
-dominio de `.agents/ubiquitous-language.md`; y las rutas canónicas de dominio en
+dominio de la familia del glosario; y las rutas canónicas de dominio en
 `.agents/rules/domain-glossary.md`. Deja `AGENTS.md` › `## Skills` como está — ya
 viene poblada, y describe skills que heredas en lugar de un espacio en blanco por
 completar.

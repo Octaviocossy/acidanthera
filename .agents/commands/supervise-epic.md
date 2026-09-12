@@ -156,7 +156,7 @@ Repeat until no progress:
    - **Pre-selection:** if the report contains a **hard violation**, pre-select
      "reject" with that violation's reason shown — you may still approve anyway. A
      **judgement call** never pre-selects anything; you weigh it yourself. (Severity
-     definitions: `.agents/ubiquitous-language.md` › Branch review.)
+     definitions: `.agents/ubiquitous-language-scaffold.md` › Branch review.)
 
    Ask for an explicit **approve** or **reject** per child. On reject, ask for written
    feedback (may be left blank — the agentic report alone is still passed on).

@@ -4,7 +4,8 @@ acidanthera is a Tauri 2 desktop app with two source trees: `src/` (React 19 + V
 TypeScript) and `src-tauri/src/` (Tauri 2 backend, Rust, edition 2021). `package.json` and
 `src-tauri/Cargo.toml` are the source of truth for dependency versions — the tables below are a
 **snapshot as of 2026-09-11**. For architecture rationale, see `doc/v0-spec.md`; for what each
-module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md`.
+module *does* (entities, stores, relationships), see `.agents/ubiquitous-language.md` and its
+generated index `.agents/ubiquitous-language-index.md`.
 
 ## At a glance
 

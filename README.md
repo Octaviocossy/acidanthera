@@ -266,7 +266,7 @@ Claude Code and OpenCode.
 | `.agents/skills/` | Skills the agent loads on its own when the situation matches |
 | `.agents/scripts/` | The POSIX `sh` toolchain — the parallel runner, the review dispatcher, the corpus-pack builder, scaffold install and verify |
 | `.agents/adr/` | Architecture decision records |
-| `.agents/ubiquitous-language.md` | The domain glossary — canonical terminology and the invariants the app maintains |
+| `.agents/ubiquitous-language.md` | The domain glossary — canonical product terminology. Four siblings: `-index.md` (generated pointers), `-invariants.md` (1–38), `-scaffold.md` (harness vocabulary + 39–56), `-changelog.md` (history) |
 
 A settled spec routes by size: straight to a plan, to a single issue, or — when it is large
 enough — into an epic plus child issues that run in parallel. Either way every change passes a
