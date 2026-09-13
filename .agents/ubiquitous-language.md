@@ -4,21 +4,23 @@
 > itself. Read the row for a term before changing its canonical type, state, process, or data
 > contract.
 >
-> **Last updated:** 2026-09-11
+> **Last updated:** 2026-09-13
 > **Canonical code:** `src/` (TypeScript), `src-tauri/src/` (Rust)
 > **Budget:** notes 600 · warn 80000 · fail 100000 (bytes)
 
-## The five files
+## The six files
 
 | File | Holds | Always in context? |
 |------|-------|--------------------|
 | `.agents/ubiquitous-language.md` | product vocabulary (this file) | no — read on demand |
 | `.agents/ubiquitous-language-index.md` | term → area pointers, generated | **yes** |
-| `.agents/ubiquitous-language-invariants.md` | every invariant — product **1–38**, harness **39–57** | **yes** |
+| `.agents/ubiquitous-language-invariants.md` | product invariants — numbered plainly; 39–58 retired in favour of `S` identifiers, never reused | **yes** |
+| `.agents/ubiquitous-language-invariants-scaffold.md` | harness invariants under permanent `S` identifiers — the scaffold owns it, never edit it (ADR 0021) | **yes** |
 | `.agents/ubiquitous-language-scaffold.md` | harness vocabulary — the scaffold owns it, never edit it (ADR 0017) | no — read on demand |
 | `.agents/ubiquitous-language-changelog.md` | historical record | no — and not in the corpus pack |
 
-The index and the invariants are `@`-imported by `CLAUDE.md`; this body is not (ADR 0016). An
+The index and both invariants files are `@`-imported by `CLAUDE.md`; this body is not (ADR 0016,
+ADR 0021). An
 invariant constrains all code, so it is always loaded; a term's definition matters only to work
 that touches that term, so it is fetched when the index points at it.
 

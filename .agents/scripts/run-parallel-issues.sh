@@ -25,8 +25,9 @@
 #                    .worktrees/.epic-issue.md, if the caller wrote it, in the Spec prompt.
 # --rework           requires --epic. Reads .worktrees/<branch>.feedback (written by the
 #                    caller), re-dispatches the implementing agent, and on success appends
-#                    a `rework(#<issue>): ronda <n>` commit to the child's branch. Refuses
-#                    once MAX_REWORK_ROUNDS is reached (round count derived from git).
+#                    a `rework(#<issue>): round <n>` commit to the child's branch. Refuses
+#                    once MAX_REWORK_ROUNDS is reached (round count derived from git; the
+#                    pre-rename spelling "ronda" is still counted).
 # --integrate         requires --epic. Merges each named child into the epic branch
 #                    (serialized via a `.merge.lock` mkdir lock + a dedicated __epic__
 #                    worktree — this script is the epic branch's single writer), deletes
@@ -456,7 +457,11 @@ process_rework() {
     echo "$_issue" >> "$WORKTREES_DIR/.failed"; return 1
   fi
 
-  _prior=$(git -C "$_wt" log --oneline --grep="^rework(#$_issue): ronda " 2>/dev/null | grep -c .)
+  # Two --grep patterns are ORed by git log. The marker was spelled "ronda" before the
+  # artifacts-in-English change; counting both keeps a child mid-rework at its true round.
+  _prior=$(git -C "$_wt" log --oneline \
+      --grep="^rework(#$_issue): round " \
+      --grep="^rework(#$_issue): ronda " 2>/dev/null | grep -c .)
   _prior=${_prior:-0}
   if [ "$_prior" -ge "$MAX_REWORK_ROUNDS" ]; then
     log "[#$_issue] FAILED: rework cap exhausted ($_prior/$MAX_REWORK_ROUNDS rounds run)"
@@ -506,7 +511,7 @@ EOF
   fi
 
   git -C "$_wt" add -A >>"$_logf" 2>&1
-  git -C "$_wt" commit -m "rework(#$_issue): ronda $_round" \
+  git -C "$_wt" commit -m "rework(#$_issue): round $_round" \
       -m "Addresses review feedback for #$_issue." \
       >>"$_logf" 2>&1
   if [ "$?" -ne 0 ]; then

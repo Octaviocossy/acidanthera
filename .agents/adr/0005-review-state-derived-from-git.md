@@ -3,7 +3,7 @@
 `/supervise-epic` needs two pieces of state: which children are waiting for review, and how many
 rework rounds a child has already consumed. Both are read out of git rather than kept in a file. A
 child awaits review if its remote branch exists and the epic branch carries no `Merge child #N`
-commit for it; its rework count is the number of `rework(#N): ronda K` commits on that branch. The
+commit for it; its rework count is the number of `rework(#N): round K` commits on that branch. The
 runner truncates `.pushed`, `.failed`, `.merged` and `.mergefail` on every start
 (`run-parallel-issues.sh:232–235`), so those files cannot carry anything across invocations — and
 `/execute-epic` already defines "done" by scanning the epic branch's commit messages, so this is

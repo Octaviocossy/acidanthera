@@ -14,7 +14,7 @@
 # project after installation. It now syncs, and every entry lands in one of six outcomes:
 #
 #   created    the destination did not exist
-#   updated    the destination still held the state the two sides last agreed on, and the
+#   updated    the destination still held what the scaffold last delivered, untouched, and the
 #              scaffold has moved on — so it is overwritten
 #   unchanged  the destination is identical to the source, or neither side has moved since
 #              they last agreed
@@ -41,8 +41,9 @@
 # only be told apart by knowing what the two sides last agreed on. So the baseline records two
 # digests per path, in <target>/.agents/scaffold.baseline: what the scaffold last delivered, and
 # what the destination looked like when the two last agreed. A destination still at that agreed
-# state is one the target has not touched, so a scaffold-side change is simply delivered; a
-# destination that has moved away from it is the target's edit, and only a human can reconcile it.
+# state, where the agreed state is the scaffold's own last delivery, is one the target has not
+# touched, so a scaffold-side change is simply delivered; a destination that has moved away from it
+# is the target's edit, and only a human can reconcile it.
 #
 # Two digests rather than one because a single one cannot tell "the human resolved the conflict"
 # from "the human edited a scaffold-owned file" — both leave the destination differing from the
@@ -51,6 +52,13 @@
 # is accepted as the new agreed state.
 # That is what lets a resolution stabilize: a correctly resolved file reports `unchanged` and
 # exits 0 forever after, rather than conflicting again on every run.
+#
+# A resolution that kept project content leaves the two digests differing — an *agreed
+# divergence*. It is reported `unchanged` for as long as the scaffold stands still, and when the
+# scaffold does move against it, it conflicts again; it is never delivered over (ADR-0022). Only a
+# destination equal to the scaffold's own last delivery is ever overwritten. A resolution that took
+# the scaffold's version verbatim is not an agreed divergence — it is identical to the source, so
+# it lands in the `unchanged` branch above and a later scaffold change updates it as usual.
 #
 # Where no baseline entry exists — a target installed by the old copier, or a line this script
 # cannot parse — it cannot prove a scaffold-owned file is untouched, so it conflicts rather than
@@ -506,7 +514,10 @@ while IFS="$tab" read -r owner src rel; do
     # Markers this script wrote, and no marker left in the file: a human resolved it. Whatever
     # they settled on is the state the two sides now agree on, so the next run reports it
     # unchanged rather than conflicting again — resolving a conflict has to be able to end it.
-    echo "↺ resolved: $rel (the destination is the new agreed state)"
+    # The `same` branch above already caught a resolution that took the scaffold's version
+    # verbatim, so whatever reaches here differs from the source: every resolution reported here
+    # is an agreed divergence, and the line says what that costs (ADR-0022).
+    echo "↺ resolved: $rel (the destination is the new agreed state; it keeps project content, so a later scaffold change to it conflicts rather than lands)"
     resolved=$((resolved + 1))
     remember "$rel" "$src_digest" "$dest_digest" -
     continue
@@ -520,18 +531,29 @@ while IFS="$tab" read -r owner src rel; do
       remember "$rel" "$prev_src" "$prev_dest" -
       continue
     fi
-    if [ -L "$dest" ] || [ -f "$dest" ]; then
-      # Only the scaffold moved, so the difference is its own: deliver it. This is the one-way
-      # door ADR-0019 exists to open.
+    if [ "$prev_src" = "$prev_dest" ] && { [ -L "$dest" ] || [ -f "$dest" ]; }; then
+      # Only the scaffold moved, and what the two sides agreed on was the scaffold's own last
+      # delivery: the difference is its own, so deliver it. This is the one-way door ADR-0019
+      # exists to open. An agreed divergence — prev_src and prev_dest differ, because a human
+      # resolved a conflict and kept project content — never takes this door: a later scaffold
+      # change is a new divergence against it and falls through to conflict (ADR-0022).
       deliver "$src" "$dest"
       echo "↻ updated: $rel"
       updated=$((updated + 1))
       remember "$rel" "$src_digest" "$src_digest" -
       continue
     fi
-    # A directory (or other non-file) both sides agreed on, and the scaffold has moved. The
-    # invariant forbids delivering over it — and deliver's `rm -f` would fail on a directory and
-    # abort the whole run under `set -e` — so it falls through and conflicts, with a sidecar.
+    # A directory (or other non-file) both sides agreed on — delivering over it is forbidden, and
+    # deliver's `rm -f` would fail on it and abort the whole run under `set -e` — or an agreed
+    # divergence the scaffold has now moved against. Either falls through and conflicts, with a
+    # sidecar where the path cannot hold markers.
+  fi
+
+  # Reached from an agreed divergence the scaffold moved against (ADR-0022), as opposed to a
+  # fresh edit or a first sync with no baseline: the report says which, the handling is the same.
+  agreed_note=""
+  if [ -n "$prev_flag" ] && [ "$prev_dest" = "$dest_digest" ] && [ "$prev_src" != "$prev_dest" ]; then
+    agreed_note=" — the scaffold moved against an agreed divergence"
   fi
 
   conflicts=$((conflicts + 1))
@@ -542,7 +564,7 @@ while IFS="$tab" read -r owner src rel; do
     # beside the path instead (ADR-0020), and the entry is flagged like any other conflict — the
     # sidecar is what marks it outstanding, and deleting it is what resolves it.
     if write_sidecar "$src" "$dest"; then
-      echo "⚠ conflict: $rel (conflict sidecar written: $rel.scaffold-conflict)"
+      echo "⚠ conflict: $rel (conflict sidecar written: $rel.scaffold-conflict$agreed_note)"
       remember "$rel" "$src_digest" "$dest_digest" conflict
     else
       # The sidecar path is occupied by something this script will not write through, so nothing
@@ -553,7 +575,7 @@ while IFS="$tab" read -r owner src rel; do
     fi
   else
     write_conflict "$src" "$dest"
-    echo "⚠ conflict: $rel (conflict markers written)"
+    echo "⚠ conflict: $rel (conflict markers written$agreed_note)"
     remember "$rel" "$src_digest" "$(digest "$dest")" conflict
   fi
 done < "$file_list"

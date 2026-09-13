@@ -12,10 +12,10 @@
 # The source list below mirrors the "Step 3 — standards sources" grounding in
 # .agents/skills/standards-and-spec-review/SKILL.md — keep both in sync.
 #
-# Of the five-file glossary family it carries the three content files — the product
-# vocabulary, the scaffold vocabulary, and the invariants. The index never enters (it
-# would duplicate the bodies it points at) and neither does the changelog, which is
-# self-declared non-authoritative.
+# Of the six-file glossary family it carries the four content files — the product
+# vocabulary, the scaffold vocabulary, the product invariants, and the scaffold
+# invariants. The index never enters (it would duplicate the bodies it points at) and
+# neither does the changelog, which is self-declared non-authoritative.
 #
 # Usage:  sh .agents/scripts/build-corpus-pack.sh <output-path>
 #
@@ -42,6 +42,7 @@ for _src in \
   ".agents/ubiquitous-language.md" \
   ".agents/ubiquitous-language-scaffold.md" \
   ".agents/ubiquitous-language-invariants.md" \
+  ".agents/ubiquitous-language-invariants-scaffold.md" \
   .agents/adr/*.md
 do
   [ -f "$_src" ] || continue

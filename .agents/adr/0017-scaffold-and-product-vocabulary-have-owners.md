@@ -1,5 +1,7 @@
 # Scaffold and product vocabulary live in files with different owners
 
+> Status: accepted — the last paragraph (all invariants in one file) is superseded by ADR-0021.
+
 `.agents/ubiquitous-language-scaffold.md` holds the vocabulary of the harness — the review gate,
 epic orchestration, issue labels, the command triad — and is owned and updated by the scaffold.
 `.agents/ubiquitous-language.md` holds the project's own domain vocabulary and is owned by the

@@ -16,3 +16,4 @@ Topic or path to grill: $ARGUMENTS
 @.agents/rules/adr.md
 @.agents/ubiquitous-language-index.md
 @.agents/ubiquitous-language-invariants.md
+@.agents/ubiquitous-language-invariants-scaffold.md

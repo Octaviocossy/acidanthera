@@ -17,7 +17,7 @@
 # grouped rather than pooled.
 #
 # Sources are the two vocabulary bodies: the product glossary and the scaffold glossary, in that
-# fixed order. The invariants file defines no terms (its content is constraints, already
+# fixed order. The two invariants files define no terms (their content is constraints, already
 # `@`-imported in full), the changelog is self-declared non-authoritative, and the index never
 # reads itself.
 #

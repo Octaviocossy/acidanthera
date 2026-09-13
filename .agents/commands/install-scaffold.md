@@ -27,19 +27,20 @@ and gives each entry one of six outcomes:
 | Outcome | When |
 |---------|------|
 | `✓ created` | the destination does not exist |
-| `↻ updated` | the destination still holds the state the two sides last agreed on, untouched, and the scaffold has moved on |
+| `↻ updated` | the destination still holds what the scaffold last delivered, untouched, and the scaffold has moved on |
 | `= unchanged` | the destination is identical to the source, or neither side has moved since they last agreed |
 | `↺ resolved` | conflict markers a previous sync wrote are gone, or its conflict sidecar was deleted, so the destination becomes the new agreed state |
 | `⊘ skipped` | the destination diverges and the entry is project-owned |
-| `⚠ conflict` | the destination diverges and the entry is scaffold-owned — the target edited a file it does not author — so the file is rewritten with conflict markers, or, when the path cannot hold text (a symlink, a directory), a conflict sidecar `<path>.scaffold-conflict` is written beside it (ADR-0020) — or the path lies beneath an ancestor that is not a real directory (a symlink, or a file where a directory should be), in which case it is refused unread and nothing is written for it |
+| `⚠ conflict` | the destination diverges and the entry is scaffold-owned — the target edited a file it does not author — so the file is rewritten with conflict markers, or, when the path cannot hold text (a symlink, a directory), a conflict sidecar `<path>.scaffold-conflict` is written beside it (ADR-0020) — or the path lies beneath an ancestor that is not a real directory (a symlink, or a file where a directory should be), in which case it is refused unread and nothing is written for it — or the scaffold has moved against an **agreed divergence**, a resolution that kept project content (ADR-0022) |
 
 **Ownership** decides which files can be updated or conflict at all, and is declared in the
 manifest by `# @owner scaffold` / `# @owner project` directives, each applying to every entry
 below it until the next one. Scaffold-owned means the scaffold authors the file and the project is
 not its author — the rules, the command specs and wrappers, the scripts, the skills, the ADRs, the
 docs, and the scaffold's own vocabulary and invariants. Project-owned means the scaffold seeds it
-and the project fills it in — `AGENTS.md`, `CLAUDE.md`, `.agents/ubiquitous-language.md`, the
-generated index, the changelog, `.agents/labels.md`, `.env.example`, `.gitignore`, `.mcp.json`,
+and the project fills it in — `AGENTS.md`, `CLAUDE.md`, `.agents/ubiquitous-language.md`,
+`.agents/ubiquitous-language-invariants.md` (ADR-0021), the generated index, the changelog,
+`.agents/labels.md`, `.env.example`, `.gitignore`, `.mcp.json`,
 `opencode.json`, `.agents/parallel.config.example`. Anything a directive does not cover is
 project-owned, which behaves exactly as the old copier did.
 
@@ -52,10 +53,10 @@ scaffold-owned file is untouched, so it conflicts rather than overwrite.
 
 That last field is what lets a conflict **end**. Once the markers are gone the destination is
 accepted as the new agreed state — including a resolution that kept some of the project's
-content — so the sync reports it `resolved` once and `unchanged` on every run after that. A later
-scaffold-side change to the same file still lands as an `updated`, which is why the
-`resolving-scaffold-sync` skill moves project content into a file the project actually owns
-instead of leaving it in one the scaffold rewrites.
+content — so the sync reports it `resolved` once and `unchanged` on every run after that. Such an
+entry is an **agreed divergence**: a later scaffold-side change to the same file conflicts again
+rather than landing over it (ADR-0022). That is why the `resolving-scaffold-sync` skill still moves
+project content into a file the project actually owns — there it is never re-resolved.
 
 ## Instructions
 
@@ -81,8 +82,20 @@ instead of leaving it in one the scaffold rewrites.
    - Customize `.agents/ubiquitous-language.md` — the **project's own** domain vocabulary (the
      `Last updated` date and the canonical domain code path). Leave
      `.agents/ubiquitous-language-scaffold.md` alone; it is owned by the scaffold (ADR-0017).
-     New invariants go in `.agents/ubiquitous-language-invariants.md`, and
-     `.agents/ubiquitous-language-index.md` is generated — never hand-edited.
+     Product invariants go in `.agents/ubiquitous-language-invariants.md`; the harness's own
+     arrive in `.agents/ubiquitous-language-invariants-scaffold.md`, which the scaffold owns —
+     leave it alone (ADR-0021). `.agents/ubiquitous-language-index.md` is generated — never
+     hand-edited.
+   - Make sure `CLAUDE.md` `@`-imports `.agents/ubiquitous-language-index.md`,
+     `.agents/ubiquitous-language-invariants.md` **and**
+     `.agents/ubiquitous-language-invariants-scaffold.md`, one line each, and name the scaffold
+     invariants file in `AGENTS.md` › Domain — `verify-scaffold.sh` §14 fails until the imports
+     are there, because `CLAUDE.md` is project-owned and the sync never edits it.
+   - If `.agents/ubiquitous-language-invariants-scaffold.md` was just created and their
+     `.agents/ubiquitous-language-invariants.md` already carried the harness's invariants (a
+     project synced before ADR-0021), retire them from their own file and cite the scaffold's
+     `S` identifiers wherever they cited them by number — the scaffold-owned file is the only
+     copy the sync keeps current, and their own file is never rewritten.
    - Fill in the canonical domain code paths in `.agents/rules/domain-glossary.md`, and the
      runner, file placement, and test command in `.agents/rules/testing.md` — that rule and
      `AGENTS.md` must not be left silently disagreeing.

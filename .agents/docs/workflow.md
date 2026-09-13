@@ -1,7 +1,5 @@
 # Agentic Workflow Guide
 
-> Language: **English** — [Español](./workflow.es.md)
-
 This guide walks through how to actually *use* the scaffold day to day, once it is
 installed in a project. For install instructions and a file-by-file layout, see the
 root `README.md`. For the exact behavioral contract of any single piece, the
@@ -60,22 +58,25 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
 
 ## Keeping domain vocabulary honest
 
-The glossary is a **family of five files** (ADR-0016, ADR-0017) and together they are
-the single source of truth for canonical entity names, types, states, and invariants:
-`.agents/ubiquitous-language.md` holds this project's own vocabulary,
+The glossary is a **family of six files** (ADR-0016, ADR-0017, ADR-0021) and together
+they are the single source of truth for canonical entity names, types, states, and
+invariants: `.agents/ubiquitous-language.md` holds this project's own vocabulary,
 `.agents/ubiquitous-language-scaffold.md` the harness's own — that one belongs to the
-scaffold, so don't edit it — `.agents/ubiquitous-language-invariants.md` every
-invariant, `.agents/ubiquitous-language-index.md` a generated term → area pointer
+scaffold, so don't edit it — `.agents/ubiquitous-language-invariants.md` this project's
+product invariants, `.agents/ubiquitous-language-invariants-scaffold.md` the harness's
+own invariants under permanent `S` identifiers — scaffold-owned too, so don't edit that
+one either — `.agents/ubiquitous-language-index.md` a generated term → area pointer
 table grouped by file, and `.agents/ubiquitous-language-changelog.md` the dated
-history, which governs nothing. The index and the invariants are always in context;
-the vocabulary bodies are read on demand, which is what the index makes cheap.
+history, which governs nothing. The index and both invariants files are always in
+context; the vocabulary bodies are read on demand, which is what the index makes cheap.
 
 `.agents/rules/domain-glossary.md` is the enforcement rule: before touching any file
 that lives in a canonical domain path, or that names/exports/imports/changes a glossary
 concept, look the term up in the index and read the file it points at. If you introduce
 or change canonical vocabulary, add it to the family member that owns it — a product
 term to `.agents/ubiquitous-language.md`, a scaffold term to the `-scaffold.md` file, a
-new invariant to the `-invariants.md` file — bump `Last updated` on the file you edited,
+new product invariant to the `-invariants.md` file and a new harness one to
+`-invariants-scaffold.md` — bump `Last updated` on the file you edited,
 add a Changelog row, and regenerate the index — never silently rename a concept in code
 without updating its definition.
 

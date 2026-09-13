@@ -266,15 +266,15 @@ Claude Code and OpenCode.
 | `.agents/skills/` | Skills the agent loads on its own when the situation matches |
 | `.agents/scripts/` | The POSIX `sh` toolchain — the parallel runner, the review dispatcher, the corpus-pack builder, scaffold install and verify |
 | `.agents/adr/` | Architecture decision records |
-| `.agents/ubiquitous-language.md` | The domain glossary — canonical product terminology. Four siblings: `-index.md` (generated pointers), `-invariants.md` (1–38), `-scaffold.md` (harness vocabulary + 39–56), `-changelog.md` (history) |
+| `.agents/ubiquitous-language.md` | The domain glossary — canonical product terminology. Five siblings: `-index.md` (generated pointers), `-invariants.md` (product invariants), `-invariants-scaffold.md` (harness invariants, `S`-identified, scaffold-owned), `-scaffold.md` (harness vocabulary, scaffold-owned), `-changelog.md` (history) |
 
 A settled spec routes by size: straight to a plan, to a single issue, or — when it is large
 enough — into an epic plus child issues that run in parallel. Either way every change passes a
 two-axis agentic review — standards and spec, reported side by side — before it lands.
 
 The toolchain is zero-dependency by design: POSIX `sh` and Markdown, nothing to install before
-it works. Read [`.agents/docs/workflow.en.md`](.agents/docs/workflow.en.md) for how the pieces
-fit together ([Español](.agents/docs/workflow.es.md)).
+it works. Read [`.agents/docs/workflow.md`](.agents/docs/workflow.md) for how the pieces fit
+together.
 
 Product design rationale lives in [`doc/v0-spec.md`](doc/v0-spec.md).
 

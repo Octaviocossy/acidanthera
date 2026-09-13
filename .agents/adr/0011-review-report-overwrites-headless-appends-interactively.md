@@ -5,7 +5,7 @@ lifecycles: the runner overwrites it on every `--review`, while the interactive 
 `## Round N` section per rework round.
 
 The asymmetry follows where the history already lives. Under the runner each rework round
-leaves a `rework(#N): ronda K` commit and a full `<branch>.log`, so an overwritten report loses
+leaves a `rework(#N): round K` commit and a full `<branch>.log`, so an overwritten report loses
 nothing recoverable. The interactive path never commits (ADR-0009), so the report file is the
 only place a prior round survives at all — overwriting it would erase what the code looked like
 before the rework, which is exactly what a human weighing the next round needs to see.

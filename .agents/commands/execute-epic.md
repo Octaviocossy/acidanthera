@@ -143,11 +143,11 @@ Repeat until no progress:
         "<issue>:<branch>:<title>" ...
       ```
       A child with rounds left under `MAX_REWORK_ROUNDS` gets a new
-      `rework(#<child>): ronda <n>` commit and goes back to the review stage above for
+      `rework(#<child>): round <n>` commit and goes back to the review stage above for
       **re-review** — a rework can break something the previous round passed. A child
       whose rework attempt itself fails, or that already exhausted its rounds, lands in
       `.worktrees/.failed` and is **blocked** exactly like a mergefail; drop it from the
-      unresolved set. The runner counts rounds from git (`rework(#N): ronda K` commits
+      unresolved set. The runner counts rounds from git (`rework(#N): round K` commits
       already on the branch), so this cycle is bounded without any state kept here.
 6. **Integrate stage.** For every approved child:
    ```sh
@@ -161,7 +161,9 @@ Repeat until no progress:
    from `.worktrees/<branch>.log`, Validation, and the `#<child> → <EPIC_BRANCH>`
    integration reference) **plus** how many rework rounds ran and, if any ran, the last
    hard-violation reason — count rounds with `git fetch origin <EPIC_BRANCH>` then
-   `git log origin/<EPIC_BRANCH> --grep "^rework(#<child>): ronda" --oneline`, and quote
+   `git log origin/<EPIC_BRANCH> --grep "^rework(#<child>): round"
+   --grep "^rework(#<child>): ronda" --oneline` (two `--grep` flags are ORed, so the
+   pre-rename spelling still counts), and quote
    the reason from `.worktrees/<branch>.review.md` (no comment is posted per rejection;
    this ship-note is the only trace). **Close the child issue**
    (`mcp__github__issue_write`, `method: "update"`, `state: "closed"`,

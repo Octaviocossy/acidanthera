@@ -161,7 +161,7 @@ Repeat until no progress:
    Ask for an explicit **approve** or **reject** per child. On reject, ask for written
    feedback (may be left blank — the agentic report alone is still passed on).
 7. **Rejected children → rework.** For each rejected child:
-   - Count existing `rework(#<issue>): ronda <n>` commits on its branch (`git -C
+   - Count existing `rework(#<issue>): round <n>` commits on its branch (`git -C
      .worktrees/<branch> log --oneline --grep="^rework(#<issue>):"`) against
      `MAX_REWORK_ROUNDS`. If the cap is already reached (or `MAX_REWORK_ROUNDS=0`),
      the child is **blocked** — skip to the blocked handling below; do not rework it.

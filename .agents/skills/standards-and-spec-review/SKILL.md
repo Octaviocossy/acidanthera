@@ -147,15 +147,19 @@ diff base and must not be reported as scope creep.
   template until the project fills it).
 - `.agents/ubiquitous-language-scaffold.md` — the harness's own canonical terms and
   aliases to avoid.
-- `.agents/ubiquitous-language-invariants.md` — every invariant, scaffold and product
-  alike. The index and the changelog are **not** standards sources: the index carries no
-  definitions and the changelog is self-declared non-authoritative.
+- `.agents/ubiquitous-language-invariants.md` — this project's own product invariants
+  (an empty template until the project fills it).
+- `.agents/ubiquitous-language-invariants-scaffold.md` — the harness's own invariants,
+  under permanent `S` identifiers. The index and the changelog are **not** standards
+  sources: the index carries no definitions and the changelog is self-declared
+  non-authoritative.
 - `.agents/adr/*.md` — decisions the code must not silently reverse.
 
 **Step 3 — one local override to the baseline.** The twelve Fowler smells stay judgement calls,
-exactly as upstream binds them. But a breach of `.agents/ubiquitous-language-invariants.md` or of an
-ADR is a **hard violation**, not a judgement call: those are invariants the repo committed to, not
-heuristics. Say which kind each finding is.
+exactly as upstream binds them. But a breach of `.agents/ubiquitous-language-invariants.md`, of
+`.agents/ubiquitous-language-invariants-scaffold.md`, or of an ADR is a **hard violation**, not a
+judgement call: those are invariants the repo committed to, not heuristics. Say which kind each
+finding is.
 
 **Step 4 — how to spawn the two sub-agents.** Invoking this skill is the user's authorization to
 dispatch sub-agents.
@@ -198,14 +202,14 @@ on every `--review` invocation and before every interactive dispatch, ADR-0013 �
 path-separated concatenation of `AGENTS.md`,
 `.agents/rules/*.md`, `.agents/ubiquitous-language.md`,
 `.agents/ubiquitous-language-scaffold.md`, `.agents/ubiquitous-language-invariants.md`,
-and `.agents/adr/*.md`), skip the
+`.agents/ubiquitous-language-invariants-scaffold.md`, and `.agents/adr/*.md`), skip the
 source reading in steps 2–3 entirely: verify the named files exist, hand the pack to the
 **Standards** sub-agent as its complete standards sources, and hand the **Spec**
 sub-agent its per-change sources (`.worktrees/<branch>.issue.md`, the linked plan, and
 `.worktrees/.epic-issue.md` when named) — all by path, reading none of them yourself.
 Never give the pack to the Spec sub-agent: each axis gets only its own sources. Axis
 isolation is blindness between findings, never exclusivity over sources
-(`.agents/ubiquitous-language-invariants.md`; ADR-0008). The smell baseline still travels as
+(S4 in `.agents/ubiquitous-language-invariants-scaffold.md`; ADR-0008). The smell baseline still travels as
 always — pasted into the Standards prompt from this file. Without a pack — an invocation
 that names none — nothing changes: read the sources as steps 2–3 describe.
 

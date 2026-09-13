@@ -119,8 +119,7 @@ spec to `.agents/specs/`; that spec routes to `/planning` (a plan file in `.agen
 `/create-issue` (one GitHub issue), or `/spec-breakdown` (an epic plus child issues executed in
 parallel). Decisions that outlive the work land in `.agents/adr/`.
 
-[`.agents/docs/workflow.en.md`](.agents/docs/workflow.en.md) explains how the pieces fit
-together ([Español](.agents/docs/workflow.es.md)).
+[`.agents/docs/workflow.md`](.agents/docs/workflow.md) explains how the pieces fit together.
 
 ## License
 

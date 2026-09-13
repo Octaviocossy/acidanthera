@@ -1,7 +1,8 @@
 # Always-on is the index and the invariants, not the glossary body
 
-The glossary is split into a five-file family, and only two of them are `@`-imported: the
-generated term → area index, and the invariants. The vocabulary bodies are read on demand.
+The glossary is split into a six-file family, and only three of them are `@`-imported: the
+generated term → area index and the two invariants files (ADR-0021). The vocabulary bodies are
+read on demand.
 
 A glossary large enough to be worth governing is too large to be held, and an agent does not
 obey what it cannot recall — so keeping the whole body permanently in context buys cost without

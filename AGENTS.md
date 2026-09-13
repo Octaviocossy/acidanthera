@@ -25,17 +25,22 @@
 - Keep the plan status updated through `draft`, `approved`, `in-progress`, `completed`, or `abandoned`.
 
 ## Domain
-- The glossary is a **family of five files** (ADR-0016, ADR-0017). `@`-imported:
-  `.agents/ubiquitous-language-index.md` (generated term → area pointers, grouped by file) and
-  `.agents/ubiquitous-language-invariants.md` (every invariant — product **1–38**, harness
-  **39–57**; a breach of any is a hard violation at the review gate). On demand:
-  `.agents/ubiquitous-language.md` (the project's) and `.agents/ubiquitous-language-scaffold.md`\n  (the harness's, never edit it). `.agents/ubiquitous-language-changelog.md` is history, governs\n  nothing.
+- The glossary is a **family of six files** (ADR-0016, ADR-0017, ADR-0021). `@`-imported:
+  `.agents/ubiquitous-language-index.md` (generated term → area pointers, grouped by file),
+  `.agents/ubiquitous-language-invariants.md` (this project's product invariants, numbered
+  plainly; 39–58 are retired in favour of `S` identifiers and never reused) and
+  `.agents/ubiquitous-language-invariants-scaffold.md` (the harness's, `S`-identified, never edit
+  it) — a breach of either is a hard violation at the review gate. On demand:
+  `.agents/ubiquitous-language.md` (the project's) and `.agents/ubiquitous-language-scaffold.md`
+  (the harness's, never edit it). `.agents/ubiquitous-language-changelog.md` is history, governs
+  nothing.
 - Full enforcement rules are in `.agents/rules/domain-glossary.md`. Follow without exception.
 - Read the row for a term before writing or reviewing any code that touches domain entities, type
   names, or data contracts. Find it through the index.
 - A term enters the glossary **when its code lands**, never when the design settles (ADR 0127).
 - The glossary has a **byte budget** (ADR 0018): 600 B per Notes cell and per invariant, plus a
-  per-file total declared in each file's `Budget` header (warn 80 KB / fail 100 KB on the\n  vocabulary file). `verify-scaffold.sh` §12 enforces it.
+  per-file total declared in each file's `Budget` header (warn 80 KB / fail 100 KB on the
+  vocabulary file). `verify-scaffold.sh` §12 enforces it.
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
 - Decisions that outlive the task that produced them belong in an ADR under `.agents/adr/`, not in
   the glossary or a plan file. Format and the three-part offer test are in `.agents/rules/adr.md`.
@@ -80,7 +85,8 @@ _None documented yet._
 - Package-specific skills: `packages/<pkg>/.agents/skills/`
 - Prefer the narrowest ownership boundary that still matches real usage.
 - Vendored bodies carry no attribution footer; divergences from upstream live in
-  `.agents/adr/0003-vendored-artifacts-carry-no-attribution.md` — and, for this project's own\n  vendored skill, in `.agents/adr/0129-acidanthera-design-diverges-from-its-upstream.md`.
+  `.agents/adr/0003-vendored-artifacts-carry-no-attribution.md` — and, for this project's own
+  vendored skill, in `.agents/adr/0129-acidanthera-design-diverges-from-its-upstream.md`.
 - Available: `resolving-merge-conflicts` — fires on an in-progress git merge/rebase conflict.
   Finds the intent behind each side, resolves every hunk without inventing behavior, runs the
   project's checks, and finishes the merge.

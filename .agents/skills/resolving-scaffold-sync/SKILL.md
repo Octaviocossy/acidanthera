@@ -45,8 +45,8 @@ asks for it.
 2. **Establish both intents before editing anything.**
    - *The scaffold side* is the version upstream ships now. Read it as a whole rather than as a
      diff, and follow what it cites — an ADR under `.agents/adr/`, a rule under `.agents/rules/`,
-     an invariant in `.agents/ubiquitous-language-invariants.md`. A scaffold-owned file usually
-     changed because a decision changed, and that decision is written down somewhere.
+     an invariant in `.agents/ubiquitous-language-invariants-scaffold.md`. A scaffold-owned file
+     usually changed because a decision changed, and that decision is written down somewhere.
    - *The project side* is what this project did to the file. Where the target is a git
      repository, `git log -p -- <path>` says when and why; where it is not, the surrounding files
      and the project's own `AGENTS.md` are the evidence.
@@ -60,8 +60,9 @@ asks for it.
      (`ln -s ../../.agents/skills/<name> .claude/skills/<name>`, after moving a materialized
      directory aside or deleting a plain file that holds the link text), or put the scaffold's file
      where a directory was in the way — then delete the sidecar. Keeping the project's version is a
-     legitimate outcome, but mean it: the next sync accepts it as the agreed state, and a later
-     scaffold change to that path lands over it.
+     legitimate outcome: the next sync accepts it as the agreed state — an **agreed divergence** —
+     and every later scaffold change to that path conflicts again for you to re-resolve
+     (ADR-0022).
    - For a path refused beneath an ancestor that is not a directory there is nothing to edit and
      nothing to delete: the sync did not read or write it. Replace the ancestor with a real
      directory — restore it from the project's history, or move what the link pointed at into
@@ -93,11 +94,14 @@ A sidecar behaves the same way: delete it once the path is fixed and the next sy
 scaffold again is removed by the sync itself, reported as `= unchanged (stale conflict sidecar
 removed)` — but one beside a path that still diverges keeps the conflict open, which is the point.
 
-What a merged resolution does **not** buy is permanence. The file is still scaffold-owned, so the
-next time the scaffold changes it upstream the new version is delivered and the project content
-inside it goes with it. So where the project's content is worth keeping, move it somewhere the
-project owns — `AGENTS.md`, `.agents/ubiquitous-language.md`, or its own rule file — rather than
-leaving it in a file the scaffold rewrites, and say in your report that you did.
+What a merged resolution does **not** buy is quiet. A resolution that kept project content leaves
+the destination differing from what the scaffold delivered — an **agreed divergence** — and the
+file is still scaffold-owned, so the next time the scaffold changes it upstream you are asked to
+resolve it again rather than having it delivered over you (ADR-0022). Nothing is lost; the work
+simply recurs on every upstream change to that file. So where the project's content is worth
+keeping, move it somewhere the project owns — `AGENTS.md`, `.agents/ubiquitous-language.md`, or its
+own rule file — rather than leaving it in a file the scaffold rewrites, and say in your report that
+you did.
 
 ## Related
 
@@ -105,6 +109,8 @@ leaving it in a file the scaffold rewrites, and say in your report that you did.
   skipping, and why divergence is signalled as conflict markers rather than a sidecar diff.
 - `.agents/adr/0020-unmarkable-divergence-is-marked-beside-the-path.md` — why the one class of path
   that cannot hold markers gets the same block beside it instead.
+- `.agents/adr/0022-an-agreed-divergence-is-never-delivered-over.md` — why a resolution that kept
+  project content is conflicted again rather than overwritten when the scaffold moves.
 - `.agents/commands/install-scaffold.md` — the command that runs the sync, and the ownership rule
   that decides which files can conflict at all.
 - `resolving-merge-conflicts` — the sibling skill, for a real git merge or rebase. Use that one

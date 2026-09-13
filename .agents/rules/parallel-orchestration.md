@@ -222,7 +222,7 @@ plain run  →  --review  →  --rework (optional, may repeat)  →  --integrate
 *`--rework`:*
 
 - Reads `.worktrees/<branch>.feedback` (The Rework Loop), re-dispatches the agent, and
-  appends a `rework(#<issue>): ronda <n>` commit to the child's branch on success.
+  appends a `rework(#<issue>): round <n>` commit to the child's branch on success.
 - Appends `<issue>` to `.worktrees/.failed` if the rework attempt itself fails
   (agent/worktree/push failure) — the same outcome as a plain-run failure.
 
@@ -286,7 +286,8 @@ a pushed child and its merge into the epic branch.
   just built rather than re-reading the standards sources per context (ADR-0008).
 - **What it produces.** `.worktrees/<branch>.review.md` — the Standards + Spec report,
   distinguishing **hard violations** (a breach of
-  `.agents/ubiquitous-language-invariants.md` or an ADR) from
+  `.agents/ubiquitous-language-invariants.md`,
+  `.agents/ubiquitous-language-invariants-scaffold.md` or an ADR) from
   **judgement calls** (everything else, including the whole Fowler smell baseline) —
   see `.agents/ubiquitous-language-scaffold.md` › Branch review.
 - **Its authority differs by execution path:**
@@ -325,7 +326,8 @@ the branch is already pushed.
   invocation, under `PARALLEL_MAX_CONCURRENCY` — the wave cannot advance until its
   rejected children resolve, since dependents wait on those merges.
 - **Counting rounds:** derived from git, never stored (ADR-0005) — the number of
-  `rework(#<issue>): ronda <n>` commits already on the child's branch. Quitting
+  `rework(#<issue>): round <n>` commits already on the child's branch (the earlier spelling
+  `ronda` is still counted, so a child mid-rework keeps its round). Quitting
   mid-rework and re-running resumes exactly where it stopped; there is no state file
   to disagree with the repository.
 - **History:** rework always **appends** commits; it never rewrites history, since the

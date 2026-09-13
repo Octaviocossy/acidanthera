@@ -206,13 +206,15 @@ is the outcome after that retry.
 **Fallback.** On exit `3` or `4`, say so plainly and run the two axes as fresh in-session
 sub-agents instead, handed the same paths and refs. Degrading to a same-model reviewer is worse
 than an external one and must be stated; skipping the review is not an option — *work is not done
-until an agentic review has seen it* (`.agents/ubiquitous-language-invariants.md`).
+until an agentic review has seen it* (S11 in
+`.agents/ubiquitous-language-invariants-scaffold.md`).
 
 ### 4 — Present the gate
 
 - Print the two axis reports under `## Standards` and `## Spec`, verbatim, side by side.
   **Never merge or rerank them** — a change can pass one and fail the other, and combining them
-  lets the passing axis mask the failing one (`.agents/ubiquitous-language-invariants.md`).
+  lets the passing axis mask the failing one (S3 in
+  `.agents/ubiquitous-language-invariants-scaffold.md`).
 - Below them print the **gate line**, exactly one line:
 
   ```

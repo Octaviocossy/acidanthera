@@ -2,7 +2,7 @@
 
 **Before touching any domain code you MUST read the glossary.** Look the term up in
 `.agents/ubiquitous-language-index.md` — always in context — and read the family member it
-points at (ADR-0016). The five files and their owners are listed in `AGENTS.md` › Domain.
+points at (ADR-0016). The six files and their owners are listed in `AGENTS.md` › Domain.
 
 ## What counts as domain code
 
@@ -39,7 +39,8 @@ that owns it:
 |---------------|---------------|
 | a term describing this project's domain | `.agents/ubiquitous-language.md` |
 | a term describing the harness itself | `.agents/ubiquitous-language-scaffold.md` |
-| an invariant, whichever it constrains | `.agents/ubiquitous-language-invariants.md` |
+| an invariant the product commits to | `.agents/ubiquitous-language-invariants.md` |
+| an invariant the harness commits to | `.agents/ubiquitous-language-invariants-scaffold.md` — next free S-identifier, appended, never renumbered (S21) |
 
 Then:
 - Set `Last updated` **on the file you actually edited** to the current ISO date only; do not

@@ -140,6 +140,8 @@
 | Term | Area |
 |------|------|
 | Agentic review | Review gate |
+| Agreed divergence | Scaffold |
+| Artifact | Scaffold |
 | Auto execution | Parallel orchestration |
 | Closed facet | Issue labels |
 | Command triad | Scaffold |

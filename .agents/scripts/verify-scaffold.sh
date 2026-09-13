@@ -463,6 +463,29 @@ else
 fi
 rm -f "$t5"
 
+# ---- 14. CLAUDE.md @-imports every always-on glossary file ----
+# ADR-0016 keeps the index and the invariants permanently in context by @-import, and ADR-0021
+# makes that two invariants files. CLAUDE.md is project-owned, so a scaffold sync never adds an
+# import for a consumer — this check turns the silent omission ADR-0016 warns about ("nobody
+# notices that an agent did not read a file it was never told to read") into a failed gate. An
+# import is a whole line reading "@" followed by the path, the form CLAUDE.md uses; a path
+# mentioned mid-sentence is not one. -x -F: whole-line, fixed-string — both POSIX grep.
+section "Always-on imports"
+if [ -f CLAUDE.md ]; then
+  for imp in .agents/ubiquitous-language-index.md \
+             .agents/ubiquitous-language-invariants.md \
+             .agents/ubiquitous-language-invariants-scaffold.md; do
+    if grep -q -x -F "@$imp" CLAUDE.md; then
+      pass "CLAUDE.md imports $imp"
+    else
+      fail "CLAUDE.md does not @-import $imp — add a line reading exactly: @$imp"
+    fi
+  done
+else
+  # Reported by section 1 already; failing here too would count one absence twice.
+  pass "CLAUDE.md is absent — reported by section 1, skipped here"
+fi
+
 # ---- Summary ----
 section "Summary"
 if [ "$FAILS" -eq 0 ]; then

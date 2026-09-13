@@ -27,7 +27,7 @@ until they answer.
 
 ### 2 — Orient before asking anything
 
-Read `AGENTS.md`. The glossary arrives as a family of five files (ADR-0016, ADR-0017): the
+Read `AGENTS.md`. The glossary arrives as a family of six files (ADR-0016, ADR-0017): the
 injected `.agents/ubiquitous-language-index.md` names every term that already exists and the file
 that defines it, so read the vocabulary body it points at —
 `.agents/ubiquitous-language-scaffold.md` for harness terms, `.agents/ubiquitous-language.md` for
