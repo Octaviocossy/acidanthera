@@ -19,14 +19,14 @@
   --text-secondary: #9aa0a8; /* UI labels, inactive nav */
   --text-muted: #61656d; /* metadata, hints, section labels */
 
-  /* Accent - ember. AI presence only, never decorative, never a large fill (ADR 0007). */
+  /* Accent - ember. AI presence only, never decorative, never a large fill (ADR 0105). */
   --accent: #e8683a;
   --accent-on: #0b0c0d;
   --accent-soft: rgba(232, 104, 58, 0.12);
   --accent-tint: var(--accent-soft);
   --accent-border: var(--border);
 
-  /* Danger - "this click destroys" only (ADR 0015). NOT an error color: a failure stays monochrome. */
+  /* Danger - "this click destroys" only (ADR 0113). NOT an error color: a failure stays monochrome. */
   --danger: #d3453f;
   --danger-on: #ffffff;
   --danger-soft: rgba(211, 69, 63, 0.12);

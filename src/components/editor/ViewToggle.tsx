@@ -9,7 +9,7 @@ const OPTIONS = [READ, EDIT] as const;
  * The *view toggle*: the control that changes the active buffer's *buffer view*, right-aligned in
  * the viewer's *chrome strip*.
  *
- * The second control ever admitted to that strip under ADR 0037, which lets in a control acting on
+ * The second control ever admitted to that strip under ADR 0123, which lets in a control acting on
  * *what the window is showing* — which is exactly what a view toggle is (spec decision 15). It is
  * **monochrome**, never ember: a view toggle asserts no AI agency, and chrome stays monochrome
  * unless the control *is* the AI surface (invariants 21, 27).

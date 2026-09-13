@@ -87,7 +87,7 @@ interface EditorState {
   activeBufferId: string | null;
   cursor: EditorCursor;
   saveRequests: EditorSaveRequest[];
-  /** Back/forward over buffer activations, keyed by file path (ADR 0037). A renamed buffer's old
+  /** Back/forward over buffer activations, keyed by file path (ADR 0123). A renamed buffer's old
    *  entry simply goes stale and is pruned on the next walk past it. */
   history: NavigationHistory;
 

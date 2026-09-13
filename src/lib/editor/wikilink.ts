@@ -75,7 +75,7 @@ const wikilinkPlugin = ViewPlugin.fromClass(
  * Ember for a target that resolves, muted and struck through for one that does not — the same three
  * states the *read view* renders, because both surfaces read the same resolver (invariant 38).
  *
- * The ember is **ADR 0040**, which widens the accent from "the AI acted here" to "…**or** this is a
+ * The ember is **ADR 0126**, which widens the accent from "the AI acted here" to "…**or** this is a
  * link into the vault". It reverses this file's former rule ("never accented") deliberately: a grey
  * link in edit beside an ember one in read is the same link changing colour under a toggle, which
  * is worse than either colour alone. A broken link gets `cursor: default` because there is nothing

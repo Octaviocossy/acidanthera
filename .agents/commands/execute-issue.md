@@ -49,7 +49,8 @@ A Linear-style token like `sdp-375` is **not** a GitHub issue number. Fetch the 
    case, create/modify/delete the files listed under **Affected Files** in the chosen source.
 2. Honor all project conventions: the architecture in `AGENTS.md`, the relevant `.agents/rules/*`
    files (read the matching rule before implementing that kind of feature), and
-   the glossary family (via `.agents/ubiquitous-language-index.md`) for any domain code.
+   the glossary family (`.agents/ubiquitous-language*.md`, reached through
+   `.agents/ubiquitous-language-index.md`) for any domain code.
 3. For multi-step work, track progress with the task list (`TaskCreate`/`TaskUpdate`) so the user
    can follow along.
 4. Run the issue's **Acceptance Criteria** checks — use the project's acceptance commands from
@@ -71,7 +72,7 @@ A Linear-style token like `sdp-375` is **not** a GitHub issue number. Fetch the 
    step 4. This is the only way to finish an execution without a review.
 3. Run the procedure in `.agents/commands/review-branch.md` with no fixed-point argument (it
    deduces one) and the default working-tree comparison form — this execution has committed
-   nothing, so the three-dot form would review an empty diff (ADR-0025). Rework rounds, if any,
+   nothing, so the three-dot form would review an empty diff (ADR-0009). Rework rounds, if any,
    happen here.
 4. Once the review is approved, point the user to `/ship-note` to record what changed on the
    issue.

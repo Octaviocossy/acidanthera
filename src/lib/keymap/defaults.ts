@@ -12,7 +12,7 @@ export const KEYMAP_LAYERS: readonly KeymapLayer[] = ['global', 'sidebar', 'chat
 
 /**
  * The default chord(s) for every command in a {@link KEYMAP_LAYERS} layer, written exactly as
- * they'd appear in `keymaps.toml` (spec ADR 0005: command-keyed, not chord-keyed). Every command
+ * they'd appear in `keymaps.toml` (spec ADR 0103: command-keyed, not chord-keyed). Every command
  * in those layers has an entry here — including `[]` for one with no default chord — because
  * `seed.ts` iterates this map's keys to build the seeded catalog; a missing entry silently drops
  * a command from the seed file instead of showing it commented out.

@@ -132,7 +132,7 @@ One or two sentences: what is being built and why.
 ## Glossary Changes
 
 Terms resolved during this session, as glossary rows ready to promote. They are **not** written
-into the glossary now: a term enters when its code lands (ADR 0042), so the work that implements
+into the glossary now: a term enters when its code lands (ADR 0127), so the work that implements
 this spec copies these rows across in the same commit that makes them true. Each row obeys the
 600 B one-claim ceiling it will be held to there (`.agents/rules/domain-glossary.md`).
 
@@ -161,7 +161,7 @@ Notes:
   (step-by-step, affected files) belongs in a plan file per `plan-creation.md`.
 - A design spec is **not** a glossary. Its `## Glossary Changes` section is a **staging area**,
   not a second glossary: the rows sit there until the implementation merges and promotes them
-  (ADR 0042). Architectural decisions that outlive this work go in an ADR per `adr.md`.
+  (ADR 0127). Architectural decisions that outlive this work go in an ADR per `adr.md`.
 
 ---
 

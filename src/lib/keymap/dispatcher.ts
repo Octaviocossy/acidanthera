@@ -18,7 +18,7 @@ export interface DispatcherLayer {
    *  can't complete it; the sequence disarms instead of falling through to a lower layer. */
   isActive: () => boolean;
   /** Whether an *active* layer absorbs a keydown its trie does not match, instead of letting the
-   *  walk continue to a lower layer. Only `modal` sets it (ADR 0014). */
+   *  walk continue to a lower layer. Only `modal` sets it (ADR 0112). */
   swallows?: boolean;
 }
 

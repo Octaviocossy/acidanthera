@@ -20,9 +20,9 @@ at 40px. The same asymmetry governs new note / new folder, which expand first so
 a row to render into. Anyone "fixing" the inconsistency by making every click expand would remove
 the only reason the rail is useful.
 
-**This supersedes ADR 0009's premise** that the titlebar is the app's only always-visible chrome
+**This supersedes ADR 0107's premise** that the titlebar is the app's only always-visible chrome
 host. It is now one of two, and the titlebar keeps only the window title and settings. The rest of
-0009 stands: there is still no status bar, and state still renders on the surface that owns it.
+0107 stands: there is still no status bar, and state still renders on the surface that owns it.
 
 The collapsed state is deliberately **not persisted** — the sidebar reopens expanded on every
 launch. Persisting it means a new `settings.toml` key with its own default, per-field diagnostic and

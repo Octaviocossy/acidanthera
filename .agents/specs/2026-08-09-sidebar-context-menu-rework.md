@@ -15,7 +15,7 @@ each with an icon and a live shortcut hint — and build the two features it int
 
 Five facts, established by exploration before any question was asked:
 
-1. **The mockup contradicts three settled rulings.** Invariant 27 and ADR 0015 exclude the menu's
+1. **The mockup contradicts three settled rulings.** Invariant 27 and ADR 0113 exclude the menu's
    Delete row from `--danger` by name. `.agents/specs/2026-08-09-sidebar-context-menu-elevation.md`
    removed the panel's shadow one commit ago. And the mockup's `⌘N`/`⌘D`/`⌘⌫` do not exist: orbit
    is vim — `a`, `shift-a`, `d d`.
@@ -37,8 +37,8 @@ Five facts, established by exploration before any question was asked:
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 1 | Destructive row color | **Red** on glyph and label; ADR 0015 narrowed by ADR 0018 | A destructive row rendered like the six above it is found by reading, not seeing. The token widens by one step — the path, not only the final click — and stops there |
-| 2 | Destructive row label | `Move to Trash` | What the `trash` crate actually does (ADR 0012), and already the confirm button's text |
+| 1 | Destructive row color | **Red** on glyph and label; ADR 0113 narrowed by ADR 0116 | A destructive row rendered like the six above it is found by reading, not seeing. The token widens by one step — the path, not only the final click — and stops there |
+| 2 | Destructive row label | `Move to Trash` | What the `trash` crate actually does (ADR 0110), and already the confirm button's text |
 | 3 | Item applicability | **Hide, never disable** | Background (root) → the create pair only; directory → adds Rename/Duplicate/Move to Trash; note → everything. Extends the rule Delete already followed. "Summarize note" is meaningless on a folder |
 | 4 | AI rows | Permanently disabled placeholders keeping the **ember `✦`** at disabled opacity | Invariant 21 gains one clause: an AI action *offered but not yet available*. Without the ember the group has no identity |
 | 5 | AI rows' registry footprint | **No `AppCommandId`**; `aria-disabled` + native `title="Coming soon"` | Nothing speculative enters `APP_COMMANDS`; there is no tooltip primitive in the repo |
@@ -51,7 +51,7 @@ Five facts, established by exploration before any question was asked:
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 10 | Icon source | **`lucide-react`** (ADR 0017) | The hand-drawn set was becoming a private icon library. Lucide already matches on `currentColor`, no fill, round caps and joins |
+| 10 | Icon source | **`lucide-react`** (ADR 0115) | The hand-drawn set was becoming a private icon library. Lucide already matches on `currentColor`, no fill, round caps and joins |
 | 11 | Migration scope | The twelve drawn glyphs + the two new ones; `OrbitMarkGlyph` stays hand-drawn; the Unicode characters stay characters | A brand mark is not an icon. `◈ ＋ ✦ ⌕` live inside text and two tests assert the literal character |
 | 12 | Stroke normalization | An `Icon` wrapper pinning `strokeWidth={1.2}` + `absoluteStrokeWidth` | Lucide's default renders 1.25px at 15px but 1.0px at the 12px used in tree rows. The wrapper holds the house spec in one file at every size |
 
@@ -71,7 +71,7 @@ Five facts, established by exploration before any question was asked:
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
 | 19 | Rewriting at all | **Yes** — the rename repoints every link to the old stem | The interrogation's one reversal of the previous spec's "out of scope" |
-| 20 | Engine | A Rust command scanning on demand; **no index** (ADR 0016) | `v0-spec.md` §5.4 reserves the index for the post-v0 graph. Nothing to invalidate, no watcher coupling. Doing it in TS is 2N IPC round trips per rename |
+| 20 | Engine | A Rust command scanning on demand; **no index** (ADR 0114) | `v0-spec.md` §5.4 reserves the index for the post-v0 graph. Nothing to invalidate, no watcher coupling. Doing it in TS is 2N IPC round trips per rename |
 | 21 | Target grammar | Everything before the first `\|`; `#`/`^` anchors preserved verbatim; comparison **case-insensitive** | Narrower than the CM6 decoration's blind match. macOS's filesystem is case-insensitive, so `Ideas` and `ideas` are one note |
 | 22 | Ambiguous basenames | **Rewrite nothing**, rename anyway, toast the reason | Two notes sharing a stem means the link model cannot express which one was meant. Guessing could silently redirect links to the other note |
 | 23 | Scan scope | `build_tree`'s filter (no dot-dirs, no symlinks), minus the root `AGENTS.md`/`CLAUDE.md` | The template text contains a literal `` `[[Wikilinks]]` `` that a note of that name would corrupt |
@@ -79,7 +79,7 @@ Five facts, established by exploration before any question was asked:
 | 25 | Order and partial failure | Rename first and never rolled back; rewrite best-effort after; toast reports counts and failures | A renamed note with stale links beats a rename that silently un-happens |
 | 26 | Confirmation | A modal, shown **only when the scan finds ≥ 1 link** | It consents to writing in *other* notes. `N = 0` — and every directory rename — needs no consent |
 | 27 | Dialog body | Count first, then the affected notes listed | The dirty-buffer block of `DeleteEntryDialog`, reused |
-| 28 | Dialog buttons | `secondary` confirm, `ghost` cancel | `primary` is reserved for AI (ADR 0007) and `danger` for destruction (ADR 0015). A rename is neither |
+| 28 | Dialog buttons | `secondary` confirm, `ghost` cancel | `primary` is reserved for AI (ADR 0105) and `danger` for destruction (ADR 0113). A rename is neither |
 | 29 | Deletion | Unchanged — no "N notes link to this" line | Out of scope. It is one line away once the scanner exists |
 
 ### Duplicate
@@ -102,7 +102,7 @@ Five facts, established by exploration before any question was asked:
 - **`Copy link`.** In the mockup, deliberately not built.
 - **Making the AI rows work.** `Summarize note` and `Find related notes` ship disabled, with no
   command ids and no backend.
-- **A link index, backlinks, or the graph view.** ADR 0016 chooses a scan precisely to avoid
+- **A link index, backlinks, or the graph view.** ADR 0114 chooses a scan precisely to avoid
   building the post-v0 piece early.
 - **Rewriting links on delete**, or adding a "N notes link to this" line to the delete summary.
 - **Moving entries** — no `move_entry`, no drag-to-move. Rename stays inside its parent.
@@ -144,9 +144,9 @@ epic lands.
 
 ## ADRs Raised
 
-- `.agents/adr/0016-wikilink-rewriting-scans-not-indexes.md`
-- `.agents/adr/0017-icons-come-from-lucide.md`
-- `.agents/adr/0018-red-marks-the-destructive-path.md` — narrows ADR 0015
+- `.agents/adr/0114-wikilink-rewriting-scans-not-indexes.md`
+- `.agents/adr/0115-icons-come-from-lucide.md`
+- `.agents/adr/0116-red-marks-the-destructive-path.md` — narrows ADR 0113
 
 ## Residual Unknowns
 

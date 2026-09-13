@@ -4,7 +4,7 @@ import { parseWikilinkDisplay, resolveWikilink, wikilinkBrokenReason } from '@/l
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { useToastStore } from '@/stores/toast-store';
 
-/* Ember, and that is ADR 0040 rather than a violation of invariant 21: the accent now means "the AI
+/* Ember, and that is ADR 0126 rather than a violation of invariant 21: the accent now means "the AI
    acted here, **or** this navigates into the vault". A rendered note whose links are
    indistinguishable from its prose loses the one affordance the read view exists to present. */
 const RESOLVED = 'text-accent underline-offset-2 hover:underline';

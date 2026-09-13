@@ -82,8 +82,8 @@ acidanthera is macOS-only today. It draws its own chrome: the 40px band at the t
 is a per-region *chrome strip* the native traffic lights sit on, which relies on the macOS-only
 `titleBarStyle: "Overlay"` window option and a static `trafficLightPosition`. Neither is gated on
 platform — so on Windows and Linux the app builds and runs but shows a doubled title bar. This is
-a known, deliberate trade-off recorded in [ADR 0008](.agents/adr/0008-custom-titlebar-macos-only.md)
-and unchanged by [ADR 0035](.agents/adr/0035-chrome-strip-replaces-the-titlebar.md); gating the
+a known, deliberate trade-off recorded in [ADR 0106](.agents/adr/0106-custom-titlebar-macos-only.md)
+and unchanged by [ADR 0121](.agents/adr/0121-chrome-strip-replaces-the-titlebar.md); gating the
 macOS-only window options is the path to a cross-platform build.
 
 ## Install

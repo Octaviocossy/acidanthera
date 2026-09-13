@@ -5,7 +5,7 @@ and a review gate. That file is gitignored and per-machine, so the flag would ma
 `/execute-epic` invocation fire-and-forget on one machine and an hour-long interactive session on
 another — the shape of the session, decided invisibly. Instead there are two commands:
 `/execute-epic` never prompts, `/supervise-epic` always does. (Both gate on the agentic review —
-see ADR-0023 — so what the command name selects is whether a *human* is required.) The mode is
+see ADR-0007 — so what the command name selects is whether a *human* is required.) The mode is
 legible at the call site, and `/supervise-epic` carries `disable-model-invocation: true` for the same reason
 `/grill` does — it is worthless without a human answering, and a headless parallel-runner child
 must never start one.

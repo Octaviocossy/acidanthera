@@ -12,7 +12,7 @@ Letting the pipeline read labels is the obvious next suggestion — `/execute-ep
 children by `type:`, or the review gate weighting a finding by area — and it was rejected. A
 label is editable by anyone with push access, from a UI that knows nothing about the run in
 progress. Reading one back would make GitHub a source of *execution* state that can silently
-disagree with the repository, which is precisely what ADR-0021 (review state is derived from
+disagree with the repository, which is precisely what ADR-0005 (review state is derived from
 git, never stored) exists to prevent. Labels are cheap because nothing depends on them; the
 moment something does, they stop being cheap.
 

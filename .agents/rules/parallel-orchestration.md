@@ -61,7 +61,7 @@ in only when re-invoked with `--integrate`, never automatically on push. The run
 the epic branch's **single writer** across every action, serialized through a
 `.worktrees/.merge.lock` `mkdir` lock and a dedicated `__epic__` worktree —
 same-wave children merge one at a time, in whatever order they clear the gate. See
-ADR-0020.
+ADR-0004.
 
 `main` receives the epic's work only once, through the final `epic → main` pull
 request `/execute-epic` opens after every child is integrated. There is no per-child
@@ -199,12 +199,12 @@ plain run  →  --review  →  --rework (optional, may repeat)  →  --integrate
 *`--review`:*
 
 - Builds the **corpus pack** first — `$WORKTREES_DIR/.corpus-pack.md`, built by
-  `.agents/scripts/build-corpus-pack.sh` (shared with the interactive gate, ADR-0029) —
+  `.agents/scripts/build-corpus-pack.sh` (shared with the interactive gate, ADR-0013) —
   rebuilt from scratch on every `--review` invocation, and names it in each child's
   **Standards** prompt.
 - Dispatches **two single-axis reviewer processes per child** — Standards and Spec,
   concurrent, each through `.agents/scripts/run-review-agent.sh` from inside the
-  child's worktree (ADR-0030). Each axis is capped per attempt by `REVIEW_TIMEOUT`,
+  child's worktree (ADR-0014). Each axis is capped per attempt by `REVIEW_TIMEOUT`,
   not `AGENT_TIMEOUT`, and pre-materializes nothing itself: the runner writes the
   child's diff to `.worktrees/<branch>.diff` and names it in both prompts.
 - Composes `.worktrees/<branch>.review.md` per child — header plus the two axis
@@ -267,7 +267,7 @@ a pushed child and its merge into the epic branch.
 - **What runs.** `standards-and-spec-review`
   (`.agents/skills/standards-and-spec-review/SKILL.md`), as **two single-axis reviewer
   processes per child** — one per axis, concurrent, dispatched through
-  `.agents/scripts/run-review-agent.sh` (ADR-0030) — with children fanned out through
+  `.agents/scripts/run-review-agent.sh` (ADR-0014) — with children fanned out through
   the same `PARALLEL_MAX_CONCURRENCY` semaphore the plain run uses (so `--review` may
   run up to twice that many reviewer processes at once). The fixed
   point is the **epic integration branch**, not `main` — the documented rule for an
@@ -283,9 +283,10 @@ a pushed child and its merge into the epic branch.
   headless reviewer has no GitHub access by design (Adapter Contract), so without this
   file the Spec axis would silently fall back to the plan file and miss a case where
   the issue and the plan diverged. The Standards axis reads the corpus pack the runner
-  just built rather than re-reading the standards sources per context (ADR-0024).
+  just built rather than re-reading the standards sources per context (ADR-0008).
 - **What it produces.** `.worktrees/<branch>.review.md` — the Standards + Spec report,
-  distinguishing **hard violations** (a breach of the glossary or an ADR) from
+  distinguishing **hard violations** (a breach of
+  `.agents/ubiquitous-language-invariants.md` or an ADR) from
   **judgement calls** (everything else, including the whole Fowler smell baseline) —
   see `.agents/ubiquitous-language-scaffold.md` › Branch review.
 - **Its authority differs by execution path:**
@@ -323,7 +324,7 @@ the branch is already pushed.
 - **Concurrency:** rework runs automatically and in parallel within the same
   invocation, under `PARALLEL_MAX_CONCURRENCY` — the wave cannot advance until its
   rejected children resolve, since dependents wait on those merges.
-- **Counting rounds:** derived from git, never stored (ADR-0021) — the number of
+- **Counting rounds:** derived from git, never stored (ADR-0005) — the number of
   `rework(#<issue>): ronda <n>` commits already on the child's branch. Quitting
   mid-rework and re-running resumes exactly where it stopped; there is no state file
   to disagree with the repository.
@@ -352,7 +353,7 @@ three CLIs accept a prompt as the last positional arg in headless mode:
 
 `REVIEW_AGENT_EXEC_CMD` follows the same vocabulary and defaults to inheriting
 `AGENT_EXEC_CMD` when unset. Every reviewer dispatch, on both review paths, is **one
-single-axis process** through `.agents/scripts/run-review-agent.sh` (ADR-0030) — the
+single-axis process** through `.agents/scripts/run-review-agent.sh` (ADR-0014) — the
 adapter never needs the reviewer CLI to support sub-agent fan-out, and a review is
 read-only by definition, so prefer an invocation that enforces that (codex's
 `-s read-only`). The agentic review is part of the review gate's invariant
@@ -369,7 +370,7 @@ session. That denies headless agents the token, not necessarily GitHub itself: a
 loads a project MCP config (`.mcp.json`, `opencode.json`) can still reach GitHub through
 `run-github-mcp.sh`, which sources `.env` on its own. So every headless prompt both
 pre-materializes its sources by path **and** prohibits GitHub tools outright — the
-prohibition is enforced by the prompt, never assumed from the environment (ADR-0028).
+prohibition is enforced by the prompt, never assumed from the environment (ADR-0012).
 
 ---
 
@@ -382,8 +383,8 @@ prohibition is enforced by the prompt, never assumed from the environment (ADR-0
 | `MAX_REWORK_ROUNDS` | 2 | Cap on automatic rework rounds per child (The Rework Loop); `0` disables rework so a rejection just blocks |
 | `AGENT_TIMEOUT` | 1800 | Per-issue wall-clock cap for implementing and rework agents (seconds); 0 disables. Review dispatches are capped by `REVIEW_TIMEOUT` instead |
 | `REVIEW_AGENT_EXEC_CMD` | inherits `AGENT_EXEC_CMD` | Command prefix for the agentic reviewer (Adapter Contract); empty means "same model as the implementer", never "skip the review" |
-| `REVIEW_TIMEOUT` | 900 | Wall-clock cap on one reviewer **attempt**, on both review paths (`.agents/scripts/run-review-agent.sh` exits `124` when it fires); `0` disables. An axis may run to `REVIEW_RETRY_WINDOW + REVIEW_RETRY_DELAY + REVIEW_TIMEOUT + REVIEW_KILL_GRACE` (955s) because of the one startup-collision retry (ADR-0030). `AGENT_TIMEOUT` caps implementing and rework agents only |
-| `REVIEW_RETRIES` / `REVIEW_RETRY_WINDOW` / `REVIEW_RETRY_DELAY` | 1 / 30 / 15 | The startup-collision retry in `run-review-agent.sh` (ADR-0030): retry this many times when an attempt fails non-zero, silent, and within the window; wait this long first. Env-only — set `REVIEW_RETRIES=0` to disable |
+| `REVIEW_TIMEOUT` | 900 | Wall-clock cap on one reviewer **attempt**, on both review paths (`.agents/scripts/run-review-agent.sh` exits `124` when it fires); `0` disables. An axis may run to `REVIEW_RETRY_WINDOW + REVIEW_RETRY_DELAY + REVIEW_TIMEOUT + REVIEW_KILL_GRACE` (955s) because of the one startup-collision retry (ADR-0014). `AGENT_TIMEOUT` caps implementing and rework agents only |
+| `REVIEW_RETRIES` / `REVIEW_RETRY_WINDOW` / `REVIEW_RETRY_DELAY` | 1 / 30 / 15 | The startup-collision retry in `run-review-agent.sh` (ADR-0014): retry this many times when an attempt fails non-zero, silent, and within the window; wait this long first. Env-only — set `REVIEW_RETRIES=0` to disable |
 | `KEEP_WORKTREES` | 0 | 1 = keep worktrees after success (debugging) |
 | `WORKTREES_DIR` | `.worktrees` | Gitignored directory for worktree checkouts |
 | `EPIC_MERGE_FLAGS` | `--no-ff` | Merge flags used when integrating a child into the epic branch |
@@ -438,7 +439,7 @@ If it yields more than `MAX_CHILDREN`, ask the user to coarsen before creating i
 
 Children branch off the **epic integration branch** (not `main` directly — see Epic
 Integration Branch above). A child no longer merges the moment its own push succeeds —
-the old inline merge is gone (ADR-0023). Instead, `/execute-epic` runs each runnable
+the old inline merge is gone (ADR-0007). Instead, `/execute-epic` runs each runnable
 wave through the full pipeline in a single invocation, per child: plain run (push) →
 `--review` → optional `--rework` → `--integrate`. Once a child integrates, the runner
 **deletes its now-redundant branch** (unless `KEEP_CHILD_BRANCHES=1`), so the next

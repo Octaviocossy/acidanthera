@@ -46,7 +46,7 @@ function TooltipHint({ label, chord }: { label: string; chord?: string }) {
  * and two icons, and at 40px collapsed it is the only thing left to grab.
  *
  * It carries **no state** and only controls acting on what the window is currently showing (ADR
- * 0037, amending ADR 0035's blanket "no controls" — invariant 23). Anything app-level stays in
+ * 0123, amending ADR 0121's blanket "no controls" — invariant 23). Anything app-level stays in
  * the sidebar proper, which is what keeps the strip from drifting back into a titlebar one
  * convenience at a time. Children stay clickable through Tauri's clickable-tag exemption, exactly
  * as `EditorTabs`' chips do — the drag attribute never goes on a button.
@@ -63,7 +63,7 @@ function SidebarChromeStrip({ children }: { children?: React.ReactNode }) {
 
 /**
  * The *navigation history* controls: back and forward over **buffer activations**, the first
- * controls the *chrome strip* has ever carried (ADR 0037).
+ * controls the *chrome strip* has ever carried (ADR 0123).
  *
  * `ArrowLeft`/`ArrowRight` rather than chevrons (decision 38): `ChevronLeft` is already the
  * collapse toggle ~40px below in the brand row, and two identical glyphs meaning different things
@@ -96,7 +96,7 @@ function NavigationHistoryControls() {
  * rail*'s bottom pin (decisions 31, 33) — one implementation, two mounts, so the pair cannot drift.
  *
  * It writes through the same `useSettingsStore.updateSettings` the *settings dialog*'s `Segmented`
- * calls: one write path with two call sites, so ADR 0003 keeps `settings.toml` authoritative and
+ * calls: one write path with two call sites, so ADR 0101 keeps `settings.toml` authoritative and
  * the *settings dialog write* preserves comments and key order. Its icon states the **current**
  * theme, never the destination. Disabled while a `Syntax` diagnostic is present, exactly as the
  * dialog's rows are — `updateSettings` refuses that write anyway, so the click would silently do
@@ -441,7 +441,7 @@ export function Sidebar() {
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Collapse sidebar" {...tooltipTarget('Collapse sidebar')} onClick={collapseSidebar}>
             <Icon icon={ChevronLeft} size={15} />
           </Button>
-          {/* Rehomed from the footer, whose right slot is the *theme toggle* now. ADR 0035 lets
+          {/* Rehomed from the footer, whose right slot is the *theme toggle* now. ADR 0121 lets
               that slot be reassigned but not vacated: Settings still needs a pointer affordance
               in the expanded sidebar (decision 32). */}
           <Button
@@ -512,7 +512,7 @@ export function Sidebar() {
       )}
       {vaultRoot !== null && (
         /* The *footer identity block*. The tile is `--bg-elevated`, never `--accent-soft`:
-           ADR 0036 exempts the mark itself, not a fill behind it. */
+           ADR 0122 exempts the mark itself, not a fill behind it. */
         <footer className="flex shrink-0 items-center gap-2 border-t border-hairline px-[14px] py-2">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-item bg-elevated">
             <AcidantheraMarkGlyph className="h-[18px] w-[16px] text-text-secondary" />

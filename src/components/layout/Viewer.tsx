@@ -65,7 +65,7 @@ export function Viewer() {
       <EditorTabs buffers={buffers} activeBufferId={activeBufferId} onActivate={activateBuffer} onClose={requestClose} />
       {/* The editor *inset card*: `--bg-canvas` on the panel ground, `--radius-panel`, gutter on the
           right and bottom (the sidebar stays flush to the window edge). Its border carries the focus
-          region on all four sides — the card shares no edge with its neighbours, and ADR 0009 already
+          region on all four sides — the card shares no edge with its neighbours, and ADR 0107 already
           spent the region label it would otherwise need. Hairline in both themes, never a shadow: the
           card is inset *into* the ground rather than elevated above it (spec decisions 4, 22, 38). */}
       <main
@@ -77,7 +77,7 @@ export function Viewer() {
         </div>
         {/* The *editor status cluster*, whose content follows the buffer's *buffer view* while its
             place does not: it stays inside the card in both, because the mockup's full-width gutter
-            bar is the status bar ADR 0009 deleted (invariant 23). There is deliberately **no**
+            bar is the status bar ADR 0107 deleted (invariant 23). There is deliberately **no**
             read-mode indicator — the *view toggle* a few inches above is the indicator, the same way
             `CommandBar`'s mere presence is the *global mode indicator* (spec decision 29). */}
         {activeBufferId !== null && (

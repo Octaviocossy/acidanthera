@@ -21,7 +21,7 @@ stay fully editable but are reached only through the file finder.
 | 3 | Is a collapsed rail a reachable `FocusRegion`? | No — reachability keys on *expanded*, not *visible* | There is no chord that focuses the sidebar directly, only `ctrl-w l`/`h` cycling; auto-expanding on focus would fire every time you cycle past |
 | 4 | What stays in the titlebar | `⚙` settings stays; `⌕` and the re-show control leave | Only the finder was asked to move |
 | 5 | Scope of the Config removal | Delete `sidebar-rows.ts` entirely; both consumers return to `flattenVisibleTree` | One row source again — the `a`/`A` non-vault guard and the draft-splice hazard go with it |
-| 6 | How the Config removal is recorded | New ADR 0010 + a superseded note on ADR 0004's first consequence | 0004's core decision still holds; only its sidebar half died |
+| 6 | How the Config removal is recorded | New ADR 0108 + a superseded note on ADR 0102's first consequence | 0004's core decision still holds; only its sidebar half died |
 | 7 | Where the expand/collapse button lives | Sidebar header, in both states | Keeping it on nearly the same pixel is what makes the gesture feel reversible |
 | 8 | Is the collapsed state persisted? | No — ephemeral, resets to expanded on launch | Persisting means a new `settings.toml` key, default, diagnostic and migration |
 | 9 | Does `Ctrl-w b` change? | Same chord, same command id `global.toggle-sidebar`; new meaning | No existing `keymaps.toml` breaks |
@@ -29,16 +29,16 @@ stay fully editable but are reached only through the file finder.
 | 11 | Which entries appear in the rail | All direct children of `vaultRoot` — directories *and* notes | A root note is as navigable as a folder; filtering it would need explaining |
 | 12 | Rail overflow | `overflow-y-auto` on the entries block; action icons pinned above | A silent cap hides entries without saying so |
 | 13 | Telling identical glyphs apart | Native `title` with the entry name | Matches the six existing icon-buttons; no tooltip primitive exists in the repo |
-| 14 | Editor state shown in the rail | Active buffer only (`bg-elevated`); no dirty dot | At 40px the amber dot fights the glyph, and it is already an inherited exception to ADR 0007 |
+| 14 | Editor state shown in the rail | Active buffer only (`bg-elevated`); no dirty dot | At 40px the amber dot fights the glyph, and it is already an inherited exception to ADR 0105 |
 | 15 | The titlebar's now-dead "Show sidebar" button | Deleted, with its test, its `ml-[78px]` offset, and `ChevronRightGlyph`'s old call site | The rail is always there; a second control for the same gesture on another surface is noise |
-| 16 | Replacement for the `VAULT` label | Decorative placeholder orbit mark, monochrome | ADR 0007 reserves `--accent` for AI agency, so a brand mark may not carry it |
+| 16 | Replacement for the `VAULT` label | Decorative placeholder orbit mark, monochrome | ADR 0105 reserves `--accent` for AI agency, so a brand mark may not carry it |
 | 17 | Collapsed rail width | 40px (`--rail-sidebar-collapsed`) | Keeps the 40px rhythm `--rail-titlebar` and `--rail-fab` already set; squares the top-left corner |
 | 18 | Action icons in the collapsed rail | `⌕`, `✎`, `⊞` — the two create actions expand first, then start the draft | `EntryDraftRow` needs a visible tree row to render into |
 | 19 | Rail with no vault open | Mark + toggle + `⌕`; `Open vault…` only when expanded | Create actions are already gated on `vaultRoot`; the toggle is one click away |
 | 20 | The `displayPath` footer when collapsed | Hidden | No room for a truncated path at 40px |
 | 21 | The find icon's form | New drawn `SearchGlyph` SVG, replacing the raw `⌕` character | The Unicode character sits at a different weight next to `NewNoteGlyph`/`NewFolderGlyph` |
 | 22 | Width transition | Instantaneous, no animation | Animating width reflows CodeMirror every frame |
-| 23 | Is the rail itself ADR-worthy? | Yes — ADR 0011, plus an amendment note on ADR 0009 | It supersedes 0009's "only always-visible chrome host" premise |
+| 23 | Is the rail itself ADR-worthy? | Yes — ADR 0109, plus an amendment note on ADR 0107 | It supersedes 0107's "only always-visible chrome host" premise |
 | 24 | State naming | `sidebarOpen` → `sidebarExpanded`; `openSidebar`/`closeSidebar` → `expandSidebar`/`collapseSidebar` | Keeping "open" would make invariant 1 literally false |
 | 25 | Implementation routing | One GitHub issue | ~12 files, one observable behavior — below the 3-slice threshold for an epic |
 
@@ -49,7 +49,7 @@ stay fully editable but are reached only through the file finder.
 - **A tooltip primitive.** Native `title` is used, as everywhere else in the app. Introducing
   `@radix-ui/react-tooltip` and retrofitting the six existing icon-buttons is its own piece of work.
 - **Moving `⚙` out of the titlebar** (decision 4). Noted tension: `⌕` and `⚙` are the same kind of
-  control and now live on different surfaces. ADR 0011 records why the rail *could* host it, if that
+  control and now live on different surfaces. ADR 0109 records why the rail *could* host it, if that
   is revisited.
 - **Animating the collapse** (decision 22).
 - **Dirty-buffer indicators in the rail** (decision 14).
@@ -73,12 +73,12 @@ In `.agents/ubiquitous-language.md`:
 
 ## ADRs Raised
 
-- `.agents/adr/0010-config-reachable-only-from-the-finder.md` — Config files are reachable only from
+- `.agents/adr/0108-config-reachable-only-from-the-finder.md` — Config files are reachable only from
   the file finder
-- `.agents/adr/0011-sidebar-collapses-to-a-rail.md` — The sidebar is never hidden; it collapses to a
+- `.agents/adr/0109-sidebar-collapses-to-a-rail.md` — The sidebar is never hidden; it collapses to a
   rail
 
-Amended: `0004` (first consequence superseded by 0010), `0009` (premise amended by 0011).
+Amended: `0102` (first consequence superseded by 0108), `0107` (premise amended by 0109).
 
 ## Residual Unknowns
 

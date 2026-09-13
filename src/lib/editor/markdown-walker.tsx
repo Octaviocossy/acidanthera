@@ -1,5 +1,5 @@
 /**
- * The *markdown walker* (ADR 0039) — the one renderer behind the *read view*.
+ * The *markdown walker* (ADR 0125) — the one renderer behind the *read view*.
  *
  * It is a **walker, not a parser**: the tree comes from `markdownLanguage.parser` — the very object
  * `@codemirror/lang-markdown` hands the editor as its own base (`BufferEditor`), and the one
@@ -90,7 +90,7 @@ const STYLE = {
   inlineCode: 'rounded-kbd bg-elevated px-1 py-0.5 font-mono text-[0.9em] text-text-body',
   strong: 'font-semibold text-text-primary',
   strikethrough: 'text-text-muted line-through',
-  // Monochrome, and that is the decision: ember marks a link *into* the vault (ADR 0040), and an
+  // Monochrome, and that is the decision: ember marks a link *into* the vault (ADR 0126), and an
   // external link leaves the app, so it must not look like one that doesn't.
   link: 'text-text-secondary underline underline-offset-2 hover:text-text-primary',
   image: 'my-4 max-w-full rounded-card',
@@ -340,8 +340,8 @@ function renderTask(node: SyntaxNode, ctx: WalkContext): ReactNode {
  *
  * Its text goes through `@lezer/highlight`'s `highlightCode` driven by the editor's own
  * `acidantheraHighlightStyle`, so a highlighted block carries the editor's exact palette for free
- * (ADR 0039). The shared base configures no nested code parsing, so a language with no Lezer parser
- * in the tree renders as plain mono — the consequence ADR 0039 records. The classes
+ * (ADR 0125). The shared base configures no nested code parsing, so a language with no Lezer parser
+ * in the tree renders as plain mono — the consequence ADR 0125 records. The classes
  * `highlightCode` emits belong to `acidantheraHighlightStyle`'s style module, which
  * `acidantheraHighlighting` mounts; a `ReadView` never exists without a `BufferEditor` beside it in
  * the same `BufferPane`, and without those rules the block still reads correctly as plain mono.
@@ -536,7 +536,7 @@ const NAMED_ENTITIES: Record<string, string> = {
  * *string child* exactly as everything else here is, so `&lt;script&gt;` decodes to the **text**
  * `<script>` and React escapes it on output — visible text, never markup. Nothing here gains a
  * `dangerouslySetInnerHTML` path, and nothing may. Decoding happens on the string, never through
- * the DOM: an `innerHTML`/`DOMParser` round-trip would be the injection surface ADR 0039 exists to
+ * the DOM: an `innerHTML`/`DOMParser` round-trip would be the injection surface ADR 0125 exists to
  * refuse, however it is spelled.
  */
 function decodeEntity(source: string): string {

@@ -33,9 +33,9 @@ app at all.
 
 ## ADRs
 
-- `.agents/adr/0012-deletion-goes-to-the-os-trash.md`
-- `.agents/adr/0013-context-menu-is-app-drawn.md`
-- `.agents/adr/0014-modal-layers-swallow-unmatched-keys.md`
+- `.agents/adr/0110-deletion-goes-to-the-os-trash.md`
+- `.agents/adr/0111-context-menu-is-app-drawn.md`
+- `.agents/adr/0112-modal-layers-swallow-unmatched-keys.md`
 
 ## Notes for execution
 

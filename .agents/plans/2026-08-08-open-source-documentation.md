@@ -37,7 +37,7 @@ These are real properties of the codebase that the README must not paper over:
 1. **macOS-only today.** `tauri.conf.json` sets `titleBarStyle: "Overlay"` + `hiddenTitle: true`
    (macOS-only Tauri options) and `Titlebar.tsx` hardcodes `ml-[78px]` to clear the traffic lights.
    There are **zero** `#[cfg(target_os)]` gates and no frontend platform detection — on Windows/Linux
-   the app builds but shows a doubled title bar. ADR 0008 accepts this deliberately.
+   the app builds but shows a doubled title bar. ADR 0106 accepts this deliberately.
 2. **No prebuilt releases.** Build from source is the only install path.
 3. **AI features require external CLIs.** orbit spawns `claude` and/or `codex` as child processes and
    inherits their existing login. It never handles API keys (`doc/v0-spec.md` §3.3). A missing binary
@@ -131,7 +131,7 @@ agent credentials are inherited from CLIs you have already logged into.
 
 | | |
 |---|---|
-| **OS** | macOS. It builds elsewhere but the custom titlebar is macOS-only (see ADR 0008), so Windows/Linux show a doubled title bar. |
+| **OS** | macOS. It builds elsewhere but the custom titlebar is macOS-only (see ADR 0106), so Windows/Linux show a doubled title bar. |
 | **Node** | ≥ 18 (Vite 7 / React 19) |
 | **pnpm** | 10+ |
 | **Rust** | stable toolchain + [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/) |
@@ -223,7 +223,7 @@ Explain per-key degradation in one sentence: an invalid *value* falls back for t
 diagnostic; only a genuine TOML *syntax* error rejects the document and blocks writes from the dialog.
 
 `keymaps.toml` — ships fully commented out, one line per command, each showing its live default. It is
-**command-keyed**, not chord-keyed (ADR 0005). Show one example and the three contract rules:
+**command-keyed**, not chord-keyed (ADR 0103). Show one example and the three contract rules:
 
 ```toml
 "global.find-file"    = ["ctrl-w f"]   # override replaces the default array wholesale
@@ -312,7 +312,7 @@ Windows/Linux titlebar gating.
 >      `.agents/docs/workflow.en.md`. Say plainly it is optional for outside contributors.
 >   6. **Commit messages** — Conventional Commits (a `/commit-message` command exists).
 >   7. **Design system** — UI work in `src/components` or `src/styles` must follow
->      `.agents/skills/orbit-design/SKILL.md`; the ember accent means *AI agency* only (ADR 0007,
+>      `.agents/skills/orbit-design/SKILL.md`; the ember accent means *AI agency* only (ADR 0105,
 >      invariant 21).
 >   8. **Code style** — Biome 2.2.0 is the only linter/formatter; no ESLint, no Prettier.
 
@@ -401,13 +401,13 @@ Windows/Linux titlebar gating.
   personal desktop app.
 - **CI's Rust job runs on `macos-latest`, not `ubuntu-latest`** — Tauri on Linux needs
   `libwebkit2gtk-4.1-dev` and friends via `apt`, adding a slow, breakage-prone step to test a target
-  the project does not support (ADR 0008). macOS runners match reality.
+  the project does not support (ADR 0106). macOS runners match reality.
 - **Key tables inline, deep reference linked** — the keybinding and `settings.toml` tables are short and
   are the two things a user looks up most; everything else (chord grammar, keymap-resolution contract,
   chat-file format, the 23 invariants) stays in `doc/` and `.agents/`, already written and more detailed
   than a README should be.
 - **README states macOS-only plainly rather than aspirationally** — the alternative is issues from
-  Linux users reporting a doubled title bar that ADR 0008 already predicted.
+  Linux users reporting a doubled title bar that ADR 0106 already predicted.
 - **No fabricated assets** — the header uses the committed `src-tauri/icons/128x128@2x.png`; the
   screenshot is a TODO comment, not a broken `<img>`.
 
@@ -441,8 +441,8 @@ Windows/Linux titlebar gating.
   implementation, but the README is only fully correct once the repo is made public.
 - **`packageManager` value** — see the warning in Step 5. Confirm the pnpm version to pin, or omit the
   field and leave the requirement as documentation only.
-- **Two uncommitted ADRs describe unimplemented behavior.** `.agents/adr/0010-config-reachable-only-from-the-finder.md`
-  (untracked in git status) and `0011-sidebar-collapses-to-a-rail.md` describe a *future* state: config
+- **Two uncommitted ADRs describe unimplemented behavior.** `.agents/adr/0108-config-reachable-only-from-the-finder.md`
+  (untracked in git status) and `0109-sidebar-collapses-to-a-rail.md` describe a *future* state: config
   reachable only from the finder, and a sidebar that collapses to a 40px rail rather than unmounting.
   Neither is in `src/` yet — `Sidebar.tsx:62` still returns `null` when hidden, and the pinned Config
   section still exists in `src/lib/vault/sidebar-rows.ts`. **The README documents shipped behavior**

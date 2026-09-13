@@ -98,7 +98,7 @@ export function AgentPanel() {
     >
       {/* Header strip (#71): tabs left, New chat right. Height is `--rail-titlebar` so it lines up
           with the viewer's tab strip on the app's 40px chrome band — the titlebar it used to line up
-          with is gone (ADR 0035), and before that it was `--rail-fab` + inset only to reserve the
+          with is gone (ADR 0121), and before that it was `--rail-fab` + inset only to reserve the
           footprint of the FAB that once floated over this band.
           New chat starts a fresh thread (the prior one is auto-saved). */}
       <div className="flex h-[var(--rail-titlebar)] shrink-0 items-center border-b border-hairline px-3">

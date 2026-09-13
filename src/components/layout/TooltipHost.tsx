@@ -9,7 +9,7 @@ interface Position {
   top: number;
 }
 
-/** Draws the hover reveal outside the scrollable explorer so it cannot be clipped (ADR 0013). */
+/** Draws the hover reveal outside the scrollable explorer so it cannot be clipped (ADR 0111). */
 export function TooltipHost() {
   const state = useSyncExternalStore(subscribeTooltip, getTooltip, getTooltip);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ export function TooltipHost() {
     window.addEventListener('blur', hideTooltip);
     window.addEventListener('mousedown', hideTooltip);
     // A dialog opened from the keyboard pushes a modal overlay with no mousedown to catch it,
-    // so an open reveal would otherwise float above the scrim (ADR 0034's dismissal rule).
+    // so an open reveal would otherwise float above the scrim (ADR 0120's dismissal rule).
     window.addEventListener('keydown', hideTooltip);
     return () => {
       window.removeEventListener('scroll', hideTooltip, true);

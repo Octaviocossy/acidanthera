@@ -34,9 +34,10 @@ headers name the siblings whose work you are colliding with.
 lint, type-check, and format commands, and honor `## Verification Quirks`. Any entry still
 reading `_not yet documented_` has no runner yet — say so rather than inventing one. For changes
 touching the scaffold itself, always run `sh .agents/scripts/verify-scaffold.sh` (exit status =
-number of failed checks). If the conflict touches domain code, re-read
-the glossary family per `.agents/rules/domain-glossary.md` before resolving — a
-merge is a common way for two branches to introduce competing names for one concept.
+number of failed checks). If the conflict touches domain code, re-read the glossary family
+(`.agents/ubiquitous-language*.md`, reached through `.agents/ubiquitous-language-index.md`) per
+`.agents/rules/domain-glossary.md` before resolving — a merge is a common way for two branches to
+introduce competing names for one concept.
 
 **Scope — the parallel runner is exempt.** `.agents/scripts/run-parallel-issues.sh` runs
 `git merge --abort` when a child fails to integrate into the epic branch. That is deliberate,

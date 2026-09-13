@@ -18,7 +18,7 @@ sidebar.
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 1 | Mechanism | A hand-rolled `Tooltip` in `src/components/ui/` | ADR 0013's argument transfers verbatim — a native surface "cannot carry the token vocabulary, cannot be tested in jsdom", and the line falls between platform chrome and this app's content. The "no primitive exists" reason the three prior specs each gave is circular. |
+| 1 | Mechanism | A hand-rolled `Tooltip` in `src/components/ui/` | ADR 0111's argument transfers verbatim — a native surface "cannot carry the token vocabulary, cannot be tested in jsdom", and the line falls between platform chrome and this app's content. The "no primitive exists" reason the three prior specs each gave is circular. |
 | 2 | Not Radix | `@radix-ui/react-tooltip` rejected | `@radix-ui/react-slot` is already installed, but that is a composition helper; the tooltip package adds popper, floating-ui, portal and presence to buy clamp math `SidebarContextMenu` already implements in ~40 lines. |
 | 3 | Content | The untruncated value of what got truncated, nothing more | Matches what all four existing sites do. `entry.name` is the **stem** (`vault.rs` calls `file_stem`), so a note reads `readme`, never `readme.md`. |
 | 4 | Not metadata | No size, no modified time | `VaultEntry` carries neither in either language and `build_tree_at` never calls `entry.metadata()`. That is a different feature wearing a tooltip's clothes. |
@@ -37,7 +37,7 @@ sidebar.
 | 17 | Chord hints | Label plus a real `<Kbd>`, composed at the `Sidebar` call site from the resolved keymap | A drawn panel can render the boxed key hint the design system already has — the capability drawing it buys. A `label (chord)` string cannot. |
 | 18 | Ownership vs. *keymap reference* | Partitioned, not sequenced: `Tooltip` takes the sidebar's 6 chord-bearing controls, `chordTitle` keeps the titlebar's 2 | Both honor invariant 31, which fixes the chord's *source* as the resolved keymap and says nothing about its rendering. Sequencing would rewrite the same 9 call sites twice and add a dependency on an unshipped branch. |
 | 19 | Terminology | "Tooltip" names the drawn primitive only | Invariant 31 and the *chord hint* row called native `title` strings "chrome tooltips"; leaving the word meaning both an OS attribute and a React component plants a homonym inside an invariant. |
-| 20 | ADR | One, not two | ADR 0034 carries the mechanism, the surviving-native boundary, the partition, and the not-a-modal-layer consequence. `adr.md` warns a directory full of ADRs is worth less than three good ones. |
+| 20 | ADR | One, not two | ADR 0120 carries the mechanism, the surviving-native boundary, the partition, and the not-a-modal-layer consequence. `adr.md` warns a directory full of ADRs is worth less than three good ones. |
 
 ## Explicitly Out of Scope
 
@@ -79,7 +79,7 @@ Written inline during the session:
 
 ## ADRs Raised
 
-- `.agents/adr/0034-sidebar-hover-reveal-is-app-drawn.md` — The sidebar's hover reveal is
+- `.agents/adr/0120-sidebar-hover-reveal-is-app-drawn.md` — The sidebar's hover reveal is
   app-drawn
 
 ## Residual Unknowns

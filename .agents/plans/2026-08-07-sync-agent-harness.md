@@ -67,7 +67,7 @@ Two upstream defects were fixed at the source first (in `agentic-scaffold`, bran
   source, and the manifest's absence is exactly what makes `verify-scaffold.sh` skip its
   stack-neutrality check.
 - **ADRs 0001 and 0002 ship with the harness.** They record decisions this project inherits (the
-  skills symlink layout; `/handoff`'s GitHub sandbox). This project's own first ADR starts at 0003.
+  skills symlink layout; `/handoff`'s GitHub sandbox). This project's own first ADR starts at 0101 (the scaffold's occupy 0001–0100, ADR 0128).
 
 ## Validation Criteria
 

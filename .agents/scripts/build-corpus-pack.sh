@@ -2,19 +2,20 @@
 # Build a corpus pack: the verbatim, path-separated concatenation of this repo's standards
 # sources, written to the path given as $1.
 #
-# Lossless and per-invocation — never a cache, never a digest (ADR-0024). It is rebuilt from
+# Lossless and per-invocation — never a cache, never a digest (ADR-0008). It is rebuilt from
 # scratch every time, so there is nothing to invalidate and it can never go stale.
 #
 # Both review paths call this: the parallel runner at the start of every --review invocation,
 # and the interactive gate (/review-branch, /execute-issue Phase 3) before dispatching its
-# reviewer (ADR-0029). It lives in one script precisely so those two cannot drift apart.
+# reviewer (ADR-0013). It lives in one script precisely so those two cannot drift apart.
 #
 # The source list below mirrors the "Step 3 — standards sources" grounding in
 # .agents/skills/standards-and-spec-review/SKILL.md — keep both in sync.
 #
-# The glossary is a five-file family; four of them are standards sources and are listed
-# below. .agents/ubiquitous-language-changelog.md is deliberately NOT — it is historical
-# record, self-declared non-authoritative, and 74 KB per reviewer process (ADR-0041).
+# Of the five-file glossary family it carries the three content files — the product
+# vocabulary, the scaffold vocabulary, and the invariants. The index never enters (it
+# would duplicate the bodies it points at) and neither does the changelog, which is
+# self-declared non-authoritative.
 #
 # Usage:  sh .agents/scripts/build-corpus-pack.sh <output-path>
 #
@@ -38,10 +39,9 @@ mkdir -p "$(dirname -- "$_out")"
 for _src in \
   "AGENTS.md" \
   .agents/rules/*.md \
-  ".agents/ubiquitous-language-index.md" \
   ".agents/ubiquitous-language.md" \
-  ".agents/ubiquitous-language-invariants.md" \
   ".agents/ubiquitous-language-scaffold.md" \
+  ".agents/ubiquitous-language-invariants.md" \
   .agents/adr/*.md
 do
   [ -f "$_src" ] || continue

@@ -33,8 +33,8 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
    pregunta, y luego se detiene y te espera. Encontrar *hechos* es tarea del agente
    (despacha subagentes en lugar de preguntarte algo que podría consultar); las
    *decisiones* son tuyas. Mientras pregunta, afina la terminología en la sección
-   `## Glossary Changes` del spec (se promueve al glosario cuando aterriza el código, ADR 0042),
-   el momento y ofrece un ADR para cualquier decisión que sea difícil de revertir *y*
+   `## Glossary Changes` del spec (se promueve al glosario cuando aterriza el código, ADR 0127)
+   y ofrece un ADR para cualquier decisión que sea difícil de revertir *y*
    sorprendente *y* fruto de una disyuntiva real. Cuando la frontera queda vacía escribe
    una especificación definida en
    `.agents/specs/[aaaa-mm-dd]-[descripción-corta-en-kebab-case].md` y te indica qué
@@ -57,8 +57,8 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
 4. **Implementar.** El agente ejecuta la Implementación Paso a Paso del plan en
    orden, marcando el estado como `in-progress`, y luego `completed` una vez que
    todos los Criterios de Validación se cumplen. Cualquier código de dominio tocado
-   en el camino debe primero verificarse contra
-   la familia del glosario (ver más abajo).
+   en el camino debe primero verificarse contra la familia del glosario
+   (`.agents/ubiquitous-language*.md`, ver más abajo).
 5. **Verificar.** Ejecuta lo que definan las `## Commands` de tu proyecto en
    `AGENTS.md` para lint/build/test. Si estás modificando el andamiaje mismo en
    lugar de un proyecto que lo adoptó, `sh .agents/scripts/verify-scaffold.sh` es la
@@ -70,14 +70,26 @@ La forma del día a día del andamiaje, se usen o no issues de GitHub:
 
 ## Mantener honesto el vocabulario de dominio
 
-`.agents/ubiquitous-language.md` y sus cuatro archivos hermanos son la fuente única de verdad para los nombres
-canónicos de entidades, tipos, estados e invariantes. `.agents/rules/domain-glossary.md`
-es la regla de cumplimiento: antes de tocar cualquier archivo que viva en una ruta
-de dominio canónica, o que nombre/exporte/importe/cambie un concepto del glosario,
-lee primero el glosario. Si introduces o cambias vocabulario canónico, añádelo al
-glosario, actualiza `Last updated` a la fecha ISO actual, y agrega una fila al
-Changelog — nunca renombres silenciosamente un concepto en el código sin actualizar
-su definición.
+El glosario es una **familia de cinco archivos** (ADR-0016, ADR-0017) y en conjunto
+son la fuente única de verdad para los nombres canónicos de entidades, tipos, estados
+e invariantes: `.agents/ubiquitous-language.md` guarda el vocabulario propio de este
+proyecto; `.agents/ubiquitous-language-scaffold.md`, el del andamiaje mismo — ese es
+suyo, así que no lo edites; `.agents/ubiquitous-language-invariants.md`, todas las
+invariantes; `.agents/ubiquitous-language-index.md`, una tabla generada de término →
+área, agrupada por archivo; y `.agents/ubiquitous-language-changelog.md`, el
+historial fechado, que no gobierna nada. El índice y las invariantes están siempre
+en contexto; los cuerpos de vocabulario se leen bajo demanda, que es justo lo que el
+índice abarata.
+
+`.agents/rules/domain-glossary.md` es la regla de cumplimiento: antes de tocar
+cualquier archivo que viva en una ruta de dominio canónica, o que
+nombre/exporte/importe/cambie un concepto del glosario, busca el término en el índice
+y lee el archivo que señala. Si introduces o cambias vocabulario canónico, añádelo al
+miembro de la familia que lo posee — un término de producto a
+`.agents/ubiquitous-language.md`, uno del andamiaje al archivo `-scaffold.md`, una
+invariante nueva al archivo `-invariants.md` —, actualiza `Last updated` en el archivo
+que editaste, agrega una fila al Changelog y regenera el índice — nunca renombres
+silenciosamente un concepto en el código sin actualizar su definición.
 
 Esa regla tiene dos modos. El **pasivo**, descrito arriba, aplica siempre que tocas
 código de dominio. El **activo** se ejecuta durante una sesión de `/grill`: los
@@ -239,11 +251,19 @@ propia del agente orquestador a través de MCP.
 
 `/install-scaffold [directorio-destino]` ejecuta el copiador basado en manifiesto
 (`.agents/scripts/install-scaffold.sh`), que lee `.agents/scaffold.manifest` — una
-lista plana de archivos y directorios recursivos — y copia cada entrada al destino,
-omitiendo (nunca sobrescribiendo) lo que ya exista ahí. Siempre es seguro volver a
-ejecutarlo. Para agregar algo nuevo a lo que recibe cada proyecto que lo adopte,
-añade una línea al manifiesto en lugar de incrustar una plantilla en otro lugar; el
-manifiesto y el script copiador son la única fuente de verdad sobre qué se
+lista plana de archivos y directorios recursivos — y *sincroniza* cada entrada al
+destino. Volver a ejecutarlo no es una operación vacía: crea lo que falta, actualiza
+los archivos propiedad del andamiaje que el destino nunca editó, deja intactos los
+que son del proyecto y, donde ambos lados cambiaron, escribe marcadores de conflicto
+— junto a la ruta, como `<ruta>.scaffold-conflict`, cuando la ruta es un symlink o un
+directorio (ADR-0020) — y termina con código distinto de cero para que la skill
+`resolving-scaffold-sync` los resuelva (ADR-0019). Qué lado posee cada archivo se declara en el manifiesto con
+directivas `# @owner scaffold` / `# @owner project`, y lo último en que ambos lados
+coincidieron queda registrado en `<destino>/.agents/scaffold.baseline`, que el destino
+debería versionar — es también lo que hace que un conflicto resuelto siga resuelto en
+lugar de volver en la siguiente corrida. Para agregar algo nuevo a lo que recibe cada
+proyecto que lo adopte, añade una línea al manifiesto en lugar de incrustar una plantilla en otro
+lugar; el manifiesto y el script copiador son la única fuente de verdad sobre qué se
 instala.
 
 ## Verificar el andamiaje mismo
@@ -274,7 +294,7 @@ donde esas verificaciones se reportan como omitidas y el resto igual se ejecuta.
 Completa los marcadores que este andamiaje trae con `_not yet documented_`:
 `AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
 `## Code Structure`; la fecha `Last updated` y la ruta canónica de código de
-dominio de la familia del glosario; y las rutas canónicas de dominio en
+dominio de `.agents/ubiquitous-language.md`; y las rutas canónicas de dominio en
 `.agents/rules/domain-glossary.md`. Deja `AGENTS.md` › `## Skills` como está — ya
 viene poblada, y describe skills que heredas en lugar de un espacio en blanco por
 completar.

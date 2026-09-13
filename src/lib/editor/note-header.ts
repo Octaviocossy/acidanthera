@@ -52,7 +52,7 @@ export function noteBreadcrumb(filePath: string, vaultRoot: string | null): stri
  *
  * **Wikilinks only** (spec decision 24): a markdown link navigates nowhere inside the vault, so
  * counting it would inflate a number the reader takes to mean "notes this one reaches". Counting
- * the open buffer's own content is not what ADR 0016 refused either — that was a count for every
+ * the open buffer's own content is not what ADR 0114 refused either — that was a count for every
  * row in the sidebar, which costs a full read of the vault.
  */
 export function countWikilinks(content: string): number {

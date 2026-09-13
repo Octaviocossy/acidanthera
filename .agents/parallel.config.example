@@ -10,12 +10,12 @@
 AGENT_EXEC_CMD="claude -p --dangerously-skip-permissions"
 
 # Headless agent CLI used for every single-axis agentic reviewer dispatch, on both
-# review paths (ADR-0030): the runner's '--review' action (two dispatches per child)
+# review paths (ADR-0014): the runner's '--review' action (two dispatches per child)
 # and the interactive gate (/review-branch, /execute-issue Phase 3), all through
 # .agents/scripts/run-review-agent.sh. Same COMMAND PREFIX vocabulary as
 # AGENT_EXEC_CMD above. Empty means "inherit AGENT_EXEC_CMD" — NOT "skip the review":
 # the review gate is never skipped by omission. Set this to a different command prefix
-# to give the reviewer a different model than the implementer (ADR-0028). A review is
+# to give the reviewer a different model than the implementer (ADR-0012). A review is
 # read-only by definition — prefer a CLI invocation that enforces that, like codex's
 # '-s read-only'; '--ephemeral' also keeps concurrent dispatches from colliding on
 # shared per-user state (the opencode failure mode the dispatcher's retry absorbs).
@@ -46,7 +46,7 @@ KEEP_WORKTREES=0               # 1 = keep worktrees on success (debug)
 AGENT_TIMEOUT=1800             # per-issue wall-clock cap (seconds); 0 disables
 REVIEW_TIMEOUT=900             # wall-clock cap on ONE reviewer attempt (seconds), on BOTH
                                 # review paths — every dispatch goes through
-                                # run-review-agent.sh (ADR-0030); 0 disables. Tighter than
+                                # run-review-agent.sh (ADR-0014); 0 disables. Tighter than
                                 # AGENT_TIMEOUT on purpose: a review is one axis over
                                 # pre-materialized inputs. An axis can reach 955s once the
                                 # single startup-collision retry is counted; tune it with the

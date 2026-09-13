@@ -16,7 +16,7 @@ interface NoteHeaderProps {
  * meta line (spec decision 21).
  *
  * Everything it states is computed from data already in memory, which is why the link count here is
- * **not** what ADR 0016 refused: that was a count for every row in the sidebar, costing a full read
+ * **not** what ADR 0114 refused: that was a count for every row in the sidebar, costing a full read
  * of the vault, and this is one open note.
  *
  * There is deliberately **no tags row** (spec decision 22): the app has no tag concept, and

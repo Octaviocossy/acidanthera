@@ -14,7 +14,7 @@ That is what makes the sidebar's own collapse button viable: `closeSidebar` unmo
 entirely, so a control inside it can only ever hide — the titlebar's re-show control, rendered
 only while the sidebar is hidden, is what closes that one-way door.
 
-> **Amended 2026-08-08 by ADR 0011.** The "only always-visible chrome host" premise no longer
+> **Amended 2026-08-08 by ADR 0109.** The "only always-visible chrome host" premise no longer
 > holds: the sidebar never unmounts, it collapses to a 40px rail, so the one-way door closed
 > itself. `find` moved into that rail and the titlebar's re-show control was deleted; the titlebar
 > now carries the window title and settings only. Everything else below still stands — there is no

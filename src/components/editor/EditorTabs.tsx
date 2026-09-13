@@ -9,7 +9,7 @@ import type { EditorBuffer } from '@/stores/editor-store';
  *
  * `trafficLightPosition` is static config with no runtime setter in tauri 2.11.5, so the lights
  * cannot move when the sidebar collapses to 40px. Insetting this strip's left edge is the only
- * lever (spec decision 17, ADR 0035).
+ * lever (spec decision 17, ADR 0121).
  *
  * Measured from a screenshot of this build, never derived. The three buttons occupy x 14-27,
  * 37-50 and 60-73, i.e. centres 20.5 / 43.5 / 66.5 at **23px** spacing, so the zoom button's
@@ -35,7 +35,7 @@ interface EditorTabsProps {
 
 /**
  * The viewer's *chrome strip*: accessible session-buffer navigation, kept separate from the
- * mounted editor views, on the 40px band the dissolved title bar used to occupy (ADR 0035).
+ * mounted editor views, on the 40px band the dissolved title bar used to occupy (ADR 0121).
  *
  * It reserves its height even at zero buffers so the *inset card* below it never slides up under
  * the traffic lights (decision 18), and carries the window drag region so the window drags from

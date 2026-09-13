@@ -29,7 +29,7 @@ small set of specific defects, not a refactor.
 | 7 | How should `derive_copy_name`'s exhaustion be handled? | Name `MAX_COPY_ATTEMPTS` with a one-line *why*; the error stays `AlreadyExists` | Every `VaultError` variant is frontend surface area, and 1000 sibling copies of one file is not a state worth its own domain error |
 | 8 | Is `pick_vault`'s blocking-in-async in scope? | No — out of scope, recorded below | It needs an unverified Tauri-threading fact, it is a different axis from this work, and the observable symptom today is nil |
 | 9 | How do the Rust gates compose with the existing scripts and AGENTS.md? | Separate `lint:rust` / `format:rust` scripts with their own `## Commands` rows; `pnpm check` stays Biome-only | Follows the `test` / `test:rust` split already established, and the Frontend CI job runs on ubuntu-latest with no Rust toolchain, so a polyglot `pnpm check` would break it |
-| 10 | Should the canonical-root decision get an ADR? | Yes — ADR 0034 | Passes all three tests in `adr.md`: hard to reverse, surprising to a reader who sees `guarded_path` trusting an unverified root, and a genuine trade-off with a user-visible consequence |
+| 10 | Should the canonical-root decision get an ADR? | Yes — ADR 0119 | Passes all three tests in `adr.md`: hard to reverse, surprising to a reader who sees `guarded_path` trusting an unverified root, and a genuine trade-off with a user-visible consequence |
 
 ## Consequent Work (no decision required)
 
@@ -71,7 +71,7 @@ No other term changed. Decisions 5–8 alter implementation, not documented cont
 
 ## ADRs Raised
 
-- `.agents/adr/0034-vault-root-is-canonical-at-the-boundary.md` — The vault root is
+- `.agents/adr/0119-vault-root-is-canonical-at-the-boundary.md` — The vault root is
   canonicalized at the adopt boundary, not per call.
 
 ## Residual Unknowns

@@ -2,7 +2,7 @@ import { useAppStore } from '@/stores/app-store';
 import { useChatStore } from '@/stores/chat-store';
 
 /**
- * Sends a turn typed into the *agent dock*: open the *agent panel*, then send into it (ADR 0038,
+ * Sends a turn typed into the *agent dock*: open the *agent panel*, then send into it (ADR 0124,
  * invariant 34). One transcript, never two — the dock is a composer, not a conversation.
  *
  * The order is load-bearing rather than tidy, which is why it lives in one named function instead

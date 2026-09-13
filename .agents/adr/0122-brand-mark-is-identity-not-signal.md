@@ -1,6 +1,6 @@
 # The brand mark is identity, not signal
 
-ADR 0032 admitted the ember ring only on an icon that never renders inside the window — the app
+ADR 0117 admitted the ember ring only on an icon that never renders inside the window — the app
 icon and the favicon — so the ember stayed a reliable *the AI acted here* signal everywhere else.
 The unified-sidebar design draws the marked hexagon inside the window, in the sidebar's brand row
 and the footer identity tile, which that test cannot accommodate. We replace the test rather than
@@ -10,11 +10,11 @@ tile, and the collapsed rail.
 
 ## Consequences
 
-This supersedes ADR 0032 and reverses ADR 0011 decision 16, which refused the rail's mark the
-accent on ADR 0007's authority. ADR 0007 itself is untouched: ember still means AI agency for
+This supersedes ADR 0117 and reverses ADR 0109 decision 16, which refused the rail's mark the
+accent on ADR 0105's authority. ADR 0105 itself is untouched: ember still means AI agency for
 every element the accent system governs, and the mark is simply no longer one of them. The test
 stays decidable because it asks what the element *is* rather than where it is drawn — which is
-precisely what ADR 0032's boundary could not survive.
+precisely what ADR 0117's boundary could not survive.
 
 The cost is that one window can now show ember in three places at once: the brand row's mark, the
 footer tile's mark, and the Agent row. The relocate-the-chat-toggle spec's argument for putting
@@ -23,4 +23,4 @@ and the Agent row now keeps its ember on the weaker ground that it *is* the AI a
 than that it is alone.
 
 The exemption covers the mark, not a fill behind it. The footer tile is `--bg-elevated`, never
-`--accent-soft` — ADR 0007's "never a large fill" still governs everything around the mark.
+`--accent-soft` — ADR 0105's "never a large fill" still governs everything around the mark.

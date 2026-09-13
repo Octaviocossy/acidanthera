@@ -13,7 +13,7 @@ markdown, and a new **read view** that renders it — prose in proportional sans
 naming the note, and a Read/Edit toggle in the chrome strip.
 
 Design spec: `.agents/specs/2026-09-10-read-view.md` (settled — 32 decisions, 7 rounds).
-ADRs: 0039 (markdown renders through the editor's parser), 0040 (ember extends to wikilinks).
+ADRs: 0125 (markdown renders through the editor's parser), 0126 (ember extends to wikilinks).
 
 ## Children & Waves
 

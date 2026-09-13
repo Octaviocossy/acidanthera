@@ -6,7 +6,7 @@ Orbit token vocabulary, cannot be tested in jsdom, and needs a two-language roun
 an app-drawn one reuses the overlay idiom every other dismissable surface in the app already
 follows.
 
-Note this cuts the opposite way from ADR 0008, which kept the *native* macOS traffic lights
+Note this cuts the opposite way from ADR 0106, which kept the *native* macOS traffic lights
 precisely for native behavior. The distinction is that window chrome must behave like the
 platform's, whereas a menu listing this app's own commands is content.
 

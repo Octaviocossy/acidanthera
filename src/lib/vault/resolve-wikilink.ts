@@ -3,7 +3,7 @@ import type { VaultEntry } from '@/services/vault.service';
 /**
  * What a `[[target]]` points at. Three outcomes, and the third is the load-bearing one: two notes
  * sharing a basename means the link model cannot express which was meant, so it is **marked, never
- * guessed** (ADR 0016's stance, extended from renames to navigation — invariant 38).
+ * guessed** (ADR 0114's stance, extended from renames to navigation — invariant 38).
  */
 export type WikilinkTarget = { status: 'resolved'; path: string } | { status: 'missing' } | { status: 'ambiguous' };
 
@@ -65,11 +65,11 @@ function collectMatches(entries: readonly VaultEntry[], stem: string, found: str
 
 /**
  * Resolves a `[[target]]` against the **cached sidebar tree** — a scan of what is already in
- * memory, never an index (ADR 0016), and distinct from the backend *wikilink rewrite*, which walks
+ * memory, never an index (ADR 0114), and distinct from the backend *wikilink rewrite*, which walks
  * files on disk for a rename.
  *
  * This is the single resolver both the *read view* and the editor's `wikilink` decoration read, so
- * one link cannot look different in the two views (ADR 0040).
+ * one link cannot look different in the two views (ADR 0126).
  */
 export function resolveWikilink(raw: string, tree: readonly VaultEntry[]): WikilinkTarget {
   const stem = parseWikilinkTarget(raw).toLowerCase();

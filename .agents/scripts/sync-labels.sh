@@ -7,7 +7,7 @@
 # Closed facets only. The open `area:` facet is deliberately NOT provisioned here — enumerating
 # it would close it, and the issue-creating commands create an `area:` value on demand instead.
 #
-# Labels are informational; nothing in the execution pipeline reads one back (ADR-0031).
+# Labels are informational; nothing in the execution pipeline reads one back (ADR-0015).
 #
 # One-shot per repository: run it once after installing the scaffold, and again only when
 # .agents/labels.md changes.

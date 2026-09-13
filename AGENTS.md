@@ -9,7 +9,7 @@
   the user's. Done when the frontier is empty.
 - Terminology is sharpened **during** the session against the glossary — see the Active mode
   section of `.agents/rules/domain-glossary.md`. Resolved terms land in the spec's
-  `## Glossary Changes` and are promoted into the glossary when the code merges (ADR 0042).
+  `## Glossary Changes` and are promoted into the glossary when the code merges (ADR 0127).
 - Output: a settled **design spec** at `.agents/specs/[yyyy-mm-dd]-[short-kebab-description].md`,
   plus any ADRs raised in `.agents/adr/` (`.agents/rules/adr.md`).
 - The spec then routes to `/planning` (local), `/create-issue` (one issue), or
@@ -25,19 +25,17 @@
 - Keep the plan status updated through `draft`, `approved`, `in-progress`, `completed`, or `abandoned`.
 
 ## Domain
-- The domain glossary is a **five-file family**: `.agents/ubiquitous-language.md` (product
-  vocabulary), `-index.md` (generated term → area pointers), `-invariants.md` (invariants 1–38),
-  `-scaffold.md` (harness vocabulary + invariants 39–56), `-changelog.md` (historical record).
-- Only the **index** and **invariants 1–38** are `@`-imported into every session (ADR 0041); the
-  vocabulary body is read on demand via the index. Scaffold invariants 39–56 load with the scaffold
-  file, because breaching one requires editing the scaffold, which already holds it (ADR 0041 ›
-  Which invariants). A breach of either range is a hard violation.
+- The glossary is a **family of five files** (ADR-0016, ADR-0017). `@`-imported:
+  `.agents/ubiquitous-language-index.md` (generated term → area pointers, grouped by file) and
+  `.agents/ubiquitous-language-invariants.md` (every invariant — product **1–38**, harness
+  **39–57**; a breach of any is a hard violation at the review gate). On demand:
+  `.agents/ubiquitous-language.md` (the project's) and `.agents/ubiquitous-language-scaffold.md`\n  (the harness's, never edit it). `.agents/ubiquitous-language-changelog.md` is history, governs\n  nothing.
 - Full enforcement rules are in `.agents/rules/domain-glossary.md`. Follow without exception.
 - Read the row for a term before writing or reviewing any code that touches domain entities, type
   names, or data contracts. Find it through the index.
-- A term enters the glossary **when its code lands**, never when the design settles (ADR 0042).
-- The glossary has a **byte budget** (ADR 0043): 600 B per Notes cell and per invariant, warn at
-  80 KB and fail at 100 KB on the vocabulary file. `verify-scaffold.sh` §11 enforces it.
+- A term enters the glossary **when its code lands**, never when the design settles (ADR 0127).
+- The glossary has a **byte budget** (ADR 0018): 600 B per Notes cell and per invariant, plus a
+  per-file total declared in each file's `Budget` header (warn 80 KB / fail 100 KB on the\n  vocabulary file). `verify-scaffold.sh` §12 enforces it.
 - Update the glossary (and bump "Last updated") whenever a new entity, state, or process is introduced.
 - Decisions that outlive the task that produced them belong in an ADR under `.agents/adr/`, not in
   the glossary or a plan file. Format and the three-part offer test are in `.agents/rules/adr.md`.
@@ -82,7 +80,7 @@ _None documented yet._
 - Package-specific skills: `packages/<pkg>/.agents/skills/`
 - Prefer the narrowest ownership boundary that still matches real usage.
 - Vendored bodies carry no attribution footer; divergences from upstream live in
-  `.agents/adr/0019-vendored-artifacts-carry-no-attribution.md`.
+  `.agents/adr/0003-vendored-artifacts-carry-no-attribution.md` — and, for this project's own\n  vendored skill, in `.agents/adr/0129-acidanthera-design-diverges-from-its-upstream.md`.
 - Available: `resolving-merge-conflicts` — fires on an in-progress git merge/rebase conflict.
   Finds the intent behind each side, resolves every hunk without inventing behavior, runs the
   project's checks, and finishes the merge.
@@ -92,6 +90,11 @@ _None documented yet._
   sub-agents and reports them side by side without reranking. Deduces the fixed point from the
   branch (epic branch for a child, else `main`). Not a correctness-bug hunt — that is
   `/code-review`.
+- Available: `resolving-scaffold-sync` — fires when a scaffold sync has left conflict markers
+  in a file or a conflict sidecar beside a path, or `/install-scaffold` exited non-zero naming
+  conflicted paths. Establishes what each side was for, resolves every marker without inventing
+  behavior, then re-runs the sync and `verify-scaffold.sh`. Not a git merge — nothing to
+  `--continue`, and the target need not be a repository.
 - Available: `rust-best-practices` — fires when writing, reviewing, or refactoring Rust in
   `src-tauri/`: ownership and borrowing choices, `Result` error handling, performance. Based on
   Apollo GraphQL's handbook.
@@ -107,9 +110,12 @@ _None documented yet._
 - Canonical specs live in `.agents/commands/<name>.md`; thin wrappers in `.claude/commands/` and `.opencode/commands/` reference them with identical bodies (only frontmatter differs).
 - Invoke in either agent with `/<name>`.
 - Available: `commit-message` — generate a Conventional-Commits message from the current diff.
-- Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens terminology into that spec's `## Glossary Changes` (promoted to the glossary when the code lands, ADR 0042), and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
+- Available: `grill` — relentless design interrogation; writes a settled spec to `.agents/specs/`, sharpens terminology into that spec's `## Glossary Changes` (promoted to the glossary when the code lands, ADR 0127), and raises ADRs. Run it before `/planning`, `/create-issue`, or `/spec-breakdown` when the design is not yet settled.
 - Available: `planning` — create a thorough implementation plan and persist it in `.agents/plans/`.
-- Available: `install-scaffold` — install the cross-agent governance scaffold into a target project directory; never overwrites, safe to re-run.
+- Available: `install-scaffold` — sync the cross-agent governance scaffold into a target project
+  directory: creates what is absent, updates the scaffold-owned files the target never edited, and
+  writes conflict markers — or a `<path>.scaffold-conflict` sidecar beside a path that cannot hold
+  them (ADR-0020) — plus a non-zero exit where both sides diverged (ADR-0019).
 - Available: `create-issue` — create a GitHub issue with a full implementation plan from a requirement description.
 - Available: `update-issue` — correct the body (and optionally the title) of the current branch's GitHub issue when the initial generation was inaccurate; re-derives the issue's labels alongside the body.
 - Available: `execute-issue` — execute the current branch's GitHub issue in three phases (confirm, implement, review); uses the linked `.agents/plans/` file as primary plan source if one exists. Phase 3 runs the procedure in `.agents/commands/review-branch.md`; only `skip review` bypasses it.
@@ -146,7 +152,7 @@ _None documented yet._
 - **Reuse before invent.** An `area:` value is reused from the repo's existing labels whenever
   one covers the issue; a genuinely new one is created on demand with `gh label create`.
 - **Labels are informational.** Nothing in either execution path, the runner, or the review gate
-  reads one back — see `.agents/adr/0031-issue-labels-are-informational.md`. Applying one is
+  reads one back — see `.agents/adr/0015-issue-labels-are-informational.md`. Applying one is
   best-effort and never blocks issue creation.
 - **Provisioning:** run `sh .agents/scripts/sync-labels.sh` once per repository (and again when
   the taxonomy changes) to create the closed facet in GitHub. `/install-scaffold` does not call
@@ -171,7 +177,7 @@ branch names `<issue#>-<kebab-title>` and branch off the epic branch, not `main`
 concurrent up to `PARALLEL_MAX_CONCURRENCY` (default 3). A plain run only commits and pushes each
 child; it never integrates. Given `--epic <branch>`, three further action flags drive a child
 through the rest of the pipeline: `--review` (fans out an agentic `standards-and-spec-review` —
-two single-axis reviewer processes per child via `run-review-agent.sh`, ADR-0030 — per
+two single-axis reviewer processes per child via `run-review-agent.sh`, ADR-0014 — per
 child), `--rework` (re-dispatches a rejected child with feedback), and `--integrate` (the only
 action that merges into the epic branch). The orchestrating agent only reads epic-branch state
 and opens the final PR via MCP — the runner is the epic branch's sole writer throughout.

@@ -1,6 +1,6 @@
 # The ember accent extends to wikilinks
 
-ADR 0007 gave the ember accent exactly one meaning — *the AI acted here* — and every artifact since
+ADR 0105 gave the ember accent exactly one meaning — *the AI acted here* — and every artifact since
 has enforced it: `doc/v0-spec.md` §5.6 specified wikilinks as "underline + hover, no color",
 `wikilink.ts` carried the comment "never accented", and invariant 21 admitted only the brand mark
 (as identity) and the dirty-note dot. The *read view* reverses that for one case: a `[[wikilink]]`
@@ -24,7 +24,7 @@ broken while you type it.
 
 Resolution has three outcomes, identical in both views: a target that resolves is ember and
 navigable; a target that is **missing or ambiguous** is muted and struck through, never ember and
-never clickable. The ambiguous case reuses ADR 0016's stance directly — two notes sharing a basename
+never clickable. The ambiguous case reuses ADR 0114's stance directly — two notes sharing a basename
 means the link model cannot express which was meant, so the app marks it rather than guessing.
 
 `doc/v0-spec.md` §5.6, the `acidanthera-design` skill's permitted-ember list, and `wikilink.ts`'s

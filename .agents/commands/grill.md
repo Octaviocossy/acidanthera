@@ -27,8 +27,12 @@ until they answer.
 
 ### 2 — Orient before asking anything
 
-Read `.agents/ubiquitous-language.md`, `.agents/ubiquitous-language-scaffold.md` and
-`AGENTS.md`. Note the existing ADR numbers from the injected listing.
+Read `AGENTS.md`. The glossary arrives as a family of five files (ADR-0016, ADR-0017): the
+injected `.agents/ubiquitous-language-index.md` names every term that already exists and the file
+that defines it, so read the vocabulary body it points at —
+`.agents/ubiquitous-language-scaffold.md` for harness terms, `.agents/ubiquitous-language.md` for
+this project's own — on demand, whenever a term needs checking against its definition. Note the
+existing ADR numbers from the injected listing.
 
 Dispatch `Explore` sub-agents for any codebase facts needed to seed the design tree — what
 already exists, which patterns are established, what a related module currently does.
@@ -64,11 +68,11 @@ Repeat until the frontier is empty:
    against the real code.
 
 4. **Record resolved terms in the design spec's `## Glossary Changes` section.** They are
-   promoted into the glossary when the implementation merges, never now (ADR 0042) — the
+   promoted into the glossary when the implementation merges, never now (ADR 0127) — the
    glossary describes current behavior, and a design that changes shape during
    implementation would otherwise leave vocabulary behind that nothing removes. Write each
-   row to the 600 B one-claim standard it must meet when promoted
-   (`.agents/rules/domain-glossary.md`).
+   row to the 600 B one-claim standard it must meet when promoted, naming the family member
+   that will own it (`.agents/rules/domain-glossary.md`).
 
 5. **Offer an ADR** when a decision passes all three tests in `.agents/rules/adr.md` (hard to
    reverse, surprising without context, a real trade-off). Write it to
@@ -112,13 +116,11 @@ next invocation in full so the user can paste it.
 - **Ask the whole frontier**, not one question at a time. A question that depends on another
   still-open question belongs to a later round.
 - **Every question carries a recommendation.**
-- **Resolved terms land in the spec, not the glossary**, the moment they resolve — recorded in
-  `## Glossary Changes` and promoted only when the implementation merges (ADR 0042). This
-  reverses the former *"write inline, never batched"* rule; do not restore it.
+- **Glossary writes are inline**, the moment a term resolves — never deferred to the end.
 - **ADRs only on the three-part test.** When in doubt, skip it.
 - **Write no implementation code and touch no production files** — the same boundary as
-  `/planning`. The only files this command writes are the design spec and accepted ADRs; the
-  glossary is no longer one of them (ADR 0042).
+  `/planning`. The only files this command writes are the design spec, the glossary, and
+  accepted ADRs.
 - **Never run in a headless parallel-runner child** — there is no human to answer.
 - Do not close, comment on, or otherwise touch GitHub. Routing hands off to a command that
   does that.

@@ -19,10 +19,10 @@ centre line.
 | 1 | Which axis "center" means | **Vertical only** — the buttons' centre line matches the `⚙` glyph's | Horizontal centring collides with the absolutely-centred `orbit — <vault>` title and has no macOS precedent |
 | 2 | The horizontal inset `x` | **Leave at the native value** | macOS's default puts the close button's centre on x = 20, which is exactly the *sidebar rail*'s icon column directly beneath it — an alignment worth keeping deliberately rather than breaking by accident |
 | 3 | How the `y` literal is settled | **Pin the rule, measure the value** — the spec fixes the centre line, the implementer lands the number against a running window | tao's `y` is the *gap above* the buttons, not their centre, so the literal falls out of the button view's real frame height. A constant that is 6px off is invisible in a diff and wrong on screen |
-| 4 | The unused `--mac-*` colour tokens | **Delete all three** | `--mac-red`/`--mac-yellow`/`--mac-green` are read nowhere in `src/` and imply the app draws the lights, which ADR 0008 refused. They are a false signal aimed at exactly the reader this work creates |
+| 4 | The unused `--mac-*` colour tokens | **Delete all three** | `--mac-red`/`--mac-yellow`/`--mac-green` are read nowhere in `src/` and imply the app draws the lights, which ADR 0106 refused. They are a false signal aimed at exactly the reader this work creates |
 | 5 | 40px living in both CSS and native config | **Accept the duplication**; record the coupling in the glossary | Not a real trade-off in the end: tauri 2.11.5 exposes no runtime setter at all (see Facts), so static config is the only supported mechanism |
-| 6 | The `decorations` dependency | **Spell out `"decorations": true`** beside `titleBarStyle` | `trafficLightPosition` silently no-ops without it, and JSON carries no comment to warn. A future `decorations: false` — the exact thing ADR 0008 says someone will reach for — would break the centring with no error |
-| 7 | Whether to raise an ADR | **No ADR** | Fails two of `adr.md`'s three tests: a two-line config edit is not hard to reverse, and there was no competing mechanism to trade off against. ADR 0008 already owns the durable ruling this tunes |
+| 6 | The `decorations` dependency | **Spell out `"decorations": true`** beside `titleBarStyle` | `trafficLightPosition` silently no-ops without it, and JSON carries no comment to warn. A future `decorations: false` — the exact thing ADR 0106 says someone will reach for — would break the centring with no error |
+| 7 | Whether to raise an ADR | **No ADR** | Fails two of `adr.md`'s three tests: a two-line config edit is not hard to reverse, and there was no competing mechanism to trade off against. ADR 0106 already owns the durable ruling this tunes |
 | 8 | Routing | **`/create-issue`** | One self-contained change, tracked like every comparable change in this repo; the measure-it-in-a-running-window criterion needs a durable home |
 
 ## Facts Established
@@ -80,7 +80,7 @@ Named for the issue's benefit; the step-by-step belongs in the plan, not here.
 - **Runtime repositioning, and any new ACL permission.** No supported API exists (see Facts),
   and reaching the raw `NSWindow` to work around that is disproportionate to centring three
   buttons.
-- **Non-macOS platforms.** ADR 0008 stands unchanged — `trafficLightPosition` is macOS-only and
+- **Non-macOS platforms.** ADR 0106 stands unchanged — `trafficLightPosition` is macOS-only and
   is documented Unsupported on Linux/Windows/iOS/Android.
 - **Persisting or making the titlebar height configurable.** `--rail-titlebar` stays a constant.
 

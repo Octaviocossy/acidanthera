@@ -8,7 +8,7 @@ duplicating it, the way `/spec` composes `/spec-breakdown` and `/execute-epic`.
 
 A rule earns its own file when it carries invariants that bind code neither command owns. Here
 the invariants are already elsewhere — in `.agents/ubiquitous-language-scaffold.md` › Review gate, and
-in ADR-0025 — leaving a rule file with nothing but the procedure a command spec already holds.
+in ADR-0009 — leaving a rule file with nothing but the procedure a command spec already holds.
 
 ## Consequences
 

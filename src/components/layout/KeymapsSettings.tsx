@@ -44,7 +44,7 @@ function BindingRowView({ row }: { row: BindingRow }) {
  * command in the four dispatcher layers plus the two `editor.*` ones, with every chord each is
  * actually bound to right now.
  *
- * Read-only by decision: ADR 0003 leaves `keymaps.toml` the single writer and ADR 0005 makes the
+ * Read-only by decision: ADR 0101 leaves `keymaps.toml` the single writer and ADR 0103 makes the
  * seeded catalog the rebinding UX, so the one control here opens that file instead of capturing a
  * chord. It closes the dialog **first**, because `openConfigFile` → `focusEditor` claims DOM focus
  * (invariant 20) and an open dialog would fight it.

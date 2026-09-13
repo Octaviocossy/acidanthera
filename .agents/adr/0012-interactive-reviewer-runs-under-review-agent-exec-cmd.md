@@ -37,5 +37,5 @@ the reviewer by a path this script does not control, and no CLI flag reliably su
 Passing sources by path therefore has to be enforced by the prompt, not assumed from the
 environment: an external reviewer with GitHub reachable and no pre-fetched issue will go hunting
 through it, which is exactly how a review of three files ran past forty minutes. `/review-branch`
-step 3 states the prohibition explicitly, and `REVIEW_TIMEOUT` (ADR-0030) bounds what happens when
+step 3 states the prohibition explicitly, and `REVIEW_TIMEOUT` (ADR-0014) bounds what happens when
 a reviewer ignores it.

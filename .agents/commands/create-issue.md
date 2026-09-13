@@ -89,4 +89,4 @@ When invoked with a requirement description (`$ARGUMENTS`):
 - Flag blockers (env vars, external actions, user decisions) explicitly.
 - Never create a duplicate — check open issues via `mcp__github__list_issues` first.
 - Maximum 3 labels, exactly one `type:`. Reuse an existing `area:` before inventing one.
-- Labels are informational — never assume anything downstream reads them (ADR-0031).
+- Labels are informational — never assume anything downstream reads them (ADR-0015).

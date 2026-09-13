@@ -40,12 +40,12 @@ truth are the mockup file, `tokens/*.css` and `readme.md`.
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
 | 1 | What does "implement the mockups" mean? | Design system + re-skin of existing surfaces, as one epic | Separates what can ship from what is blocked; new AI features become their own spec |
-| 2 | Orbit tokens vs. the Factory vocabulary | Orbit names canonical, Factory names as temporary aliases deleted in the final slice | A 5-step surface ladder does not fit in 3; aliases allow slice-by-slice migration instead of one atomic rename (ADR 0006) |
+| 2 | Orbit tokens vs. the Factory vocabulary | Orbit names canonical, Factory names as temporary aliases deleted in the final slice | A 5-step surface ladder does not fit in 3; aliases allow slice-by-slice migration instead of one atomic rename (ADR 0104) |
 | 3 | Mono typeface and delivery | Self-host `@fontsource-variable/jetbrains-mono`, drop Geist Mono, keep Geist Variable for UI | A desktop app must render offline; the design's own `tokens/fonts.css` uses a Google Fonts CDN import |
 | 4 | Themes | Both — midnight dark and parchment light, replacing the Factory light mirror | `data-theme` and `useApplyTheme` already work; light-only tokens get explicit dark values so none falls back to `currentColor` |
-| 5 | Window chrome | Adopt it — `titleBarStyle: "Overlay"` + `hiddenTitle`, app-drawn 40px bar | Native traffic lights float over our bar; `--rail-titlebar` was already reserved and unused (ADR 0008) |
+| 5 | Window chrome | Adopt it — `titleBarStyle: "Overlay"` + `hiddenTitle`, app-drawn 40px bar | Native traffic lights float over our bar; `--rail-titlebar` was already reserved and unused (ADR 0106) |
 | 6 | Where the design system lives | Vendored skill at `.agents/skills/orbit-design/`, **without** a copy of the CSS | One authoritative copy of the values in `src/styles/tokens/`; the skill carries the rules, not a second source of truth |
-| 7 | Accent discipline | One ember accent, AI-only. `--accent-metric` (green) retired | The design forbids decorative accent use; `ToolChip`'s done state goes monochrome (ADR 0007) |
+| 7 | Accent discipline | One ember accent, AI-only. `--accent-metric` (green) retired | The design forbids decorative accent use; `ToolChip`'s done state goes monochrome (ADR 0105) |
 | 8 | New primitives | Five: `Kbd`, `SectionLabel`, `Chip`, `Switch`, `Segmented` | Each is already hand-inlined 3+ times; `IconButton`/`Input`/`SidebarItem`/`Tab` are skipped because the last two already exist as store-aware components |
 | 9 | Settings dialog | 760px panel with a 3-category rail: Appearance / Editor / Vault | "Intelligence" is omitted — its three switches control out-of-scope features, and an empty tab is worse than no rail |
 | 10 | Small structural additions | Sidebar footer, titlebar vault name, status-bar ln/col, model pill in the chat input | All four are presentational or read state that already exists |
@@ -54,7 +54,7 @@ truth are the mockup file, `tokens/*.css` and `readme.md`.
 | 13 | Empty vault state | Design copy + vault path, no action cards | "Start a daily note" and "Import notes" do not exist, and `v0-spec` §1 states "No onboarding" |
 | 14 | Iconography | Vendored 1.2-stroke SVGs + the Unicode glyph vocabulary. No icon dependency | The design's readme asks that any substitution be flagged; adding Lucide for four files is a bad trade |
 | 15 | `doc/v0-spec.md` drift | Rewrite §5.6 and correct the three false claims; the rest stays a historical record | The spec's value is documenting the original design; only its style section actively misleads |
-| 16 | ADRs | 0006, 0007, 0008 | Each passes the three-part test; the geometry and `Button` decisions do not |
+| 16 | ADRs | 0104, 0105, 0106 | Each passes the three-part test; the geometry and `Button` decisions do not |
 | 17 | Editor re-skin depth | Add a markdown `HighlightStyle` (headings, emphasis, code, links) | No `HighlightStyle` exists today, so markdown renders flat no matter what tokens change |
 | 18 | `FileFinder` → palette | 1c chrome (600px, `--radius-panel`, `NOTES` section label, hint footer), no "AI ACTIONS" section | `executeAppCommand` implements 1 of 23 commands and `CommandBar` discards its input — there is nothing for AI action rows to dispatch |
 
@@ -95,9 +95,9 @@ the Orbit names.
 
 ## ADRs Raised
 
-- `.agents/adr/0006-orbit-token-vocabulary.md` — Orbit token names replace the Factory vocabulary
-- `.agents/adr/0007-accent-is-ai-only.md` — one ember accent, reserved for AI; the metric green is retired
-- `.agents/adr/0008-custom-titlebar-macos-only.md` — app-drawn titlebar, knowingly macOS-only
+- `.agents/adr/0104-orbit-token-vocabulary.md` — Orbit token names replace the Factory vocabulary
+- `.agents/adr/0105-accent-is-ai-only.md` — one ember accent, reserved for AI; the metric green is retired
+- `.agents/adr/0106-custom-titlebar-macos-only.md` — app-drawn titlebar, knowingly macOS-only
 
 ## Suggested slicing
 

@@ -2,7 +2,7 @@
 //! `settings.toml` file in the platform app-config dir holding the agent model, editor font,
 //! theme, vault path, and daily-note folder. Read once at boot by the frontend settings store; the
 //! dialog edits it
-//! in place through `toml_edit`, preserving the user's comments and key order (ADR 0003). A
+//! in place through `toml_edit`, preserving the user's comments and key order (ADR 0101). A
 //! legacy `settings.json` (the pre-#96 format) is migrated once at boot, before `config::init`'s
 //! first-run scaffold — see `lib.rs`.
 
@@ -344,7 +344,7 @@ fn set_field(doc: &mut DocumentMut, key: &str, new_value: Value) {
 }
 
 /// Loads the existing document (if any) and updates only the four settings keys in place,
-/// preserving every comment and the existing key order (spec decision 10 / ADR 0003). Returns
+/// preserving every comment and the existing key order (spec decision 10 / ADR 0101). Returns
 /// `SettingsError::Toml` if the existing file is not valid TOML — never regenerates a broken file
 /// from `settings`, since that would silently discard whatever the user was mid-edit on.
 fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {

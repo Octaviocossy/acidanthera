@@ -152,7 +152,7 @@ describe('HomeSurface', () => {
 
     // The order is the whole point of `submitFromDock`, not an incidental consequence of it:
     // `sendMessage` never reads `agentOpen`, so sending first would stream a real turn's events into
-    // an unmounted transcript (ADR 0038, invariant 34). Asserting both ran would not catch that.
+    // an unmounted transcript (ADR 0124, invariant 34). Asserting both ran would not catch that.
     it('opens the panel before it sends, never after', async () => {
       const calls: string[] = [];
       useAppStore.setState({ openAgent: () => void calls.push('openAgent') });

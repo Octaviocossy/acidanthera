@@ -93,7 +93,7 @@ Include these only when they add genuine value. Most ADRs will not need any of t
 | `.agents/specs/` | What was decided for *this* piece of work, and why | Per design interrogation |
 | `.agents/plans/` | How to build it — steps, affected files, validation | Per task |
 | `.agents/adr/` | Decisions that shape the system beyond one task | Durable |
-| `.agents/ubiquitous-language*.md` | Canonical terminology and invariants (five files) | Durable |
+| `.agents/ubiquitous-language*.md` | Canonical terminology and invariants | Durable |
 
 When a design interrogation raises an ADR, list it under `## ADRs Raised` in the design spec
 so the decision is traceable back to the session that produced it.

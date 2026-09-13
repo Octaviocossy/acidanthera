@@ -20,7 +20,7 @@ below — there is no longer one independent `keydown` listener per region. It w
 fixed precedence order, **first match wins, with no fallthrough**: the editor (CodeMirror, which
 wins by DOM event-propagation order before the dispatcher ever runs), then the modal layer, then
 the active region (sidebar or the agent panel's History tab), then global. The modal layer additionally
-**swallows** every keydown it does not match while it is active (invariant 25, ADR 0014) — which
+**swallows** every keydown it does not match while it is active (invariant 25, ADR 0112) — which
 is why sidebar chords are inert underneath a dialog. A chord sequence like `Ctrl-w` `f` arms a 1.5s
 pending window for its next step; any non-continuing key, the window expiring, or the owning
 layer going inactive mid-sequence all silently disarm it with no action taken.

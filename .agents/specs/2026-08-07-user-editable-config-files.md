@@ -90,11 +90,11 @@ what makes the invariant true.
 
 ## ADRs Raised
 
-- `.agents/adr/0003-config-file-is-authoritative.md` — the file is the source of truth and the
+- `.agents/adr/0101-config-file-is-authoritative.md` — the file is the source of truth and the
   Settings dialog is a typed editor of it.
-- `.agents/adr/0004-config-outside-vault-surfaced-inside.md` — config lives outside the vault yet
+- `.agents/adr/0102-config-outside-vault-surfaced-inside.md` — config lives outside the vault yet
   appears in both vault-scoped surfaces.
-- `.agents/adr/0005-keymaps-are-command-keyed.md` — the inverted keymap schema.
+- `.agents/adr/0103-keymaps-are-command-keyed.md` — the inverted keymap schema.
 
 ## Implementation Slices
 

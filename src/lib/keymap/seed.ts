@@ -33,7 +33,7 @@ const HEADER = [
 /**
  * Generates the self-documenting `keymaps.toml` seed (epic #94, child #97 step 6): every
  * resolvable command, commented out, grouped by layer, showing its current default so
- * uncommenting a line and editing its chord array is the entire rebinding UX (spec ADR 0005:
+ * uncommenting a line and editing its chord array is the entire rebinding UX (spec ADR 0103:
  * command-keyed, not chord-keyed). Mirrored by `DEFAULT_KEYMAPS_TOML` in
  * `src-tauri/src/config.rs`'s first-run scaffold — keep the two in sync.
  */

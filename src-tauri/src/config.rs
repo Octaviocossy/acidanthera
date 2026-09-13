@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS_TOML: &str = "# acidanthera settings\n";
 
 /// First-run `keymaps.toml` seed (#97 step 6): every resolvable command, commented out, grouped
 /// by layer, showing its current default — uncommenting a line and editing its chord array is
-/// the whole rebinding UX (spec ADR 0005: command-keyed, not chord-keyed). Must be kept in sync
+/// the whole rebinding UX (spec ADR 0103: command-keyed, not chord-keyed). Must be kept in sync
 /// with `generateKeymapsToml()` in `src/lib/keymap/seed.ts`, which is the source of truth this
 /// constant was generated from.
 const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps

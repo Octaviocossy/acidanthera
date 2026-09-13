@@ -15,7 +15,7 @@ dead zone.
 Clicking and dragging the app-drawn titlebar does not move the window.
 
 `Titlebar` (`src/components/layout/Titlebar.tsx`) landed in #105 with `titleBarStyle: "Overlay"` +
-`hiddenTitle` (ADR 0008), which puts the webview under the full window height — so the OS no longer
+`hiddenTitle` (ADR 0106), which puts the webview under the full window height — so the OS no longer
 drags the window for us and Tauri's `data-tauri-drag-region` shim has to. **Two independent defects
 stop it**, both confirmed against the resolved ACL and the shipped shim, not inferred:
 
@@ -26,7 +26,7 @@ contains `allow-internal-toggle-maximize` but **not** `allow-start-dragging`. Th
 `invoke('plugin:window|start_dragging')` is rejected. Diagnostic tell: double-clicking the titlebar
 to zoom *does* work, because that path uses `internal_toggle_maximize`, which *is* granted.
 
-ADR 0008 predicted exactly this and it was never acted on: *"`src-tauri/capabilities/default.json`
+ADR 0106 predicted exactly this and it was never acted on: *"`src-tauri/capabilities/default.json`
 grants no window permissions beyond whatever `core:default` covers, so anything that
 programmatically moves, resizes or decorates the window needs an explicit permission added there."*
 `git log` confirms the file has not been touched since before the titlebar existed.
@@ -137,7 +137,7 @@ it('marks the whole titlebar as a window drag region', () => {
   `true`, so macOS still owns the resize borders; there are no custom resize handles to authorize.
   Granting unused window permissions widens the ACL for nothing.
 - **No ADR.** Each change is one line, trivially reversible, with no rejected alternative worth
-  remembering. ADR 0008 already records the titlebar decision and even flagged this permission
+  remembering. ADR 0106 already records the titlebar decision and even flagged this permission
   consequence.
 
 ## Validation Criteria

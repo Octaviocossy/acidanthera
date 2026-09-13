@@ -71,7 +71,7 @@ cross-slice touch, and #104 has already merged by then); only #103 and later #11
 
 - **Foundation-first.** #103 changes token *values and names* and touches no component, so every wave-2
   and wave-3 sibling only adds or edits files it exclusively owns. Factory names survive as aliases in
-  `@theme` so untouched components keep compiling mid-migration (ADR 0006).
+  `@theme` so untouched components keep compiling mid-migration (ADR 0104).
 - **The cleanup slice is a dependency of every wave-3 child**, not an appendix. That ordering is what
   guarantees it runs only after the last consumer has migrated off the aliases.
 - **Accent discipline is enforced per slice.** Each child issue enumerates its sanctioned accent uses;

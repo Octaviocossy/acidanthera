@@ -14,7 +14,7 @@
 #                    action flag below. Must come first.
 # --review           requires --epic. Fans out the standards-and-spec-review over each
 #                    named child as TWO single-axis reviewer processes (Standards, Spec),
-#                    dispatched concurrently through run-review-agent.sh (ADR-0030) against
+#                    dispatched concurrently through run-review-agent.sh (ADR-0014) against
 #                    the epic branch, then composes both axis reports into
 #                    .worktrees/<branch>.review.md. Each axis is capped per attempt by
 #                    REVIEW_TIMEOUT (not AGENT_TIMEOUT); an axis that fails, times out, or
@@ -86,7 +86,7 @@ fi
 EPIC_MERGE_FLAGS=${EPIC_MERGE_FLAGS:---no-ff}   # how children merge into the epic branch
 EPIC_WT="$WORKTREES_DIR/__epic__"               # dedicated checkout of the epic branch
 MERGE_LOCK="$WORKTREES_DIR/.merge.lock"         # serialize merge+push (single writer)
-CORPUS_PACK="$WORKTREES_DIR/.corpus-pack.md"    # shared review input — rebuilt per --review (ADR-0024)
+CORPUS_PACK="$WORKTREES_DIR/.corpus-pack.md"    # shared review input — rebuilt per --review (ADR-0008)
 EPIC_ISSUE_FILE="$WORKTREES_DIR/.epic-issue.md" # epic issue body, written by the caller (never by the runner)
 
 # ---- optional action flag: plain run (none) | --review | --rework | --integrate ----
@@ -183,8 +183,8 @@ ensure_child_worktree() {
 
 # Build the corpus pack: a verbatim, path-separated concatenation of the standards
 # sources, rebuilt from scratch on every --review invocation. Lossless and
-# per-invocation — never a cache, never a digest (ADR-0024). The source list lives in
-# build-corpus-pack.sh, shared with the interactive gate (ADR-0029) so the two review
+# per-invocation — never a cache, never a digest (ADR-0008). The source list lives in
+# build-corpus-pack.sh, shared with the interactive gate (ADR-0013) so the two review
 # paths cannot drift apart.
 build_corpus_pack() {
   sh "$PROJECT_ROOT/.agents/scripts/build-corpus-pack.sh" "$CORPUS_PACK"
@@ -331,7 +331,7 @@ process_review() {
   _diff_note="The exact diff under review is pre-materialized at $_difff — read that file rather than re-running git."
 
   # One reviewer process per axis, dispatched concurrently through the shared dispatcher
-  # (ADR-0030) — the same mechanism the interactive gate uses, so the two paths cannot
+  # (ADR-0014) — the same mechanism the interactive gate uses, so the two paths cannot
   # drift. Each process runs inside the child's worktree, is capped per attempt by
   # REVIEW_TIMEOUT (resolved by the dispatcher, not AGENT_TIMEOUT), and reports one axis
   # only; this function composes the two reports into the review record.
@@ -408,7 +408,7 @@ EOF
   [ "$_sp_rc" -eq 0 ] && [ ! -s "$_spf" ] && _sp_rc=96
 
   # Compose the review record — overwrite, never append: under the runner the history
-  # already lives in git and the child log (ADR-0027). A failed or timed-out axis gets an
+  # already lives in git and the child log (ADR-0011). A failed or timed-out axis gets an
   # explicit marker instead of a report, and fails the child: a half-reviewed child must
   # never pass the gate as if both axes had seen it.
   axis_section() {
@@ -422,7 +422,7 @@ EOF
   {
     printf '# Review report — #%s %s\n\n' "$_issue" "$_branch"
     printf '> Fixed point: `%s` (three-dot, committed work)\n' "$EPIC_BRANCH"
-    printf '> Reviewer: `%s`, one process per axis (ADR-0030)\n\n' "$REVIEW_AGENT_EXEC_CMD"
+    printf '> Reviewer: `%s`, one process per axis (ADR-0014)\n\n' "$REVIEW_AGENT_EXEC_CMD"
     printf '## Standards\n\n'
     axis_section "$_st_rc" "$_stf"
     printf '\n\n## Spec\n\n'

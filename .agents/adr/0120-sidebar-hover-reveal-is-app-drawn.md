@@ -5,7 +5,7 @@ Three settled specs in a row declined to build a tooltip primitive, each giving 
 spec in turn declined to build it. Meanwhile `FileTreeItem` had become the only truncating
 surface in the app carrying no hover reveal at all, while `FileFinder`, `SettingsDialog`,
 `DeleteEntryDialog` and the sidebar footer all followed the truncate-plus-`title` idiom. The
-sidebar now uses a hand-rolled `Tooltip` primitive instead, on ADR 0013's own reasoning: a native
+sidebar now uses a hand-rolled `Tooltip` primitive instead, on ADR 0111's own reasoning: a native
 surface "cannot carry the token vocabulary, cannot be tested in jsdom", and the line falls between
 platform chrome and this app's own content — a filename reveal is content.
 

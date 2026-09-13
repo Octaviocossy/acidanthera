@@ -20,8 +20,8 @@ interface GlyphProps {
  *
  * The centre ring is ember, matching the app icon and the favicon, and renders wherever the mark
  * renders — brand row, footer identity tile, and the collapsed rail included. The brand mark is
- * **identity rather than signal**, so the accent system does not govern it at all (ADR 0036,
- * superseding ADR 0032). The exemption covers the mark, never a fill behind it.
+ * **identity rather than signal**, so the accent system does not govern it at all (ADR 0122,
+ * superseding ADR 0117). The exemption covers the mark, never a fill behind it.
  */
 export function AcidantheraMarkGlyph({ className }: GlyphProps) {
   return (

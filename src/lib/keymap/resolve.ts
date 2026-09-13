@@ -147,7 +147,7 @@ function applyModalLockoutGuard(layers: Record<KeymapLayer, LayerBindings>, diag
  * `keymaps.toml` — a flat map from a full command id to a chord-string array, structurally
  * unvalidated (it comes straight off disk via `configService.parseConfigFile`). Per command, an
  * override **replaces** the default wholesale, never merges entry-by-entry (spec decision 20 /
- * ADR 0005) — `[]` unbinds it entirely. An unknown command id, a non-array value, or an
+ * ADR 0103) — `[]` unbinds it entirely. An unknown command id, a non-array value, or an
  * unparseable chord string degrades just that one binding with a diagnostic and keeps the rest of
  * the file (spec decision 10).
  */

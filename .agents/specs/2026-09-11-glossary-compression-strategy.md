@@ -53,7 +53,7 @@ recommendations that produced them:
 | 11 | Total cap | **Warn at 80 KB, hard-fail at 100 KB** | The warning gives notice during normal growth; the hard failure is the only mechanism here that forces a retirement decision rather than letting the file grow silently |
 | 12 | Retirement, re-based | Aliases are **not** evidence. Retire when removing the row would not change what anyone writes: the canonical name is the only name the code uses, and no invariant cites the term. It is the **valve for the cap**, not a ritual | Measured: the first framing fired on 2 of 145 rows. Relocation and compression do the one-time work; retirement must exist or growth is unbounded, but it will be rare |
 | 13 | File names | The **`ubiquitous-language-*.md` family** | `.agents/ubiquitous-language.md` is a scaffold-provided path — `verify-scaffold.sh` checks it, `build-corpus-pack.sh` names it, `/install-scaffold` copies it. Keeping the canonical name where upstream puts it stops this split from becoming a vendored divergence to reconcile on every scaffold update |
-| 14 | ADRs | All three written: **0041, 0042, 0043** | Each passes `adr.md`'s three-part test independently |
+| 14 | ADRs | All three written: **0016, 0127, 0018** | Each passes `adr.md`'s three-part test independently |
 
 ## The resulting file set
 
@@ -74,7 +74,7 @@ Derived, not separately decided:
 - The **600 B ceiling applies to an invariant too** — 47 of 56 already comply, so one number covers both files.
 - The **index must be checked in**. `@` imports a path and cannot run a script, so the index is
   generated *and* verified by `verify-scaffold.sh` — the corpus pack's anti-staleness trick
-  (ADR 0024) adapted to a file that has to persist.
+  (ADR 0008) adapted to a file that has to persist.
 - `.agents/rules/domain-glossary.md` is **rewritten**, not amended: decision 8 reverses its
   *"Write inline, never batched"* section outright.
 
@@ -120,9 +120,9 @@ vocabulary** and belong in `.agents/ubiquitous-language-scaffold.md`, not the pr
 
 ## ADRs Raised
 
-- `.agents/adr/0041-always-on-is-the-index-and-the-invariants.md` — the glossary body is read on demand
-- `.agents/adr/0042-vocabulary-enters-when-the-code-lands.md` — reverses *write inline, never batched*
-- `.agents/adr/0043-the-glossary-has-a-byte-budget.md` — ceiling, cap, and retirement as the valve
+- `.agents/adr/0016-always-on-is-the-index-and-the-invariants.md` — the glossary body is read on demand
+- `.agents/adr/0127-vocabulary-enters-when-the-code-lands.md` — reverses *write inline, never batched*
+- `.agents/adr/0018-the-glossary-has-a-byte-budget.md` — ceiling, cap, and retirement as the valve
 
 ## Residual Unknowns
 
@@ -133,5 +133,5 @@ vocabulary** and belong in `.agents/ubiquitous-language-scaffold.md`, not the pr
   the projection. Revisit once one epic has landed under the new regime.
 - **The index format is not specified to the byte** — the generator decides column shape at
   implementation time, constrained only by "one line per term, no definitions".
-- **Duplicate ADR number `0034`** (`0034-sidebar-hover-reveal-is-app-drawn.md` and
-  `0034-vault-root-is-canonical-at-the-boundary.md`). Out of scope, needs its own fix.
+- **Duplicate ADR number `0034`** (`0120-sidebar-hover-reveal-is-app-drawn.md` and
+  `0119-vault-root-is-canonical-at-the-boundary.md`). Out of scope, needs its own fix.

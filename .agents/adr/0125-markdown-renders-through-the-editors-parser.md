@@ -35,7 +35,7 @@ the GFM extension and render as literal text.
 ## Walker mechanics
 
 These are the walker's non-obvious behaviors. They live here rather than in the glossary row,
-which states what the walker *is* and cites this ADR for the rest (ADR 0043's one-claim rule).
+which states what the walker *is* and cites this ADR for the rest (ADR 0018's one-claim rule).
 
 **Adjacent plain text is coalesced into a single run** before `renderInlineText` sees it. This is
 load-bearing, not tidiness: lezer reports a bracket span for every `[…]` pair, so `[[My Note]]`

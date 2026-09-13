@@ -31,7 +31,7 @@ export function collectVaultFiles(tree: readonly VaultEntry[], vaultRoot: string
 
 /** The two config files, unioned into the finder's candidate list alongside vault notes. They
  *  bypass {@link collectVaultFiles}'s vault-root prefix filter entirely — they live outside the
- *  vault (ADR 0004) — and get a synthetic `config/`-prefixed path so they read as distinct from
+ *  vault (ADR 0102) — and get a synthetic `config/`-prefixed path so they read as distinct from
  *  a real vault note at a glance. */
 export function collectConfigCandidates(): VaultFileCandidate[] {
   return CONFIG_ENTRIES.map((entry) => ({ path: entry.name, relativePath: `config/${entry.name}`, name: entry.label, source: 'config' as const }));

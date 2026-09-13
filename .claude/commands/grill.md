@@ -17,6 +17,5 @@ Topic or path to grill: $ARGUMENTS
 @.agents/rules/design-interrogation.md
 @.agents/rules/domain-glossary.md
 @.agents/rules/adr.md
-@.agents/ubiquitous-language.md
+@.agents/ubiquitous-language-index.md
 @.agents/ubiquitous-language-invariants.md
-@.agents/ubiquitous-language-scaffold.md

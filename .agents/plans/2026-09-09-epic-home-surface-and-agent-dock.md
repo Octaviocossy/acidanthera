@@ -51,8 +51,8 @@ No two children in the same wave touch the same file. Wave 2's three children ar
 
 ## ADRs
 
-- `.agents/adr/0037-chrome-strip-admits-controls.md` — consumed by #155
-- `.agents/adr/0038-one-transcript-composers-route-to-it.md` — consumed by #154
+- `.agents/adr/0123-chrome-strip-admits-controls.md` — consumed by #155
+- `.agents/adr/0124-one-transcript-composers-route-to-it.md` — consumed by #154
 
 ## Decisions taken against the recommendation
 
@@ -60,7 +60,7 @@ Both are settled and must not be re-litigated at the review gate:
 
 - **#153 — the footer's ☀ displaces ⚙.** The recommendation was to keep the gear and refuse the
   sun. Step 3 of that issue (Settings to the brand row) is the non-optional consequence: without
-  it Settings has no pointer affordance in the expanded sidebar, which is what ADR 0035 exists
+  it Settings has no pointer affordance in the expanded sidebar, which is what ADR 0121 exists
   to prevent.
 - **#155 — back/forward ships pointer-only.** The recommendation was `Ctrl-w o` / `Ctrl-w i`,
   mirroring vim's jumplist. This makes it the one navigation gesture unreachable from the

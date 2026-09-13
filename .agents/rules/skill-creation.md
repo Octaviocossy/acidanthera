@@ -86,7 +86,7 @@ A vendored body carries **no attribution footer**. Where the artifact diverges f
 rename, a replaced line, an omitted section — record the divergence in an **ADR**, together with
 the upstream path and the pinned commit. That record is the only thing that makes a later upstream
 update reconcilable: without it there is no way to tell what we changed on purpose from what
-upstream changed. See `.agents/adr/0019-vendored-artifacts-carry-no-attribution.md`.
+upstream changed. See `.agents/adr/0003-vendored-artifacts-carry-no-attribution.md`.
 
 ## Rules
 

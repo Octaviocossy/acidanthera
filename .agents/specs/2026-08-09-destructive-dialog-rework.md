@@ -34,7 +34,7 @@ Five facts, established by exploration before any question was asked:
    shadow *removal* (`.agents/plans/2026-08-09-remove-sidebar-menu-shadow.md`).
 5. **Two dialogs are not escapable at all.** `CloseBufferDialog` and `SwitchVaultDialog` never call
    `pushModalOverlay`, so Escape does nothing in them and region chords stay live under their
-   scrims — the gap ADR 0014 recorded as known and deferred. Extracting a shell makes fixing it
+   scrims — the gap ADR 0112 recorded as known and deferred. Extracting a shell makes fixing it
    nearly free, which is why it was reopened here.
 
 ## Settled Decisions
@@ -46,7 +46,7 @@ Five facts, established by exploration before any question was asked:
 | 3 | Keyboard ownership | The shell calls `pushModalOverlay` with `onCancel` **always**, `onConfirm` only when the dialog has one unambiguous confirm action | Makes the two unescapable dialogs escapable and stops them leaking region chords, without inventing a meaning for `⏎` in a Save/Discard/Cancel dialog |
 | 4 | Focus and scrim | Focus the **panel** (`tabIndex={-1}`), as `SettingsDialog` already does; scrim inert | Focusing Cancel — the conventional choice — collides: `⏎` would fire its native click *and* `modal.confirm`, two opposite outcomes on one key. An inert scrim is correct for a destructive dialog: a stray click must neither cancel nor confirm |
 | 5 | Confirm button | Filled, on a new `Button` `danger` variant | Today it is `secondary` — visually identical to Cancel and to "Change…" in settings. The weight, not just the hue, was the complaint |
-| 6 | The color | New `--danger` / `--danger-on` / `--danger-soft`, **not** the ember | `variant="primary"` is `bg-accent`; invariant 21 and ADR 0007 reserve it for AI agency, and deleting a note is the most deliberately human action in the app (ADR 0015) |
+| 6 | The color | New `--danger` / `--danger-on` / `--danger-soft`, **not** the ember | `variant="primary"` is `bg-accent`; invariant 21 and ADR 0105 reserve it for AI agency, and deleting a note is the most deliberately human action in the app (ADR 0113) |
 | 7 | Values | `--danger` `#d3453f` dark / `#c8372e` light; `--danger-on` `#ffffff`; `--danger-soft` `rgba(211,69,63,0.12)` dark / `#fdecea` light | Tuned to the ember's weight so the app's only two colored fills do not compete |
 | 8 | Danger's surface list | The `danger` button and the `--danger-soft` icon tile. **Not** the context menu's Delete item | That item opens a dialog rather than destroying anything; coloring it dilutes the token from "this destroys" to "this is about deleting" |
 | 9 | Icon | ~28px `rounded-item` tile, `--danger-soft` fill, hand-drawn trash SVG (viewBox 16, render 15px, stroke 1.2, `currentColor`) | Makes the dialog read as destructive before a word is read. No icon dependency; matches the `glyphs.tsx` house style |
@@ -94,7 +94,7 @@ Also fixed in passing: the two "settled ahead of implementation" markers left ov
 
 ## ADRs Raised
 
-- `.agents/adr/0015-destructive-color-is-its-own-role.md` — records that `--danger` is a role
+- `.agents/adr/0113-destructive-color-is-its-own-role.md` — records that `--danger` is a role
   disjoint from the ember, that a *failure* stays monochrome, and that reusing the ember was
   requested and rejected. It partially supersedes decision 15 of
   `.agents/specs/2026-08-09-sidebar-context-menu.md`, which chose no color at all; that decision

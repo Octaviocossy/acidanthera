@@ -55,7 +55,7 @@ Two findings reshaped the original brief:
 | 12 | Glyphs | `⌕` as Unicode, a new drawn chevron, `CogGlyph` redrawn with real teeth | `⌕` is already the canonical search glyph; `CogGlyph` (`glyphs.tsx:142-160`) is a circle plus eight radiating strokes with no teeth, which reads as a sun — moving settings to the titlebar puts that defect front and centre |
 | 13 | Sidebar header order | Collapse chevron trailing, after the two create buttons | Create actions stay grouped; collapse sits nearest the edge it collapses toward |
 | 14 | Titlebar drag region | `data-tauri-drag-region` stays on the `<header>`, never on the buttons | Tauri matches the attribute on the event target, so child buttons stay clickable — the one behavior that must be verified in the running app, not a unit test |
-| 15 | ADR | Write `0009-no-status-bar.md` | Passes all three tests in `adr.md` |
+| 15 | ADR | Write `0107-no-status-bar.md` | Passes all three tests in `adr.md` |
 
 ## Explicitly Out of Scope
 
@@ -63,7 +63,7 @@ Two findings reshaped the original brief:
 - **Per-buffer cursor.** `EditorCursor` stays a single global `{line, col}`.
 - **`CommandBar` commands.** It still defines none; making `:` reach find/settings is separate work.
 - **Keymap changes.** `Ctrl-w b`/`f`/`s` are unchanged; this work moves mouse affordances only.
-- **Cross-platform titlebar.** ADR 0008's macOS-only decision stands; adding controls to the
+- **Cross-platform titlebar.** ADR 0106's macOS-only decision stands; adding controls to the
   titlebar does not widen that debt, it rides on it.
 
 ## Glossary Changes
@@ -81,7 +81,7 @@ lands. Added or sharpened in `.agents/ubiquitous-language.md`:
 
 ## ADRs Raised
 
-- `.agents/adr/0009-no-status-bar.md` — orbit deliberately has no status bar.
+- `.agents/adr/0107-no-status-bar.md` — orbit deliberately has no status bar.
 
 ## Residual Unknowns
 

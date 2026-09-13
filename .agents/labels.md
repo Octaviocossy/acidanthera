@@ -4,7 +4,7 @@ The labels this project attaches to its GitHub issues. Read by `.agents/scripts/
 and by `/create-issue`, `/spec-breakdown` and `/update-issue`.
 
 Labels here are **informational**: nothing in the execution pipeline reads one back
-(`.agents/adr/0031-issue-labels-are-informational.md`).
+(`.agents/adr/0015-issue-labels-are-informational.md`).
 
 ## Closed facet: `type:`
 

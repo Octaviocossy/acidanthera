@@ -8,5 +8,5 @@ the isolation the two-axis design protects is blindness between *findings*, not 
 pack** (`.worktrees/.corpus-pack.md`) that every child's Standards sub-agent reads, while the
 orchestrating reviewer passes paths without reading contents. It is a `cat` per `--review`
 invocation — deliberately not a durable cache (nothing to invalidate, the same reasoning as
-ADR-0021) and not a lossy digest (hard violations hinge on the exact wording of the glossary and
+ADR-0005) and not a lossy digest (hard violations hinge on the exact wording of the glossary and
 the ADRs).

@@ -8,7 +8,7 @@ export interface ConfigEntry {
 
 /**
  * The two config files (`src-tauri/src/config.rs`'s allowlist), kept as a separate source from
- * the vault tree — never injected into `sidebar.tree` (ADR 0004: config lives outside the vault
+ * the vault tree — never injected into `sidebar.tree` (ADR 0102: config lives outside the vault
  * but is surfaced inside vault-scoped UI).
  */
 export const CONFIG_ENTRIES: readonly ConfigEntry[] = [

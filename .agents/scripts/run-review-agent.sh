@@ -2,13 +2,13 @@
 # Dispatch ONE single-axis agentic reviewer under REVIEW_AGENT_EXEC_CMD and print its report
 # to stdout.
 #
-# This is the one reviewer dispatcher for every review path (ADR-0030): the interactive gate
+# This is the one reviewer dispatcher for every review path (ADR-0014): the interactive gate
 # (/review-branch, /execute-issue Phase 3) calls it once per axis from the repository root, and
 # run-parallel-issues.sh --review calls it once per axis per child from inside the child's
 # worktree. One command-prefix contract (the prompt is appended as the final quoted positional
 # argument), one wall-clock cap, one startup-collision retry — shared so the paths cannot drift.
 # The reviewer must be a fresh context that did not write the code, and is deliberately allowed
-# to be a different model than the implementer's (ADR-0028): a reviewer sharing the
+# to be a different model than the implementer's (ADR-0012): a reviewer sharing the
 # implementer's blind spots is a weaker check.
 #
 # Why a script rather than calling the CLI directly from the command: REVIEW_AGENT_EXEC_CMD
@@ -46,7 +46,7 @@ fi
 # reads the working tree and is handed its sources by path. That is not the same as the
 # reviewer having no GitHub access — a CLI that loads a project MCP config can reach GitHub
 # through run-github-mcp.sh, which sources .env itself — so source-by-path is enforced by the
-# caller's prompt, never assumed from the environment (ADR-0028).
+# caller's prompt, never assumed from the environment (ADR-0012).
 #
 # The environment wins over the config file, the same precedence run-parallel-issues.sh uses.
 # Sourcing a config that unconditionally clobbers the environment would make a one-off override
@@ -117,7 +117,7 @@ fi
 #     otherwise leave `wait` blocking forever — reintroducing the unbounded hang the cap exists
 #     to prevent, now with the cap's own machinery holding the door open.
 # Retry on a fast, silent failure. Both review paths dispatch several of these concurrently —
-# one per axis, up to two per child under the runner (ADR-0030) — and agent CLIs keep per-user
+# one per axis, up to two per child under the runner (ADR-0014) — and agent CLIs keep per-user
 # state that simultaneous launches can collide on: opencode fails within a second with
 # "database is locked" on a shared ~/.local/share/opencode/opencode.db, whatever directory each
 # process runs in. The contention is at startup only — measured, not assumed: the same two

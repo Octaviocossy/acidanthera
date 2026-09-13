@@ -61,7 +61,7 @@ export function HomeSurface() {
 
   // The dock is absent without a vault, where `sendMessage` could only produce an error item
   // (spec decision 4), and hidden while the panel is open, because two composers addressing one
-  // transcript is the confusion ADR 0038 exists to prevent (decision 25).
+  // transcript is the confusion ADR 0124 exists to prevent (decision 25).
   const showDock = hasVault && !agentOpen;
 
   // Held in state rather than a ref for the reason `BufferEditor` holds its `EditorView` in state:
@@ -104,7 +104,7 @@ export function HomeSurface() {
         <div className="flex flex-col items-center gap-3">
           {/* The mark sits above the wordmark (spec decision 6), carrying its ember ring as it does
               wherever it renders — identity rather than signal, so this is not an accent use
-              (ADR 0036, invariant 21). */}
+              (ADR 0122, invariant 21). */}
           <AcidantheraMarkGlyph className="h-[65px] w-[56px] text-text-secondary" />
           <span className="font-sans text-hero font-medium text-text-primary tracking-display">acidanthera</span>
           <div className="flex flex-col items-center gap-1.5">

@@ -30,7 +30,7 @@ box — so all three fixes are structural, and only one moves a type step.
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
 | 1 | Tool chip — what is actually oversized | Vault-relative path **and** `max-w-[85%]` cap | Font was already the second-smallest step; `max-w-full` plus an absolute path is what stretched it to the panel edge |
-| 2 | Model chip — which knob | `text-micro` + `px-2 py-[2px]`, accent kept | Brings it to ~70px, matching Send; ADR 0007 permits the active model pill's accent and nothing here overturns that |
+| 2 | Model chip — which knob | `text-micro` + `px-2 py-[2px]`, accent kept | Brings it to ~70px, matching Send; ADR 0105 permits the active model pill's accent and nothing here overturns that |
 | 3 | Vim mode — box or no box | Drop the box; bare `font-mono text-meta uppercase tracking-label text-text-muted` | Matches `ln · col` exactly, so the editor status cluster reads as one line of metadata rather than a readout beside a chip |
 | 4 | Collapsed rail rhythm | `gap-2` (8px → 32px pitch) | The rail had *zero* gap; 8px between 24px targets is a calm rhythm without inflating hit targets or rail height |
 | 5 | Tool-call path rule | Vault-relative → `displayPath` → raw; patterns untouched; **leading** ellipsis | `toolPath` can receive a grep regex, which has no relative form; clipping the *tail* hides the filename, which was the original defect |
@@ -47,12 +47,12 @@ box — so all three fixes are structural, and only one moves a type step.
 - **`SectionLabel`, the `CHAT`/`HISTORY` tab strip, `ChatHistoryList`'s empty states, and
   `ThinkingIndicator` are untouched.** Accepted consequence: `ThinkingIndicator` renders at
   10.5px in the same transcript column as 10px tool chips.
-- **The ember accent is not removed from the model chip.** ADR 0007 lists the active model
+- **The ember accent is not removed from the model chip.** ADR 0105 lists the active model
   pill as a permitted carrier; only its size and padding change.
 - **`ToolChip` is not folded into `Chip`.** Considered and rejected in decision 10 — the
   primitive would stop being a simple pill.
 - **No change to the rail's contents, its launcher semantics, or its focus behavior.**
-  ADR 0011 stands untouched; this is spacing only.
+  ADR 0109 stands untouched; this is spacing only.
 - **The model chip gains no dropdown caret.** Noticed during the grill, deliberately not
   bundled — it is an affordance change, not a weight change.
 

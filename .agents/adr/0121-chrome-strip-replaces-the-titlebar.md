@@ -24,10 +24,10 @@ therefore insets its left edge by `max(0, lights width − sidebar width)`, whic
 the sidebar is expanded. The drag region moves onto **both** strips rather than one, because in
 the collapsed state the sidebar's own strip has nothing left to grab.
 
-This finishes what ADR 0011 began against ADR 0009: the titlebar is no longer one of two
+This finishes what ADR 0109 began against ADR 0107: the titlebar is no longer one of two
 always-visible chrome hosts, it is none of them. Every global control now lives in the sidebar,
-which is why the collapsed rail had to grow `✦` and `⚙` — ADR 0011 decisions 18 and 20 are both
+which is why the collapsed rail had to grow `✦` and `⚙` — ADR 0109 decisions 18 and 20 are both
 amended by this.
 
-ADR 0008 stands. The app still draws its own chrome and is still knowingly macOS-only; what
+ADR 0106 stands. The app still draws its own chrome and is still knowingly macOS-only; what
 changes is that the chrome is no longer a bar.

@@ -120,7 +120,7 @@ impl VaultState {
 /// Resolves `target` to a canonical path guaranteed to live inside `root`, rejecting any
 /// traversal outside it (`..` segments, symlinks, or an absolute path from elsewhere).
 ///
-/// `root` must already be canonical. Both adopt paths guarantee that (ADR 0034), so this
+/// `root` must already be canonical. Both adopt paths guarantee that (ADR 0119), so this
 /// canonicalizes only its target.
 fn guarded_path(root: &Path, target: &Path) -> VaultResult<PathBuf> {
     let file_name = target.file_name().ok_or(VaultError::InvalidPath)?;

@@ -4,10 +4,10 @@ Review the current branch's work on two axes — **Standards** (does it follow w
 documents?) and **Spec** (does it implement what was asked?) — present both side by side under
 an objective **gate line**, then loop **rework rounds** until you approve. This is the canonical
 interactive review gate: `/execute-issue` Phase 3 invokes this same procedure rather than
-duplicating it (ADR-0026).
+duplicating it (ADR-0010).
 
 The work under review does **not** have to be committed. `/execute-issue` never commits, so by
-default this command diffs the **working tree** against the fixed point — see ADR-0025.
+default this command diffs the **working tree** against the fixed point — see ADR-0009.
 
 `$ARGUMENTS` is **optional**: a fixed point (branch, SHA, `main`) and/or the literal token
 `committed-only`.
@@ -55,7 +55,7 @@ asking. This is the same boundary `design-interrogation.md` draws around `/grill
 
 ### 2 — Build the diff
 
-The comparison form follows what is under review (ADR-0025).
+The comparison form follows what is under review (ADR-0009).
 
 **Default — the working tree.** Give untracked files intent-to-add so they enter the diff, then
 diff two-dot:
@@ -108,7 +108,7 @@ and the directory is already gitignored. This is not an optimization. A reviewer
 runner already documents where it does the same thing
 (`.agents/scripts/run-parallel-issues.sh`, `process_review`): it reads *less* of the diff, reports
 more shallowly, and can burn the entire wall-clock cap without emitting anything. It is the same
-argument as the corpus pack (ADR-0029), applied to the other large input.
+argument as the corpus pack (ADR-0013), applied to the other large input.
 
 Still state the exact comparison form in the prompt, so a reviewer that needs context around a
 hunk knows which comparison produced the file.
@@ -121,7 +121,7 @@ user had staged on purpose.
 ### 3 — Run the agentic review
 
 **Dispatch one reviewer process per axis, concurrently** — never one process that forks the two
-axes internally (ADR-0030):
+axes internally (ADR-0014):
 
 ```sh
 sh .agents/scripts/run-review-agent.sh "<Standards prompt>"   # dispatch A
@@ -135,7 +135,7 @@ The script sources `.agents/parallel.config`, resolves `REVIEW_AGENT_EXEC_CMD` (
 `AGENT_EXEC_CMD` when empty — never to "skip the review"), and appends the prompt as the final
 positional argument. The reviewer runs outside this session for one reason: **you wrote this
 code**. A reviewer running on your model inherits your blind spots, so the config deliberately
-allows a different model than the implementer's (ADR-0028). An in-session sub-agent gets a fresh
+allows a different model than the implementer's (ADR-0012). An in-session sub-agent gets a fresh
 *context* but not a fresh *model*, which is the weaker half of the guarantee.
 
 #### Prepare the inputs before dispatching
@@ -148,10 +148,10 @@ sh .agents/scripts/build-corpus-pack.sh .worktrees/.corpus-pack.md          # St
 gh issue view <n> --repo <owner>/<repo> --json body -q .body > .worktrees/<branch>.issue.md
 ```
 
-- **Corpus pack** (ADR-0029) — the verbatim concatenation of every standards source. Hand it to
+- **Corpus pack** (ADR-0013) — the verbatim concatenation of every standards source. Hand it to
   the **Standards** dispatch as its complete standards sources, and **never** to the Spec one,
   whose sources are per-change. Axis isolation is blindness between findings, never exclusivity
-  over sources (ADR-0024).
+  over sources (ADR-0008).
 - **Issue body** — fetch it with `gh`, not `mcp__github__issue_read`: the MCP tool returns the
   body HTML-sanitized and deletes every `<...>` placeholder, silently corrupting paths and git
   commands in the very document the Spec axis reviews against. If the branch resolves to no
@@ -200,20 +200,19 @@ dispatching them separately.
 You do **not** need to stagger the two dispatches or retry them yourself. Agent CLIs keep per-user
 state that two simultaneous launches can collide on — opencode fails instantly with
 `database is locked` on its one global session store — and `run-review-agent.sh` already absorbs
-that: a failure that is fast, non-zero *and* silent is retried once (ADR-0030). What reaches you
+that: a failure that is fast, non-zero *and* silent is retried once (ADR-0014). What reaches you
 is the outcome after that retry.
 
 **Fallback.** On exit `3` or `4`, say so plainly and run the two axes as fresh in-session
 sub-agents instead, handed the same paths and refs. Degrading to a same-model reviewer is worse
 than an external one and must be stated; skipping the review is not an option — *work is not done
-until an agentic review has seen it* (`.agents/ubiquitous-language-scaffold.md` › invariant 50).
+until an agentic review has seen it* (`.agents/ubiquitous-language-invariants.md`).
 
 ### 4 — Present the gate
 
 - Print the two axis reports under `## Standards` and `## Spec`, verbatim, side by side.
   **Never merge or rerank them** — a change can pass one and fail the other, and combining them
-  lets the passing axis mask the failing one (`.agents/ubiquitous-language-scaffold.md` ›
-  invariant 49).
+  lets the passing axis mask the failing one (`.agents/ubiquitous-language-invariants.md`).
 - Below them print the **gate line**, exactly one line:
 
   ```
@@ -249,7 +248,7 @@ until an agentic review has seen it* (`.agents/ubiquitous-language-scaffold.md` 
 - **This command writes the file**, not the skill. The skill stays read-only, exactly as under
   the runner, where the runner captures the reviewer's stdout and the skill writes nothing.
 - **Append** one `## Round N` section per review pass, N starting at **1** for the initial
-  review (ADR-0027). Never overwrite: without commits, this file is the only place a prior
+  review (ADR-0011). Never overwrite: without commits, this file is the only place a prior
   round survives, and seeing what the code looked like before a rework is the whole point. The
   **last** section is the current one.
 - Write each section *after* the user decides, so the decision travels with the findings that
@@ -301,8 +300,8 @@ user wants the report on it, point them at `/comment-issue`; after an approved r
   content.
 - **The reviewer runs under `REVIEW_AGENT_EXEC_CMD`**, dispatched through
   `.agents/scripts/run-review-agent.sh` — a different model from the implementer's whenever the
-  config says so (ADR-0028). In-session sub-agents are the stated fallback, never the default.
-- **One dispatch per axis, concurrently** (ADR-0030) — never one process that forks the two axes
+  config says so (ADR-0012). In-session sub-agents are the stated fallback, never the default.
+- **One dispatch per axis, concurrently** (ADR-0014) — never one process that forks the two axes
   internally. Each axis gets its own wall-clock cap and its own visible outcome.
 - **Every source arrives by path, pre-materialized** — the corpus pack, the issue body, the plan,
   the design spec, and the diff. A reviewer sent to *find* a source has an unbounded search space,

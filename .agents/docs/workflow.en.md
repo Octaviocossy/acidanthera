@@ -29,8 +29,8 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
    carrying its recommended answer, then stops and waits for you. Facts are the agent's job
    (it dispatches sub-agents rather than asking you what it could look up); the decisions are
    yours. While it questions, it sharpens terminology into the spec's `## Glossary Changes`
-   (promoted to the glossary when the code lands, ADR 0042) and offers
-   an ADR for any decision that is hard to reverse *and* surprising *and* a real trade-off.
+   (promoted to the glossary when the code lands, ADR 0127) and offers an ADR for any
+   decision that is hard to reverse *and* surprising *and* a real trade-off.
    When the frontier is empty it writes a settled spec to
    `.agents/specs/[yyyy-mm-dd]-[short-kebab-description].md` and tells you what to run next:
    `/planning` for local work, `/create-issue` for a single issue, or
@@ -48,8 +48,8 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
    or send it back for changes — status moves to `approved` once you do.
 4. **Implement.** The agent works the plan's Step-by-Step Implementation in order,
    marking status `in-progress`, then `completed` once every Validation Criteria
-   item passes. Any domain code touched along the way must first be checked against
-   the glossary family (see below).
+   item passes. Any domain code touched along the way must first be checked
+   against the glossary family (`.agents/ubiquitous-language*.md`, see below).
 5. **Verify.** Run whatever your project's `## Commands` in `AGENTS.md` define for
    lint/build/test. If you're modifying the scaffold itself rather than an adopting
    project, `sh .agents/scripts/verify-scaffold.sh` is the acceptance gate — see
@@ -60,13 +60,24 @@ The scaffold's day-to-day shape, whether or not GitHub issues are involved:
 
 ## Keeping domain vocabulary honest
 
-`.agents/ubiquitous-language.md` and its four siblings are the single source of truth for canonical entity
-names, types, states, and invariants. `.agents/rules/domain-glossary.md` is the
-enforcement rule: before touching any file that lives in a canonical domain path, or
-that names/exports/imports/changes a glossary concept, read the glossary first. If
-you introduce or change canonical vocabulary, add it to the glossary, bump
-`Last updated` to the current ISO date, and add a Changelog row — never silently
-rename a concept in code without updating its definition.
+The glossary is a **family of five files** (ADR-0016, ADR-0017) and together they are
+the single source of truth for canonical entity names, types, states, and invariants:
+`.agents/ubiquitous-language.md` holds this project's own vocabulary,
+`.agents/ubiquitous-language-scaffold.md` the harness's own — that one belongs to the
+scaffold, so don't edit it — `.agents/ubiquitous-language-invariants.md` every
+invariant, `.agents/ubiquitous-language-index.md` a generated term → area pointer
+table grouped by file, and `.agents/ubiquitous-language-changelog.md` the dated
+history, which governs nothing. The index and the invariants are always in context;
+the vocabulary bodies are read on demand, which is what the index makes cheap.
+
+`.agents/rules/domain-glossary.md` is the enforcement rule: before touching any file
+that lives in a canonical domain path, or that names/exports/imports/changes a glossary
+concept, look the term up in the index and read the file it points at. If you introduce
+or change canonical vocabulary, add it to the family member that owns it — a product
+term to `.agents/ubiquitous-language.md`, a scaffold term to the `-scaffold.md` file, a
+new invariant to the `-invariants.md` file — bump `Last updated` on the file you edited,
+add a Changelog row, and regenerate the index — never silently rename a concept in code
+without updating its definition.
 
 That rule has two modes. The **passive** one above applies whenever you touch domain
 code. The **active** one runs during a `/grill` session: terms that conflict with the
@@ -212,12 +223,21 @@ GitHub API calls are made by the orchestrating agent's own session via MCP.
 
 `/install-scaffold [target-dir]` runs the manifest-driven copier
 (`.agents/scripts/install-scaffold.sh`), which reads `.agents/scaffold.manifest` —
-a flat list of files and recursive directories — and copies every entry into the
-target, skipping (never overwriting) anything that already exists there. It is
-always safe to re-run. To add something new to what every adopting project
-receives, add a line to the manifest rather than embedding a template anywhere
-else; the manifest and the copier script are the single source of truth for what
-gets installed.
+a flat list of files and recursive directories — and *syncs* every entry into the
+target. A re-run is not a no-op: it creates what is absent, updates the
+scaffold-owned files the target never edited, leaves project-owned files exactly
+as they are, and where both sides have moved it writes conflict markers — beside the
+path, as `<path>.scaffold-conflict`, when the path is a symlink or a directory
+(ADR-0020) — and exits non-zero for the `resolving-scaffold-sync` skill to resolve
+(ADR-0019). Which side
+owns a file is declared in the manifest by `# @owner scaffold` / `# @owner project`
+directives, and what the two sides last agreed on is recorded in
+`<target>/.agents/scaffold.baseline`, which the target should commit — it is also
+what lets a resolved conflict stay resolved instead of coming back on the next
+run. To add
+something new to what every adopting project receives, add a line to the manifest
+rather than embedding a template anywhere else; the manifest and the copier script
+are the single source of truth for what gets installed.
 
 ## Verifying the scaffold itself
 
@@ -243,7 +263,7 @@ adopting project, where those checks report as skipped and the rest still run.
 
 Fill in the placeholders this scaffold ships with `_not yet documented_` markers:
 `AGENTS.md` › `## Workspace`, `## Commands`, `## Testing`, `## Verification Quirks`,
-`## Code Structure`; the glossary's `Last updated` date and
+`## Code Structure`; `.agents/ubiquitous-language.md`'s `Last updated` date and
 canonical domain code path; and the canonical domain paths in
 `.agents/rules/domain-glossary.md`. Leave `AGENTS.md` › `## Skills` alone — it is
 already populated, and it describes skills you inherit rather than a blank to fill.

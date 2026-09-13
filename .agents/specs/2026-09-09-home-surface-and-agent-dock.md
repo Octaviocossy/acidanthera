@@ -37,7 +37,7 @@ directly: one verb is built (daily note), one is reframed onto behavior that alr
 | 3 | The three states | no vault / empty vault / has notes — only the greeting and row set change | `Viewer.tsx:81` already branched two of these; the third (`vaultRoot === null`) was undrawn and previously rendered a blank path line |
 | 4 | No-vault state | Its own greeting, the open-vault row alone, **no dock** | New note and daily note are impossible without a root, and `sendMessage` could only produce an error item |
 | 5 | Composition | Dock pinned to the card's bottom edge in its own gutter; mark/greeting/rows centered in the space above | The gap is what makes the dock read as a persistent way in rather than a fourth action row |
-| 6 | Brand treatment | Mark **above** the wordmark | ADR 0036 makes the ember ring correct wherever the mark renders |
+| 6 | Brand treatment | Mark **above** the wordmark | ADR 0122 makes the ember ring correct wherever the mark renders |
 | 7 | Greeting | `Your vault is empty.` — drop `Good — clean slate.` | The mockup's shorter line; the second clause was a joke that reads once |
 | 8 | Subtitle | `Everything stays local — plain markdown in <path>`, with `displayPath(vaultRoot)` inlined in mono | Never the literal `~/acidanthera`; folds today's separate path line into the sentence |
 | 9 | Row component | Its own, not `NavRow`, not `Button` | ~44px bordered rows at ~400px on canvas vs. NavRow's 33px unbordered row in a 224px panel; one component for both means props for border, height, width and ground |
@@ -75,7 +75,7 @@ directly: one verb is built (daily note), one is reframed onto behavior that alr
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 24 | What it is | A second mount of `ChatInput` — one transcript, never two. Submit calls `openAgent()` then sends | ADR 0038. `sendMessage` never checks `agentOpen`, so a dock that sent without opening would stream a real turn into an unmounted transcript |
+| 24 | What it is | A second mount of `ChatInput` — one transcript, never two. Submit calls `openAgent()` then sends | ADR 0124. `sendMessage` never checks `agentOpen`, so a dock that sent without opening would stream a real turn into an unmounted transcript |
 | 25 | While the panel is open | Hidden | Two composers addressing one transcript is the confusion to avoid |
 | 26 | Difference from the panel's input | One new `placeholder` prop; send control identical | The dock is a cold-start invitation, the panel a running conversation — the placeholder is the one thing that should differ. A second Button shape for one call site is not |
 | 27 | `ChatInput`'s `kbd="⌘⏎"` | Corrected to `⏎` in both mounts | The handler fires on bare `Enter`; the literal is false. Chat submit is deliberately **not** an app command (in-input handlers are out of `APP_COMMANDS`' scope), so it cannot be keymap-derived — the honest fix is the right literal |
@@ -87,15 +87,15 @@ directly: one verb is built (daily note), one is reframed onto behavior that alr
 | 28 | Primary nav | Add `Daily note`; **keep `New folder`** — four rows | The mockup's three-row nav reads as simplification, not decision; dropping New folder leaves folder creation on `Shift+A` and the context menu only |
 | 29 | Empty tree | Adopt `Nothing here yet.` — one muted line at the tree's `px-[14px]` gutter, styled like `FileFinder`'s `no matching notes.` | Not a cursor row, not in `flattenVisibleTree` |
 | 30 | Footer meta | Keep `N notes`; **refuse `new vault`** | Nothing tracks a vault's age, and `0 notes` already says the only true thing that token gestured at |
-| 31 | Footer control | **☀ theme toggle replaces ⚙** | Chosen against the recommendation. Persists through the same `useSettingsStore.updateSettings` the dialog's `Segmented` calls — one write path, two call sites, so ADR 0003 keeps `settings.toml` authoritative. Disabled while a `Syntax` diagnostic is present, exactly as the dialog rows are. Icon reflects the current theme (Sun in dark, Moon in light) |
-| 32 | Settings rehomed | **⚙ moves to the brand row**, beside `⌕` and the collapse toggle | ADR 0035 requires every global control to live in the sidebar; without this, decision 31 would leave Settings keyboard-only while expanded |
-| 33 | The rail | Mirrors both — `⚙` joins the icon stack, `☀` becomes the bottom pin | Applies ADR 0035's rule rather than its literal outcome: the rail carries what the expanded sidebar's hidden surfaces carry. The bottom pin stands in for the footer, which is what the footer now holds |
+| 31 | Footer control | **☀ theme toggle replaces ⚙** | Chosen against the recommendation. Persists through the same `useSettingsStore.updateSettings` the dialog's `Segmented` calls — one write path, two call sites, so ADR 0101 keeps `settings.toml` authoritative. Disabled while a `Syntax` diagnostic is present, exactly as the dialog rows are. Icon reflects the current theme (Sun in dark, Moon in light) |
+| 32 | Settings rehomed | **⚙ moves to the brand row**, beside `⌕` and the collapse toggle | ADR 0121 requires every global control to live in the sidebar; without this, decision 31 would leave Settings keyboard-only while expanded |
+| 33 | The rail | Mirrors both — `⚙` joins the icon stack, `☀` becomes the bottom pin | Applies ADR 0121's rule rather than its literal outcome: the rail carries what the expanded sidebar's hidden surfaces carry. The bottom pin stands in for the footer, which is what the footer now holds |
 
 ### Navigation history (new feature)
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 34 | Build it | Yes — back/forward controls in the sidebar's chrome strip | Chosen against the recommendation. Reverses ADR 0035's "no controls" clause — recorded in ADR 0037 rather than broken quietly |
+| 34 | Build it | Yes — back/forward controls in the sidebar's chrome strip | Chosen against the recommendation. Reverses ADR 0121's "no controls" clause — recorded in ADR 0123 rather than broken quietly |
 | 35 | What is an entry | **Buffer activations only** | What those arrows mean in every app that has them. Opening a note, switching tabs and the finder all push; sidebar cursor movement and folder expansion do not, since neither changes what you are reading |
 | 36 | Chords | **None — pointer only** | Chosen against the recommendation (`Ctrl-w o` / `Ctrl-w i`, mirroring vim's jumplist, was recommended). Consequence stated below |
 | 37 | Vault switch | Stack cleared | Every entry points into a vault that is no longer open; clearing matches what already happens to the buffers those entries addressed |
@@ -106,7 +106,7 @@ directly: one verb is built (daily note), one is reframed onto behavior that alr
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
 | 39 | `hasVaultNotes` vs `countNotes` | Consolidate on `countNotes` | Two helpers answering overlapping questions about the same tree in two files. The sidebar already counts the whole tree every render, so `Viewer.tsx:16`'s short-circuit saves nothing measurable while costing a second concept |
-| 40 | New Lucide re-exports | `Sun`, `Moon`, `CalendarDays`, `FolderOpen`, `ArrowLeft`, `ArrowRight` | All through the `Icon` primitive (ADR 0017, invariant 30) |
+| 40 | New Lucide re-exports | `Sun`, `Moon`, `CalendarDays`, `FolderOpen`, `ArrowLeft`, `ArrowRight` | All through the `Icon` primitive (ADR 0115, invariant 30) |
 
 ## Explicitly Out of Scope
 
@@ -121,7 +121,7 @@ directly: one verb is built (daily note), one is reframed onto behavior that alr
   on-disk convention beside chats; empty matches `create_note` exactly.
 - **A fourth focus region for the home rows.** Decision 23 — rewriting `reachableRegions` and the
   `Ctrl-w` cycle for a surface you leave the moment you use it.
-- **A second transcript.** ADR 0038. The dock never renders a conversation.
+- **A second transcript.** ADR 0124. The dock never renders a conversation.
 - **An icon-only send button.** Decision 26 keeps one send control across both mounts.
 - **Chords for back/forward.** Decision 36, chosen deliberately. Two `APP_COMMANDS` entries and
   two `DEFAULT_KEYMAP` lines would reverse it.
@@ -140,8 +140,8 @@ amended.
 
 ## ADRs Raised
 
-- `.agents/adr/0037-chrome-strip-admits-controls.md` — The chrome strip admits controls
-- `.agents/adr/0038-one-transcript-composers-route-to-it.md` — One transcript; every composer routes to it
+- `.agents/adr/0123-chrome-strip-admits-controls.md` — The chrome strip admits controls
+- `.agents/adr/0124-one-transcript-composers-route-to-it.md` — One transcript; every composer routes to it
 
 Considered and skipped: *a verb may live in two keymap layers* (decision 22) and *the
 zero-buffer viewer is a home surface* (decision 1). Both are recorded as invariants; neither is

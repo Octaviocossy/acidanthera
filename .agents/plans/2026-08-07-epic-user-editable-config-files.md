@@ -41,12 +41,12 @@ reachable through the fuzzy finder.
 
 The 24 settled decisions live in the spec and are authoritative. Three were promoted to ADRs:
 
-- `.agents/adr/0003-config-file-is-authoritative.md` — the file is the source of truth; the Settings
+- `.agents/adr/0101-config-file-is-authoritative.md` — the file is the source of truth; the Settings
   dialog is a typed editor of it. This is what forces `toml_edit`, the config watcher, echo
   suppression, and the disable-writes-while-broken rule.
-- `.agents/adr/0004-config-outside-vault-surfaced-inside.md` — config lives in the app config dir yet
+- `.agents/adr/0102-config-outside-vault-surfaced-inside.md` — config lives in the app config dir yet
   appears in both vault-scoped surfaces, with two documented contract exceptions.
-- `.agents/adr/0005-keymaps-are-command-keyed.md` — the inverted schema, and why chord-keyed was
+- `.agents/adr/0103-keymaps-are-command-keyed.md` — the inverted schema, and why chord-keyed was
   rejected.
 
 Two decisions **superseded** earlier answers during the design interrogation, and the spec records

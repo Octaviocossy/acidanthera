@@ -1,8 +1,8 @@
 # Red marks the destructive path, not only its final click
 
-> Status: narrows ADR 0015
+> Status: narrows ADR 0113
 
-ADR 0015 gave `--danger` a single meaning — "this click destroys" — and drew the line so tightly
+ADR 0113 gave `--danger` a single meaning — "this click destroys" — and drew the line so tightly
 that the sidebar context menu's Delete item was explicitly excluded, on the grounds that it opens
 a confirmation dialog rather than destroying anything. Reworking that menu from three items to
 seven makes the exclusion untenable: a destructive row rendered identically to the six above it is

@@ -16,16 +16,16 @@ existed to dodge it.
 
 | # | Decision | Chosen | Rationale |
 |---|----------|--------|-----------|
-| 1 | Where the chat toggle lives | Titlebar right cluster, immediately left of `⚙` | The titlebar is the global chrome host (ADR 0009 as amended by 0011), and its right edge is the same side as the 340px panel it opens. The sidebar rail lost because ADR 0011 defines it as a *vault launcher*, and chat is not vault navigation |
+| 1 | Where the chat toggle lives | Titlebar right cluster, immediately left of `⚙` | The titlebar is the global chrome host (ADR 0107 as amended by 0109), and its right edge is the same side as the 340px panel it opens. The sidebar rail lost because ADR 0109 defines it as a *vault launcher*, and chat is not vault navigation |
 | 2 | Scope of the change | Relocation plus the cleanup it forces — nothing else | `ChatPanel`'s reserved band and `--rail-fab` lose their reason to exist and must go; the rest of the chat panel is a separate pass |
 | 3 | What the control expresses | Pure toggle; no in-flight agent indicator | A turn running behind a closed chat is invisible today, but that is a chat-state problem, not a placement one |
 | 4 | Size and grouping in the cluster | Identical 24×24 ghost button to the cog; cluster `gap-1` → `gap-2`; no divider | The ember glyph does the differentiating. A rule between two 24px buttons, or a physically larger AI button, adds back the chrome weight `d47dded` had just removed |
 | 5 | Glyph form | Keep the raw `✦` character rather than drawing an SVG glyph | `✦` is a **filled** mark and the house drawn style is a 1.2px outline stroke, so drawing it would change it in kind, not just in weight. Optical match against `CogGlyph` becomes a validation step in the running app |
-| 6 | Does the ember accent travel with it | Yes — `text-accent` stays | ADR 0007 names the FAB glyph a permitted carrier, and the control does not stop being the AI affordance by changing address. One ember pixel in a monochrome bar is exactly the scanning signal that ADR protects |
+| 6 | Does the ember accent travel with it | Yes — `text-accent` stays | ADR 0105 names the FAB glyph a permitted carrier, and the control does not stop being the AI affordance by changing address. One ember pixel in a monochrome bar is exactly the scanning signal that ADR protects |
 | 7 | What replaces the 72px chat header band | `h-[var(--rail-titlebar)]` (40px); delete `--rail-fab` | Joins the 40px chrome rhythm every other rail already uses. Aligning to `EditorTabs` was rejected: it has no height token and returns `null` at zero buffers, so the alignment would be unenforceable and conditional |
-| 8 | How the open state reads | `aria-pressed` only — no visual open state | A 340px panel appearing beside the editor is the state. Same logic as `CommandBar`, whose *presence* is the `GlobalMode` indicator; ADR 0009 already accepted accessible names carrying what the pixels do not |
+| 8 | How the open state reads | `aria-pressed` only — no visual open state | A 340px panel appearing beside the editor is the state. Same logic as `CommandBar`, whose *presence* is the `GlobalMode` indicator; ADR 0107 already accepted accessible names carrying what the pixels do not |
 | 9 | Does `AiFab` survive as a component | No — delete it and inline the button in `Titlebar.tsx`, as the cog is | Six lines reading two store fields do not earn a file, `Titlebar.test.tsx` already covers the surface, and "FAB" is a lie once it neither floats nor is an action button |
-| 10 | Is the chrome-accent boundary an ADR | No — spec decision row plus glossary | Fails `adr.md`'s hard-to-reverse test: `text-accent` → `text-text-secondary` is a one-word diff. This *applies* ADR 0007 rather than deciding something new |
+| 10 | Is the chrome-accent boundary an ADR | No — spec decision row plus glossary | Fails `adr.md`'s hard-to-reverse test: `text-accent` → `text-text-secondary` is a one-word diff. This *applies* ADR 0105 rather than deciding something new |
 | 11 | The adjacent `global.toggle-chat` routing cleanup | Declined | The button calls `toggleChat` directly before and after; the keymap layer is untouched by this change |
 | 12 | Chat header layout at 40px | Tabs left, `New chat` pushed right with `ml-auto` | The left-alignment's only stated justification (`ChatPanel.tsx:91-93`) is the FAB, which is being deleted; leaving it would preserve a workaround for a problem that no longer exists |
 | 13 | Advertising `Ctrl-w c` in the empty editor state | No change | The zero-buffer state is deliberately spare — wordmark, one line, path, one chord. A second chord turns a single suggestion into a menu |
@@ -58,10 +58,10 @@ Written inline during the session (`.agents/ubiquitous-language.md`, Last update
   now carries the title, the chat toggle, and settings, and is the first chrome surface to
   render the ember accent.
 - **AI accent** — extended with the chrome boundary: *chrome is monochrome unless the control
-  **is** the AI surface*, stated against ADR 0011 decision 16, which refused the accent to the
+  **is** the AI surface*, stated against ADR 0109 decision 16, which refused the accent to the
   orbit mark on the rail.
 - **Editor status cluster** — unaffected, but note the viewer's top-right is now free; ADR
-  0009's reflex warning applies.
+  0107's reflex warning applies.
 
 ## ADRs Raised
 

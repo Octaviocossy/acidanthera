@@ -25,7 +25,7 @@ generated index `.agents/ubiquitous-language-index.md`.
 | `@uiw/react-codemirror` | ^4.25.10 | React wrapper mounting the CodeMirror 6 editor (`src/components/layout/Viewer.tsx`) |
 | `@codemirror/view` | ^6.43.6 | CM6 view layer — decorations, keymaps, `Prec` (`src/lib/editor/*`) |
 | `@codemirror/state` | ^6.7.1 | CM6 state/extension primitives (`src/lib/editor/*`) |
-| `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support for the editor — and, via `markdownLanguage.parser`, the single parser the read view's walker shares with it (ADR 0039); brings `@lezer/markdown` in transitively |
+| `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support for the editor — and, via `markdownLanguage.parser`, the single parser the read view's walker shares with it (ADR 0125); brings `@lezer/markdown` in transitively |
 | `@codemirror/language` | ^6.12.4 | `HighlightStyle` + `StreamLanguage` (`src/lib/editor/highlight.ts`, `toml-language.ts`) |
 | `@codemirror/legacy-modes` | ^6.5.3 | The TOML stream mode backing config buffers |
 | `@lezer/common` | ^1.5.2 | Lezer tree types (`SyntaxNode`, `Tree`) the read view's markdown walker names in its signatures — promoted from transitive to direct by #159 |
@@ -36,7 +36,7 @@ generated index `.agents/ubiquitous-language-index.md`.
 | `class-variance-authority` | ^0.7.1 | Variant styling for `src/components/ui/button.tsx` |
 | `clsx` + `tailwind-merge` | ^2.1.1 / ^3.6.0 | The `cn()` classname helper — **only** in `src/lib/utils.ts` |
 | `@radix-ui/react-slot` | ^1.3.0 | `asChild` slot pattern — **only** in `src/components/ui/button.tsx` |
-| `lucide-react` | ^1.30.0 | Every drawn icon, reached **only** through `src/components/ui/icon.tsx` (ADR 0017) |
+| `lucide-react` | ^1.30.0 | Every drawn icon, reached **only** through `src/components/ui/icon.tsx` (ADR 0115) |
 | `@fontsource-variable/geist` | ^5.2.9 | Self-hosted sans variable font — UI chrome **and the read view's rendered prose**; imported in `src/styles/index.css` |
 | `@fontsource-variable/jetbrains-mono` | ^5.3.0 | Self-hosted mono variable font — the editor, code blocks, and metadata (mono is for source, sans is for rendered prose) |
 | `@tauri-apps/api` | ^2 | Frontend↔Rust bridge (`invoke`, event `listen`) — used **only** in `src/services/*` and `src/lib/agent/backends/*` |

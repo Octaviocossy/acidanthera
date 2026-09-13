@@ -1,6 +1,6 @@
 # A destructive color role, disjoint from the AI accent
 
-Orbit had exactly one colored fill — the ember `--accent`, which ADR 0007 reserves for "the AI
+Orbit had exactly one colored fill — the ember `--accent`, which ADR 0105 reserves for "the AI
 acted here" — and four surfaces that deliberately converged on monochrome for failure states
 (`ToastHost`, whose docblock says *"no color"*, `ToolChip`'s error state, the chat error item, the
 settings syntax diagnostic). We are adding a second: `--danger` (`#d3453f` dark / `#c8372e` light),
@@ -20,7 +20,7 @@ so it stays monochrome — the four existing sites do not change.
   at the built result: the gate reads as informational, and the button that discards unrecoverable
   unsaved edits is styled `secondary`, the same as "Change…" in the settings dialog.
 - **Reuse the ember (`variant="primary"`).** Requested during the interrogation, and the cheapest
-  option — zero new tokens. Rejected because it costs the thing ADR 0007 was protecting: the user
+  option — zero new tokens. Rejected because it costs the thing ADR 0105 was protecting: the user
   can no longer scan the window for ember to find where the agent touched, since the loudest ember
   in the app would then be a button for the most deliberately human action there is. Reversing it
   later means re-auditing every accent-bearing surface.
@@ -32,5 +32,5 @@ so it stays monochrome — the four existing sites do not change.
 The `--danger` surface list is closed, not a starting point. The *sidebar context menu*'s Delete
 item is explicitly excluded — it opens a dialog rather than destroying anything, and coloring it
 would dilute the token from "this destroys" to "this is about deleting". Invariant 27 records this;
-the next request to paint something red is answered by that list, the same way ADR 0007 answers
+the next request to paint something red is answered by that list, the same way ADR 0105 answers
 requests for a green success state.

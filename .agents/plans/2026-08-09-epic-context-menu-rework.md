@@ -55,9 +55,9 @@ Shared-file serialization:
 
 ## ADRs
 
-- `.agents/adr/0016-wikilink-rewriting-scans-not-indexes.md`
-- `.agents/adr/0017-icons-come-from-lucide.md`
-- `.agents/adr/0018-red-marks-the-destructive-path.md` — narrows ADR 0015
+- `.agents/adr/0114-wikilink-rewriting-scans-not-indexes.md`
+- `.agents/adr/0115-icons-come-from-lucide.md`
+- `.agents/adr/0116-red-marks-the-destructive-path.md` — narrows ADR 0113
 
 ## Glossary marker
 
