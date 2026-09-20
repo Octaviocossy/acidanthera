@@ -45,6 +45,17 @@
 - Decisions that outlive the task that produced them belong in an ADR under `.agents/adr/`, not in
   the glossary or a plan file. Format and the three-part offer test are in `.agents/rules/adr.md`.
 
+## Language
+- The conversation follows the user's language. Every **artifact** — anything written for a
+  later reader: a committed file, a commit message, a GitHub issue, PR or comment, a handoff
+  summary, a review report — is written in English, whatever language the work was discussed
+  in. Invariant: S20 in `.agents/ubiquitous-language-invariants-scaffold.md`; term: Artifact in
+  `.agents/ubiquitous-language-scaffold.md` › Scaffold.
+- Paraphrase what the user said in another language; quote it verbatim only when the exact
+  wording is itself the subject. No bilingual exception. Generated files (corpus pack, glossary
+  index, sync baseline, runner `.diff`) carry whatever their sources carry and are never
+  translated.
+
 ## Testing
 - Frontend test runner: Vitest, configured in `vite.config.ts` (`test` block) — no separate `vitest.config.ts`.
 - Backend test runner: Cargo, with Rust unit tests co-located in `src-tauri/src/**` modules.
