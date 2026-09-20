@@ -71,6 +71,9 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.2.7(react@19.2.7)
+      style-mod:
+        specifier: 4.1.3
+        version: 4.1.3
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0

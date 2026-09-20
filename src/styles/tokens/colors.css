@@ -37,6 +37,15 @@
   --diff-del-bg: rgba(235, 87, 87, 0.07);
   --diff-del-fg: #8a5b56;
 
+  /* Syntax palette - lexical categories inside fenced code, in both views (invariant 59). Warm and
+     desaturated so the six sit beside ember without competing with it for meaning (ADR 0131). */
+  --syntax-keyword: #d17d4a;
+  --syntax-string: #9c8b52;
+  --syntax-literal: #b98d6f;
+  --syntax-comment: #6d6459;
+  --syntax-name: #c9a86a;
+  --syntax-builtin: #a97c5d;
+
   /* Overlay scrim - no backdrop blur. */
   --scrim: rgba(5, 6, 7, 0.55);
 
@@ -75,6 +84,13 @@
   --danger: #c8372e;
   --danger-on: #ffffff;
   --danger-soft: #fdecea;
+
+  --syntax-keyword: #b5622e;
+  --syntax-string: #7a6c2c;
+  --syntax-literal: #8c5a3e;
+  --syntax-comment: #9a9184;
+  --syntax-name: #8a6a2e;
+  --syntax-builtin: #96552e;
 
   --surface-card: #ffffff;
   --surface-input: #ffffff;
