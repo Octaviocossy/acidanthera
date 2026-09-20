@@ -1,4 +1,3 @@
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { vim } from '@replit/codemirror-vim';
 import CodeMirror from '@uiw/react-codemirror';
@@ -6,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { applyEditorKeymap } from '@/lib/editor/apply-vim-keymap';
 import { acidantheraHighlighting } from '@/lib/editor/highlight';
 import { editorKeymapExtension, trackEditorView } from '@/lib/editor/keymap-compartment';
+import { acidantheraMarkdown } from '@/lib/editor/markdown-parser';
 import { regionExit } from '@/lib/editor/region-exit';
 import { editorTheme } from '@/lib/editor/theme';
 import { tomlLanguage } from '@/lib/editor/toml-language';
@@ -53,15 +53,12 @@ export function BufferEditor({ buffer, active, hidden }: BufferEditorProps) {
       regionExit(),
       editorKeymapExtension(useKeymapStore.getState().resolved),
       trackEditorView(),
-      // `base: markdownLanguage` is the GFM-extended parser, and the *markdown walker* the read view
-      // runs on parses with that same object. Without it `markdown()` defaults to bare **commonmark**,
-      // so a table, a task list or `~~strikethrough~~` would render as GFM in read and as plain text
-      // here — the disagreement invariant 36 exists to prevent, and load-bearing for #163, which
-      // toggles task checkboxes. One shared base is what makes the invariant hold by construction
-      // rather than by two call sites happening to agree; it also makes
-      // `acidantheraHighlightStyle`'s `tags.strikethrough` rule reachable in the editor for the
-      // first time.
-      buffer.source === 'config' ? tomlLanguage : markdown({ base: markdownLanguage }),
+      // `acidantheraMarkdown()` is the one configured parser (invariant 36, ADR 0125): the *markdown
+      // walker* the read view runs on parses with the very same object, `codeLanguages` included. Two
+      // independent configurations would let a table, a task list, `~~strikethrough~~`, or a fenced
+      // block's language disagree between the views — load-bearing for #163, which toggles task
+      // checkboxes, and now for #168, which colours fenced code the same way in both.
+      buffer.source === 'config' ? tomlLanguage : acidantheraMarkdown(),
       acidantheraHighlighting,
       vimModeSync(buffer.id),
       // Wikilinks are a Markdown-note concept and meaningless in TOML.
