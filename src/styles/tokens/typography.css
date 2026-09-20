@@ -48,4 +48,20 @@
   --font-size-body: calc(13.5px * var(--content-scale));
   --font-size-h2: calc(15px * var(--content-scale));
   --font-size-h1: calc(20px * var(--content-scale));
+
+  /* index.css's `@theme` block aliases `--text-ui`/`--text-prose`/`--text-h2`/`--text-h1` (the
+     names Tailwind's `text-*` utilities actually consume, e.g. the read view's `text-h1`/`text-prose`)
+     to `var(--font-size-*)`, but only at `:root`. A custom property's computed value is substituted
+     once, at its own declaring element — so that alias resolves against `:root`'s unscoped
+     `--font-size-*` and inherits back down already frozen at the unscaled step, deaf to the
+     override above. CodeMirror's font-size never showed this: `theme.ts`/`highlight.ts` read
+     `--font-size-*` directly rather than through the Tailwind alias. The read view's markdown
+     walker goes through the alias for every heading and its own prose root, so without this,
+     content zoom silently did nothing there. Re-declaring the alias here, at the same selector as
+     the `--font-size-*` override above, re-points it at this element's own (scoped) value instead
+     of `:root`'s. */
+  --text-ui: var(--font-size-ui);
+  --text-prose: var(--font-size-body);
+  --text-h2: var(--font-size-h2);
+  --text-h1: var(--font-size-h1);
 }

@@ -237,7 +237,7 @@ export function Sidebar() {
 
   if (!sidebarExpanded) {
     return (
-      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-r border-hairline bg-panel" aria-label="Vault explorer">
+      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-hairline bg-panel" aria-label="Vault explorer">
         <SidebarChromeStrip />
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2">
