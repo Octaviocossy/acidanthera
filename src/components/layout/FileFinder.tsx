@@ -117,7 +117,7 @@ export function FileFinder() {
               onMouseMove={() => moveCursor(index - cursor, results.length)}
               onClick={() => void select(index)}
             >
-              <span className="min-w-0 flex-1 truncate font-sans text-body">{candidate.name}</span>
+              <span className="min-w-0 flex-1 truncate font-sans text-prose">{candidate.name}</span>
               <span className="shrink-0 truncate font-mono text-meta text-text-muted">{candidate.relativePath}</span>
               {candidate.source === 'config' && <Chip variant="plain">config</Chip>}
             </button>

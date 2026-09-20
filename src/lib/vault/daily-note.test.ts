@@ -11,7 +11,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 /** The exact text `VaultError::AlreadyExists` serializes to (`src-tauri/src/vault.rs`). */
 const ALREADY_EXISTS = 'an entry already exists at that path';
 
-const SETTINGS = { model: 'sonnet-5', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily' } as const;
+const SETTINGS = { model: 'sonnet-5', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily', contentZoom: 1 } as const;
 
 beforeEach(() => {
   vi.mocked(invoke).mockReset();

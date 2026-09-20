@@ -42,8 +42,12 @@
   --text-meta: var(--font-size-meta);
   --text-caption: var(--font-size-caption);
   --text-ui: var(--font-size-ui);
-  /* Tailwind's --text-* namespace is font sizes; color uses --color-text-body. */
-  --text-body: var(--font-size-body);
+  /* Named --text-prose, not --text-body: colors.css's unlayered `:root { --text-body: <color> }`
+     always wins this @layer-theme declaration for the shared property name, which silently turned
+     the `.text-body` utility's `font-size` into a color value (dropped as invalid) rather than the
+     intended `--font-size-body`. Renaming the Tailwind-facing alias — not the color token invariant
+     22's *Text ladder* already documents — is what makes `.text-prose` resolve correctly. */
+  --text-prose: var(--font-size-body);
   --text-input: var(--font-size-input);
   --text-h2: var(--font-size-h2);
   --text-h1: var(--font-size-h1);

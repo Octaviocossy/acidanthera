@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pushModalOverlay } from '@/lib/keymap/modal-overlay';
-import { getTooltip, hideTooltip, isClipped, requestTooltip, resetTooltip, subscribeTooltip } from './tooltip-overlay';
+import { getTooltip, hideTooltip, isClipped, requestTooltip, resetTooltip, subscribeTooltip, tooltipTarget } from './tooltip-overlay';
 
 const OPEN_DELAY_MS = 500;
 const WARM_WINDOW_MS = 300;
@@ -10,7 +10,7 @@ function rect(): DOMRect {
 }
 
 function request(content: string): void {
-  requestTooltip({ content, rect: rect() });
+  requestTooltip({ content, rect: rect(), placement: 'right' });
 }
 
 describe('tooltip-overlay', () => {
@@ -115,5 +115,21 @@ describe('tooltip-overlay', () => {
     Object.defineProperty(element, 'scrollWidth', { value: 200, configurable: true });
     Object.defineProperty(element, 'clientWidth', { value: 100, configurable: true });
     expect(isClipped(element)).toBe(true);
+  });
+
+  it("defaults a target to right placement, for the sidebar's vertical icon stacks", () => {
+    const handlers = tooltipTarget('notes');
+    handlers.onPointerEnter({ currentTarget: document.createElement('div') } as never);
+
+    vi.advanceTimersByTime(OPEN_DELAY_MS);
+    expect(getTooltip()?.placement).toBe('right');
+  });
+
+  it('honors an explicit below placement, for a horizontal row such as the view toggle', () => {
+    const handlers = tooltipTarget('notes', { placement: 'below' });
+    handlers.onPointerEnter({ currentTarget: document.createElement('div') } as never);
+
+    vi.advanceTimersByTime(OPEN_DELAY_MS);
+    expect(getTooltip()?.placement).toBe('below');
   });
 });

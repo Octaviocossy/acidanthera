@@ -3,6 +3,7 @@ import { NoteHeader } from '@/components/editor/NoteHeader';
 import { renderMarkdown } from '@/lib/editor/markdown-walker';
 import { findNoteModified, stripLeadingH1 } from '@/lib/editor/note-header';
 import { toggleTaskAt } from '@/lib/editor/toggle-task';
+import { registerViewerScrollContainer, unregisterViewerScrollContainer } from '@/lib/editor/viewer-scroll-container';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { type EditorBuffer, useEditorStore } from '@/stores/editor-store';
@@ -20,7 +21,7 @@ const MEASURE = 'mx-auto max-w-[680px] px-9 py-7';
  * rule sharpens to "mono is for source, sans is for rendered prose". `[&>*:first-child]:mt-0` keeps
  * the first block flush against the header's divider instead of adding its own heading margin.
  */
-const PROSE = 'font-sans text-body text-text-body leading-[var(--leading-prose)] [&>*:first-child]:mt-0';
+const PROSE = 'font-sans text-prose text-text-body leading-[var(--leading-prose)] [&>*:first-child]:mt-0';
 
 interface ReadViewProps {
   buffer: EditorBuffer;
@@ -111,10 +112,23 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
     }
   }, [container, active, viewerActive, hidden, focusRequest]);
 
+  // Exposes this container to `useViewerKeymap` while it is the one actually showing — the same
+  // "active, showing, in read view" condition the layer's own `isActive` checks, so the two never
+  // disagree about which buffer's container the reading verbs act on. `BufferPane` mounts one
+  // `ReadView` per open buffer at once (`Viewer.tsx`), so several of these effects exist
+  // simultaneously; only the active, non-hidden instance ever calls register.
+  useEffect(() => {
+    if (container === null || !active || hidden) return;
+    registerViewerScrollContainer(container);
+    return () => unregisterViewerScrollContainer(container);
+  }, [container, active, hidden]);
+
   // No `createRegionExitGesture` here, and that absence is the decision rather than an omission
   // (spec decision 18): a focused container is not an editable target, so unlike the editor's
   // `contenteditable` and the *agent dock*'s `INPUT`, the window dispatcher does see this
-  // container's keydowns and every global chord already works natively (invariant 20).
+  // container's keydowns natively. The `[viewer]` layer (`useViewerKeymap`) is what gives `j`,
+  // `k`, `gg`, `G`, `Ctrl-d`/`Ctrl-u` and `mod-s` an effect here (issue #170) — every other global
+  // chord already worked natively before that layer existed (invariant 20, fixed by #169).
   return (
     // The native `hidden` attribute as well as the utility class: both surfaces stay mounted, so
     // the one that is not showing must leave the accessible tree too rather than merely stop being
@@ -128,7 +142,12 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
     >
       <div className={MEASURE}>
         <NoteHeader filePath={buffer.filePath} content={buffer.content} modified={modified} />
-        <div className={PROSE}>{rendered}</div>
+        {/* `data-content-root`: the *content zoom* scale (`typography.css`) applies here, not to
+            the note header above — the header's breadcrumb/title/meta line is chrome-ish metadata,
+            not the note's own text. */}
+        <div data-content-root className={PROSE}>
+          {rendered}
+        </div>
       </div>
     </article>
   );

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
+import { TooltipHint } from '@/components/ui/tooltip-hint';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
@@ -29,16 +30,6 @@ import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
-
-/** A chrome control's hover reveal: its label, plus the live chord bound to its command. */
-function TooltipHint({ label, chord }: { label: string; chord?: string }) {
-  return (
-    <>
-      <span>{label}</span>
-      {chord !== undefined && <Kbd>{chord}</Kbd>}
-    </>
-  );
-}
 
 /**
  * The sidebar's *chrome strip*: the drag region the native traffic lights sit on (decisions 16,
@@ -246,7 +237,7 @@ export function Sidebar() {
 
   if (!sidebarExpanded) {
     return (
-      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-r border-hairline bg-panel" aria-label="Vault explorer">
+      <aside className="flex h-full w-[var(--rail-sidebar-collapsed)] shrink-0 flex-col items-center border-hairline bg-panel" aria-label="Vault explorer">
         <SidebarChromeStrip />
         <AcidantheraMarkGlyph className="text-text-secondary" />
         <div className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2">

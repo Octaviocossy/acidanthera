@@ -26,7 +26,7 @@ export function InlineNameInput({ initialValue = '', placeholder, ariaLabel, dep
       role="treeitem"
       tabIndex={-1}
       style={{ paddingLeft: depth * 12 + 10 }}
-      className="flex shrink-0 items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] text-text-secondary outline-none"
+      className="flex shrink-0 items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-prose leading-[var(--leading-ui)] text-text-secondary outline-none"
     >
       {icon}
       <span className="flex min-w-0 flex-1 flex-col">

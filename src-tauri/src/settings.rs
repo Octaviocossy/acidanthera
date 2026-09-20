@@ -51,6 +51,15 @@ fn default_daily_note_folder() -> String {
     "daily".into()
 }
 
+fn default_content_zoom() -> f64 {
+    1.0
+}
+
+/// Content-zoom bounds (ADR 0132 / #171): a note's prose scales between 80% and 160% of its
+/// authored size before the fixed-width measure and padding make it look cramped or absurd.
+const CONTENT_ZOOM_MIN: f64 = 0.8;
+const CONTENT_ZOOM_MAX: f64 = 1.6;
+
 /// The persisted user settings. Every field carries a `serde` default so a file written by an
 /// older version (or hand-edited with fields removed) still deserializes. `vault_path` defaults
 /// to the empty string as a sentinel — it needs an `AppHandle` to resolve, so `read_settings`
@@ -63,6 +72,7 @@ pub struct Settings {
     pub theme: String,
     pub vault_path: String,
     pub daily_note_folder: String,
+    pub content_zoom: f64,
 }
 
 impl Default for Settings {
@@ -73,6 +83,7 @@ impl Default for Settings {
             theme: default_theme(),
             vault_path: String::new(),
             daily_note_folder: default_daily_note_folder(),
+            content_zoom: default_content_zoom(),
         }
     }
 }
@@ -251,6 +262,31 @@ fn extract_daily_note_folder(
     }
 }
 
+/// Unlike every other key, an absent or out-of-range `contentZoom` degrades **silently** — no
+/// `SettingsDiagnostic::Field` — because `use-config-watcher.ts` toasts every field diagnostic,
+/// and every existing install would see one on first launch after upgrading to this key. Absent
+/// falls back to the default; a present numeric value outside `[CONTENT_ZOOM_MIN,
+/// CONTENT_ZOOM_MAX]` is clamped rather than reset, so a `settings.toml` hand-edited to `2.0`
+/// lands at the nearest usable level instead of snapping all the way back to `1.0`. A
+/// present-but-wrong-type value (not a number at all) is a different failure and diagnoses
+/// normally, like every other key.
+fn extract_content_zoom(table: &toml::Table, diagnostics: &mut Vec<SettingsDiagnostic>) -> f64 {
+    match table.get("contentZoom") {
+        Some(toml::Value::Float(value)) => value.clamp(CONTENT_ZOOM_MIN, CONTENT_ZOOM_MAX),
+        Some(toml::Value::Integer(value)) => {
+            (*value as f64).clamp(CONTENT_ZOOM_MIN, CONTENT_ZOOM_MAX)
+        }
+        Some(_) => {
+            diagnostics.push(SettingsDiagnostic::Field {
+                key: "contentZoom".to_string(),
+                message: "\"contentZoom\" must be a number; using the default".to_string(),
+            });
+            default_content_zoom()
+        }
+        None => default_content_zoom(),
+    }
+}
+
 /// Parses `contents` as TOML, degrading per key rather than rejecting the whole document on a
 /// single bad value (spec decision 10). Only a genuine syntax error — the document doesn't parse
 /// as TOML at all — rejects everything and reports the line it starts on.
@@ -283,6 +319,7 @@ fn parse_settings(contents: &str) -> (Settings, Vec<SettingsDiagnostic>) {
         theme: extract_theme(table, &mut diagnostics),
         vault_path: extract_string(table, "vaultPath", "", &mut diagnostics),
         daily_note_folder: extract_daily_note_folder(table, &mut diagnostics),
+        content_zoom: extract_content_zoom(table, &mut diagnostics),
     };
     (settings, diagnostics)
 }
@@ -375,12 +412,14 @@ fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {
         "dailyNoteFolder",
         Value::from(settings.daily_note_folder.clone()),
     );
+    set_field(&mut doc, "contentZoom", Value::from(settings.content_zoom));
     write_atomic(file, &doc.to_string())
 }
 
 /// Writes a fresh `settings.toml` documenting each key's valid values, in the fixed
-/// model/editorFont/theme/vaultPath/dailyNoteFolder order. Used only for first-run scaffolding/migration — the
-/// dialog's writes go through `write_settings_to`, which never regenerates the file.
+/// model/editorFont/theme/vaultPath/dailyNoteFolder/contentZoom order. Used only for first-run
+/// scaffolding/migration — the dialog's writes go through `write_settings_to`, which never
+/// regenerates the file.
 fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()> {
     let contents = format!(
         "# acidanthera settings\n\
@@ -398,13 +437,17 @@ fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()>
          vaultPath = {vault_path}\n\
          \n\
          # dailyNoteFolder: folder for daily notes, relative to the vault root\n\
-         dailyNoteFolder = {daily_note_folder}\n",
+         dailyNoteFolder = {daily_note_folder}\n\
+         \n\
+         # contentZoom: scales note text in the editor and read view, between 0.8 and 1.6 (1.0 = 100%)\n\
+         contentZoom = {content_zoom}\n",
         model_ids = KNOWN_MODELS.join(", "),
         model = Value::from(settings.model.clone()),
         editor_font = Value::from(settings.editor_font.clone()),
         theme = Value::from(settings.theme.clone()),
         vault_path = Value::from(settings.vault_path.clone()),
         daily_note_folder = Value::from(settings.daily_note_folder.clone()),
+        content_zoom = Value::from(settings.content_zoom),
     );
     write_atomic(file, &contents)
 }
@@ -530,9 +573,10 @@ mod tests {
                 settings.editor_font.as_str(),
                 settings.theme.as_str(),
                 settings.vault_path.as_str(),
-                settings.daily_note_folder.as_str()
+                settings.daily_note_folder.as_str(),
+                settings.content_zoom
             ),
-            ("gpt-5.4-mini", "JetBrains Mono", "dark", "", "daily")
+            ("gpt-5.4-mini", "JetBrains Mono", "dark", "", "daily", 1.0)
         );
     }
 
@@ -744,6 +788,72 @@ mod tests {
     }
 
     #[test]
+    fn read_settings_from_should_default_content_zoom_with_no_diagnostic_when_absent() {
+        let dir = temp_dir("content-zoom-absent");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "theme = \"dark\"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades content zoom silently");
+
+        assert_eq!(result.settings.content_zoom, 1.0);
+        assert!(
+            result.diagnostics.iter().all(
+                |d| !matches!(d, SettingsDiagnostic::Field { key, .. } if key == "contentZoom")
+            ),
+            "an absent contentZoom must never raise a diagnostic: {:?}",
+            result.diagnostics
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_clamp_an_out_of_range_content_zoom_with_no_diagnostic() {
+        let dir = temp_dir("content-zoom-out-of-range");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "contentZoom = 3.0\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("clamps content zoom silently");
+
+        assert_eq!(result.settings.content_zoom, 1.6);
+        assert!(
+            result.diagnostics.iter().all(
+                |d| !matches!(d, SettingsDiagnostic::Field { key, .. } if key == "contentZoom")
+            ),
+            "an out-of-range contentZoom must never raise a diagnostic: {:?}",
+            result.diagnostics
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_clamp_a_below_range_content_zoom() {
+        let dir = temp_dir("content-zoom-below-range");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "contentZoom = 0.1\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("clamps content zoom");
+
+        assert_eq!(result.settings.content_zoom, 0.8);
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_diagnose_a_non_numeric_content_zoom() {
+        let dir = temp_dir("content-zoom-wrong-type");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "contentZoom = \"big\"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades content zoom");
+
+        assert_eq!(result.settings.content_zoom, 1.0);
+        assert!(result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "contentZoom")));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
     fn read_settings_from_should_keep_a_bad_daily_note_folder_from_degrading_other_keys() {
         let dir = temp_dir("daily-note-folder-isolated");
         let file = dir.join("settings.toml");
@@ -775,6 +885,7 @@ mod tests {
             theme: "light".into(),
             vault_path: "/vault".into(),
             daily_note_folder: "journal".into(),
+            content_zoom: 1.2,
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
@@ -782,7 +893,7 @@ mod tests {
 
         assert_eq!(
             contents,
-            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\n"
+            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\ncontentZoom = 1.2\n"
         );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
@@ -846,6 +957,29 @@ mod tests {
     }
 
     #[test]
+    fn write_settings_to_should_preserve_a_trailing_comment_on_content_zoom() {
+        let dir = temp_dir("content-zoom-comment");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "contentZoom = 1.0 # comfortable default\n")
+            .expect("writes commented contents");
+        let settings = Settings {
+            content_zoom: 1.3,
+            ..Settings::default()
+        };
+
+        write_settings_to(&file, &settings).expect("writes settings");
+        let contents = fs::read_to_string(&file).expect("reads back");
+
+        assert!(
+            contents.starts_with("contentZoom = 1.3 # comfortable default\n"),
+            "trailing comment on the changed key survives: {contents:?}"
+        );
+        let result = read_settings_from(&file).expect("round-trips");
+        assert_eq!(result.settings.content_zoom, 1.3);
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
     fn write_settings_to_should_preserve_untouched_keys_and_their_comments() {
         let dir = temp_dir("preserve-untouched");
         let file = dir.join("settings.toml");
@@ -883,6 +1017,7 @@ mod tests {
             theme: "light".into(),
             vault_path: "/vault".into(),
             daily_note_folder: "daily".into(),
+            content_zoom: 1.0,
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
@@ -892,7 +1027,7 @@ mod tests {
         // appended rather than sorted into place.
         assert_eq!(
             contents,
-            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\ndailyNoteFolder = \"daily\"\n"
+            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\ndailyNoteFolder = \"daily\"\ncontentZoom = 1.0\n"
         );
         fs::remove_dir_all(&dir).expect("cleans up");
     }

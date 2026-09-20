@@ -21,3 +21,11 @@ still falls through to `global`. It activates in the read view only and not on t
 whose rows are a selection model rather than a scroll one and would need a cursor this layer does
 not provide. And the read view remains **not** a fourth focus region (invariant 20) — this adds a
 layer to an existing region, not a region.
+
+The seven verbs — six scroll motions plus `viewer.save` — are dispatched from the layer's own
+closures rather than through `executeAppCommand`'s shared switch (#170): the scroll verbs need the
+live scroll container, which only the hook holds (`viewer-scroll-container.ts`), and splitting
+`viewer.save` out to dispatch through the switch while its six siblings stay in the hook would make
+one of seven verbs inconsistent with the rest for no reason. `viewer.save` reaches the same
+`EditorSaveRequest` lifecycle `editor.save` already uses — there is still exactly one save path,
+never a second one scoped to the read view.

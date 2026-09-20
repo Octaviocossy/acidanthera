@@ -39,6 +39,7 @@
 | Config parse result | Config files and command registry |
 | Config store | Config files and command registry |
 | Config-dir watcher | Config files and command registry |
+| Content zoom | Editor session |
 | Conversation/thread | Conversations and history |
 | Conversational message | Conversations and history |
 | Daily note | Vault and note navigation |
@@ -61,6 +62,7 @@
 | Empty editor state | Editor session |
 | Entry draft | Vault and note navigation |
 | Entry rename | Vault and note navigation |
+| Fence language registry | Editor session |
 | File finder | Vault and note navigation |
 | Focus region | Application shell and commands |
 | Footer identity block | Cross-cutting presentation vocabulary |
@@ -106,6 +108,7 @@
 | Sidebar row | Vault and note navigation |
 | Sidebar store | Vault and note navigation |
 | Surface ladder | Cross-cutting presentation vocabulary |
+| Syntax palette | Cross-cutting presentation vocabulary |
 | System clipboard yank | Editor session |
 | Tabs and close lifecycle | Editor session |
 | Task toggle | Editor session |
@@ -129,6 +132,7 @@
 | Vault | Vault and note navigation |
 | Vault-change event | Vault and note navigation |
 | View toggle | Cross-cutting presentation vocabulary |
+| Viewer layer | Config files and command registry |
 | Wikilink resolution | Editor session |
 | Wikilink rewrite | Vault and note navigation |
 | Wikilink scan and rewrite | Vault and note navigation |

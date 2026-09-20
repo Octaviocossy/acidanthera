@@ -1,7 +1,10 @@
 import { commonmarkLanguage, markdownLanguage } from '@codemirror/lang-markdown';
+import { tags } from '@lezer/highlight';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { acidantheraHighlightStyle } from './highlight';
+import { acidantheraMarkdown, markdownParser } from './markdown-parser';
 import { renderInlineText, renderMarkdown } from './markdown-walker';
 
 const convertFileSrc = vi.fn((path: string) => `asset://localhost/${encodeURIComponent(path)}`);
@@ -85,6 +88,43 @@ describe('renderMarkdown', () => {
     expect(container.querySelector('pre code')?.textContent).toBe('first\nsecond');
   });
 
+  it('renders an empty fenced block as an empty block, not its own backticks (defect #168)', () => {
+    const container = renderNote('```js\n```');
+
+    const code = container.querySelector('pre code');
+    expect(code).not.toBeNull();
+    expect(code?.textContent).toBe('');
+    expect(container.textContent).not.toContain('`');
+  });
+
+  it('colours a recognized fenced language, pinning that the inner parser actually ran', () => {
+    const container = renderNote('```js\nconst a = "hi"; // note\n```');
+
+    const spans = container.querySelectorAll('pre code span');
+    expect(spans.length).toBeGreaterThan(1);
+  });
+
+  it('renders an unrecognized fenced language as plain mono, with no error', () => {
+    const container = renderNote('```notalanguage\nplain content\n```');
+
+    expect(container.querySelector('pre code')?.textContent).toBe('plain content');
+  });
+
+  it('keeps the inline-code chip class off fenced content, even though both once shared tags.monospace', () => {
+    // Derived from the same style API `highlightCode` itself calls, rather than a hardcoded
+    // generated class name — `acidantheraHighlightStyle.style([tags.monospace])` is exactly the
+    // class defect #1 put on every fenced line before `CodeText` got its own tag.
+    const chipClass = acidantheraHighlightStyle.style([tags.monospace]);
+    expect(chipClass).toBeTruthy();
+
+    const container = renderNote('```js\nconst a = 1;\n```');
+    const fencedCode = container.querySelector('pre code');
+    const withinFence = [fencedCode, ...(fencedCode ? Array.from(fencedCode.querySelectorAll('*')) : [])];
+    for (const element of withinFence) {
+      expect((element?.className ?? '').split(' ')).not.toContain(chipClass);
+    }
+  });
+
   it('renders a GFM table as header cells and body cells', () => {
     renderNote('| a | b |\n|---|---|\n| 1 | 2 |');
 
@@ -103,6 +143,12 @@ describe('renderMarkdown', () => {
     const table = '| a | b |\n|---|---|\n| 1 | 2 |';
     expect(commonmarkLanguage.parser.parse(table).topNode.firstChild?.name).not.toBe('Table');
     expect(markdownLanguage.parser.parse(table).topNode.firstChild?.name).toBe('Table');
+
+    // #168 extends the same guarantee to a fenced block's language: `BufferEditor` builds its
+    // `LanguageSupport` via `acidantheraMarkdown()`, and this walker parses with `markdownParser`
+    // directly. Same object, not merely the same configuration, is what makes the two views
+    // incapable of disagreeing about what a fence contains.
+    expect(acidantheraMarkdown().language.parser).toBe(markdownParser);
   });
 
   it('renders a task list as checkboxes reflecting each marker', () => {

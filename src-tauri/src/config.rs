@@ -54,6 +54,9 @@ const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps
 # "global.new-note"        = ["ctrl-w n"]
 # "global.daily-note"      = ["ctrl-w d"]
 # "global.toggle-view"     = ["ctrl-w e"]
+# "global.zoom-in"         = ["ctrl-w =", "ctrl-w shift-+"]
+# "global.zoom-out"        = ["ctrl-w minus"]
+# "global.zoom-reset"      = ["ctrl-w 0"]
 
 # [sidebar] — every command, with its default chords.
 # Uncomment a line and edit it to change it.
@@ -74,6 +77,17 @@ const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps
 # "chat.history.cursor-down" = ["j"]
 # "chat.history.cursor-up"   = ["k"]
 # "chat.history.open"        = ["l", "enter"]
+
+# [viewer] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "viewer.scroll-down"    = ["j"]
+# "viewer.scroll-up"      = ["k"]
+# "viewer.half-page-down" = ["ctrl-d"]
+# "viewer.half-page-up"   = ["ctrl-u"]
+# "viewer.goto-top"       = ["g g"]
+# "viewer.goto-bottom"    = ["shift-g"]
+# "viewer.save"           = ["mod-s"]
 
 # [modal] — every command, with its default chords.
 # Uncomment a line and edit it to change it.

@@ -1,11 +1,13 @@
+import { clampContentZoom } from '@/hooks/use-apply-content-zoom';
 import { openDailyNote } from '@/lib/vault/daily-note';
 import { startNoteDraft } from '@/lib/vault/start-draft';
 import { useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
+import { useSettingsStore } from '@/stores/settings-store';
 
 /** Which input layer an {@link AppCommandId} belongs to — the namespace before its dotted id
  *  (`chat.history.*` stays one layer, matching its two-segment id prefix). */
-export type AppCommandLayer = 'global' | 'sidebar' | 'chat.history' | 'editor' | 'modal';
+export type AppCommandLayer = 'global' | 'sidebar' | 'chat.history' | 'editor' | 'modal' | 'viewer';
 
 /**
  * Every action dispatched outside a focused text input, as a fully-qualified dotted id (spec
@@ -24,6 +26,9 @@ export type AppCommandId =
   | 'global.new-note'
   | 'global.daily-note'
   | 'global.toggle-view'
+  | 'global.zoom-in'
+  | 'global.zoom-out'
+  | 'global.zoom-reset'
   | 'sidebar.cursor-down'
   | 'sidebar.cursor-up'
   | 'sidebar.open'
@@ -42,7 +47,14 @@ export type AppCommandId =
   | 'editor.previous-tab'
   | 'editor.close-tab'
   | 'modal.confirm'
-  | 'modal.cancel';
+  | 'modal.cancel'
+  | 'viewer.scroll-down'
+  | 'viewer.scroll-up'
+  | 'viewer.half-page-down'
+  | 'viewer.half-page-up'
+  | 'viewer.goto-top'
+  | 'viewer.goto-bottom'
+  | 'viewer.save';
 
 /** One registry entry: an id, its human label (for a future rebinding UI), and its layer. */
 export interface AppCommandDescriptor {
@@ -74,6 +86,9 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   // `undefined` for any `editor.*` id outside `EDITOR_COMMAND_IDS`, so an `editor.`-namespaced
   // toggle would render no chord on any surface (spec decision 20).
   { id: 'global.toggle-view', label: 'Toggle read/edit view', layer: 'global' },
+  { id: 'global.zoom-in', label: 'Zoom in', layer: 'global' },
+  { id: 'global.zoom-out', label: 'Zoom out', layer: 'global' },
+  { id: 'global.zoom-reset', label: 'Reset zoom', layer: 'global' },
   { id: 'sidebar.cursor-down', label: 'Move cursor down', layer: 'sidebar' },
   { id: 'sidebar.cursor-up', label: 'Move cursor up', layer: 'sidebar' },
   { id: 'sidebar.open', label: 'Open entry', layer: 'sidebar' },
@@ -93,7 +108,24 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'editor.close-tab', label: 'Close tab', layer: 'editor' },
   { id: 'modal.confirm', label: 'Confirm', layer: 'modal' },
   { id: 'modal.cancel', label: 'Cancel', layer: 'modal' },
+  { id: 'viewer.scroll-down', label: 'Scroll down', layer: 'viewer' },
+  { id: 'viewer.scroll-up', label: 'Scroll up', layer: 'viewer' },
+  { id: 'viewer.half-page-down', label: 'Scroll half page down', layer: 'viewer' },
+  { id: 'viewer.half-page-up', label: 'Scroll half page up', layer: 'viewer' },
+  { id: 'viewer.goto-top', label: 'Go to top', layer: 'viewer' },
+  { id: 'viewer.goto-bottom', label: 'Go to bottom', layer: 'viewer' },
+  { id: 'viewer.save', label: 'Save note', layer: 'viewer' },
 ];
+
+const ZOOM_STEP = 0.1;
+
+/** Steps `settings.contentZoom` by `delta`, rounded to one decimal place before clamping — plain
+ *  float addition on repeated 0.1 steps drifts (`1.1 + 0.1 = 1.2000000000000002`). */
+function stepContentZoom(delta: number): void {
+  const current = useSettingsStore.getState().settings?.contentZoom ?? 1;
+  const rounded = Math.round((current + delta) * 10) / 10;
+  void useSettingsStore.getState().updateSettings({ contentZoom: clampContentZoom(rounded) });
+}
 
 /** Executes app actions that are shared by multiple input layers. */
 export function executeAppCommand(command: AppCommandId): void {
@@ -109,6 +141,15 @@ export function executeAppCommand(command: AppCommandId): void {
       break;
     case 'global.toggle-view':
       useEditorStore.getState().toggleActiveBufferView();
+      break;
+    case 'global.zoom-in':
+      stepContentZoom(ZOOM_STEP);
+      break;
+    case 'global.zoom-out':
+      stepContentZoom(-ZOOM_STEP);
+      break;
+    case 'global.zoom-reset':
+      void useSettingsStore.getState().updateSettings({ contentZoom: 1 });
       break;
     default:
       break;

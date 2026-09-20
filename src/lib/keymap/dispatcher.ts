@@ -200,15 +200,18 @@ export function createDispatcher(layers: DispatcherLayer[], options: DispatcherO
   };
 }
 
-// --- Shared runtime: wires `useGlobalKeymap`, `useSidebarKeymap`, and `useChatHistoryKeymap`
-// into ONE window-level dispatcher instead of three independent, racing `keydown` listeners
-// (the bug this slice fixes — see the issue's Context). Each hook registers its own layer via
+// --- Shared runtime: wires `useGlobalKeymap`, `useSidebarKeymap`, `useChatHistoryKeymap`, and
+// `useViewerKeymap` into ONE window-level dispatcher instead of independent, racing `keydown`
+// listeners (the bug this slice fixes — see the issue's Context). Each hook registers its own layer via
 // `useDispatcherLayer`; this module owns the single `createDispatcher` instance and the single
 // `window.addEventListener` call, rebuilding whenever a layer's bindings or guard change.
 
-/** `modal` precedes region layers and `global` so it can swallow unmatched keydowns; `sidebar` and
- *  `chat.history` are mutually exclusive in practice, so their relative order doesn't matter. */
-const LAYER_PRECEDENCE = ['modal', 'sidebar', 'chat.history', 'global'] as const;
+/** `modal` precedes region layers and `global` so it can swallow unmatched keydowns; `sidebar`,
+ *  `chat.history` and `viewer` are mutually exclusive in practice, so their relative order doesn't
+ *  matter. `viewer` sits above `global` so its bare letters (`j`, `k`, `G`, …) win there, but it
+ *  never swallows (invariant 25 reserves that for `modal`), so an unclaimed chord still falls
+ *  through. */
+const LAYER_PRECEDENCE = ['modal', 'sidebar', 'chat.history', 'viewer', 'global'] as const;
 
 const registeredLayers = new Map<string, DispatcherLayer>();
 let liveDispatcher: KeymapDispatcher | null = null;

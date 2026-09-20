@@ -1,19 +1,17 @@
 /**
  * The *markdown walker* (ADR 0125) — the one renderer behind the *read view*.
  *
- * It is a **walker, not a parser**: the tree comes from `markdownLanguage.parser` — the very object
- * `@codemirror/lang-markdown` hands the editor as its own base (`BufferEditor`), and the one
- * `acidantheraHighlightStyle` binds against. Not two matching configurations but **one**, so the
- * two views cannot drift apart about what a heading, a table or a task list is (invariant 36).
+ * It is a **walker, not a parser**: the tree comes from `markdownParser` — the very `Parser`
+ * `acidantheraMarkdown()` hands the editor (`BufferEditor`), and the one `acidantheraHighlightStyle`
+ * binds against. Not two matching configurations but **one**, so the two views cannot drift apart
+ * about what a heading, a table, a task list, or a fenced code block's language is (invariant 36).
  *
- * That object is the package's *extended* parser, so GFM — tables, task lists, strikethrough — is
- * a fact about the shared base rather than something configured here. Configuring GFM locally is
- * exactly the split this must not have: `markdown()` defaults its base to **commonmark**, so a
- * walker that added GFM on its own would render a table the editor beside it could not see. The
- * editor layers one thing on top, `parseCode`'s nested HTML parser, which only refines the *inside*
- * of an HTML block — a region the read view renders as escaped text either way, so no block or
- * inline construct can mean two things. Footnotes are outside GFM and render as literal text in
- * both, as do the extended parser's subscript, superscript and emoji spans.
+ * That parser is the package's *extended* grammar plus `codeLanguages` (#168), so GFM — tables,
+ * task lists, strikethrough — and fence-language nesting are both facts about the shared object
+ * rather than something configured here. Configuring either locally is exactly the split this must
+ * not have: a walker that built its own parser could render a table, or colour a fenced block, the
+ * editor beside it could not see. Footnotes are outside GFM and render as literal text in both, as
+ * do the extended parser's subscript, superscript and emoji spans.
  *
  * It emits **React elements and never an HTML string**, which is what makes it sanitizer-free
  * rather than sanitizer-deferred: raw HTML in a note is handed to React as a string child and comes
@@ -21,16 +19,25 @@
  * one — an agent writes these notes.
  */
 
-import { markdownLanguage } from '@codemirror/lang-markdown';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { highlightCode } from '@lezer/highlight';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { Fragment, type ReactNode } from 'react';
+import { StyleModule } from 'style-mod';
 import { WikilinkSpan } from '@/components/editor/WikilinkSpan';
 import { acidantheraHighlightStyle } from '@/lib/editor/highlight';
+import { markdownParser } from '@/lib/editor/markdown-parser';
 import { joinVaultPath } from '@/lib/vault/create-entry';
 import { useToastStore } from '@/stores/toast-store';
+
+// The classes `highlightCode` emits below belong to `acidantheraHighlightStyle`'s own
+// `StyleModule`. `syntaxHighlighting()` mounts it automatically wherever `acidantheraHighlighting`
+// runs as an editor extension, but the read view has no editor to mount it for — without this, its
+// colours would only resolve because a `BufferEditor` happens to be mounted beside it in the same
+// `BufferPane`. Mounted once, at module scope: `StyleModule.mount` already dedupes a module it has
+// already mounted on the same `document`, so importing this module repeatedly is not a hazard.
+if (acidantheraHighlightStyle.module !== null) StyleModule.mount(document, acidantheraHighlightStyle.module);
 
 export interface MarkdownRenderOptions {
   /** The open vault root. A relative image target resolves against it; `null` renders alt text. */
@@ -75,7 +82,7 @@ const SKIPPED_NODES = new Set([
 const STYLE = {
   h1: 'mt-8 mb-3 text-h1 font-medium text-text-primary',
   h2: 'mt-7 mb-3 text-h2 font-medium text-text-primary',
-  h3: 'mt-6 mb-2 text-body font-medium text-text-primary',
+  h3: 'mt-6 mb-2 text-prose font-medium text-text-primary',
   paragraph: 'my-3',
   blockquote: 'my-4 border-l-2 border-border pl-4 text-text-secondary italic',
   bulletList: 'my-3 list-disc pl-5',
@@ -108,7 +115,7 @@ const STYLE = {
  * possible at all.
  */
 export function renderMarkdown(source: string, options: MarkdownRenderOptions = {}): ReactNode {
-  const tree = markdownLanguage.parser.parse(source);
+  const tree = markdownParser.parse(source);
   return renderBlockChildren(tree.topNode, { source, tree, vaultRoot: options.vaultRoot ?? null, onToggleTask: options.onToggleTask ?? null });
 }
 
@@ -340,17 +347,21 @@ function renderTask(node: SyntaxNode, ctx: WalkContext): ReactNode {
  *
  * Its text goes through `@lezer/highlight`'s `highlightCode` driven by the editor's own
  * `acidantheraHighlightStyle`, so a highlighted block carries the editor's exact palette for free
- * (ADR 0125). The shared base configures no nested code parsing, so a language with no Lezer parser
- * in the tree renders as plain mono — the consequence ADR 0125 records. The classes
- * `highlightCode` emits belong to `acidantheraHighlightStyle`'s style module, which
- * `acidantheraHighlighting` mounts; a `ReadView` never exists without a `BufferEditor` beside it in
- * the same `BufferPane`, and without those rules the block still reads correctly as plain mono.
+ * (ADR 0125), including per-language colour for the fence language registry's curated set (#168) —
+ * a fence whose language is unrecognized, or an indented block, renders as plain mono. The classes
+ * `highlightCode` emits belong to `acidantheraHighlightStyle`'s own `StyleModule`, mounted at this
+ * module's top rather than depending on a `BufferEditor` mounted beside it.
  */
 function renderCodeBlock(node: SyntaxNode, ctx: WalkContext): ReactNode {
   // An indented code block carries one `CodeText` per line, each excluding the 4-space indent, so
   // the ranges are highlighted separately rather than as one span that would re-include it.
+  //
+  // An empty fence (` ```js\n``` `, no content between the fences) carries **no** `CodeText` child
+  // at all — the block's own range is just its delimiters, so falling back to `slice(node, ctx)`
+  // would print the fences themselves as the block's "content". An empty `<code>` is what an empty
+  // fence actually contains.
   const texts = childrenNamed(node, 'CodeText');
-  const content = texts.length > 0 ? texts.flatMap((text) => highlightRange(text.from, text.to, ctx)) : [slice(node, ctx)];
+  const content = texts.flatMap((text) => highlightRange(text.from, text.to, ctx));
   return (
     <pre key={node.from} className={STYLE.pre}>
       <code className={STYLE.codeBlock}>{content}</code>

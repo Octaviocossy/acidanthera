@@ -20,7 +20,7 @@ function BindingRowView({ row }: { row: BindingRow }) {
   return (
     <div className="flex items-start justify-between gap-4 py-[6px]">
       <div className="flex min-w-0 flex-col gap-[1px]">
-        <span className="font-sans text-body text-text-primary">{row.label}</span>
+        <span className="font-sans text-prose text-text-primary">{row.label}</span>
         <span className="truncate font-mono text-meta text-text-muted">{row.id}</span>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-[3px]">
@@ -41,8 +41,9 @@ function BindingRowView({ row }: { row: BindingRow }) {
 
 /**
  * The settings dialog's **Keymaps** category: a read-only rendering of `ResolvedKeymap` — every
- * command in the four dispatcher layers plus the two `editor.*` ones, with every chord each is
- * actually bound to right now.
+ * command in `global`/`sidebar`/`chat.history`/`modal` plus the two `editor.*` ones, with every
+ * chord each is actually bound to right now. `viewer` (#170) is a fifth `KeymapLayer` `SECTIONS`
+ * doesn't cover yet.
  *
  * Read-only by decision: ADR 0101 leaves `keymaps.toml` the single writer and ADR 0103 makes the
  * seeded catalog the rebinding UX, so the one control here opens that file instead of capturing a

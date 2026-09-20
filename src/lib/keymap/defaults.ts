@@ -8,7 +8,7 @@ import { APP_COMMANDS, type AppCommandId, type AppCommandLayer } from '@/lib/app
  */
 export type KeymapLayer = Exclude<AppCommandLayer, 'editor'>;
 
-export const KEYMAP_LAYERS: readonly KeymapLayer[] = ['global', 'sidebar', 'chat.history', 'modal'];
+export const KEYMAP_LAYERS: readonly KeymapLayer[] = ['global', 'sidebar', 'chat.history', 'viewer', 'modal'];
 
 /**
  * The default chord(s) for every command in a {@link KEYMAP_LAYERS} layer, written exactly as
@@ -29,6 +29,14 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'global.new-note': ['ctrl-w n'],
   'global.daily-note': ['ctrl-w d'],
   'global.toggle-view': ['ctrl-w e'],
+  // The physical Equals/Plus key reports `key: '='` unshifted and `key: '+'` with Shift held —
+  // still `shiftKey: true` either way (chord.ts's "two chord facts" doc comment). `matchesChordStep`
+  // requires an exact modifier match, so catching the common "Ctrl-w then Shift-Equals" gesture
+  // needs the second chord written against the shifted character, not against `=` with `shift`
+  // added (that combination never actually arrives from a keyboard).
+  'global.zoom-in': ['ctrl-w =', 'ctrl-w shift-+'],
+  'global.zoom-out': ['ctrl-w minus'],
+  'global.zoom-reset': ['ctrl-w 0'],
 
   // [sidebar]
   'sidebar.cursor-down': ['j'],
@@ -45,6 +53,15 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'chat.history.cursor-down': ['j'],
   'chat.history.cursor-up': ['k'],
   'chat.history.open': ['l', 'enter'],
+
+  // [viewer]
+  'viewer.scroll-down': ['j'],
+  'viewer.scroll-up': ['k'],
+  'viewer.half-page-down': ['ctrl-d'],
+  'viewer.half-page-up': ['ctrl-u'],
+  'viewer.goto-top': ['g g'],
+  'viewer.goto-bottom': ['shift-g'],
+  'viewer.save': ['mod-s'],
 
   // [modal]
   'modal.confirm': ['enter'],
