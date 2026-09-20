@@ -5,7 +5,7 @@ import { useFileFinderStore } from '@/stores/file-finder-store';
 
 /** Which input layer an {@link AppCommandId} belongs to — the namespace before its dotted id
  *  (`chat.history.*` stays one layer, matching its two-segment id prefix). */
-export type AppCommandLayer = 'global' | 'sidebar' | 'chat.history' | 'editor' | 'modal';
+export type AppCommandLayer = 'global' | 'sidebar' | 'chat.history' | 'editor' | 'modal' | 'viewer';
 
 /**
  * Every action dispatched outside a focused text input, as a fully-qualified dotted id (spec
@@ -42,7 +42,14 @@ export type AppCommandId =
   | 'editor.previous-tab'
   | 'editor.close-tab'
   | 'modal.confirm'
-  | 'modal.cancel';
+  | 'modal.cancel'
+  | 'viewer.scroll-down'
+  | 'viewer.scroll-up'
+  | 'viewer.half-page-down'
+  | 'viewer.half-page-up'
+  | 'viewer.goto-top'
+  | 'viewer.goto-bottom'
+  | 'viewer.save';
 
 /** One registry entry: an id, its human label (for a future rebinding UI), and its layer. */
 export interface AppCommandDescriptor {
@@ -93,6 +100,13 @@ export const APP_COMMANDS: readonly AppCommandDescriptor[] = [
   { id: 'editor.close-tab', label: 'Close tab', layer: 'editor' },
   { id: 'modal.confirm', label: 'Confirm', layer: 'modal' },
   { id: 'modal.cancel', label: 'Cancel', layer: 'modal' },
+  { id: 'viewer.scroll-down', label: 'Scroll down', layer: 'viewer' },
+  { id: 'viewer.scroll-up', label: 'Scroll up', layer: 'viewer' },
+  { id: 'viewer.half-page-down', label: 'Scroll half page down', layer: 'viewer' },
+  { id: 'viewer.half-page-up', label: 'Scroll half page up', layer: 'viewer' },
+  { id: 'viewer.goto-top', label: 'Go to top', layer: 'viewer' },
+  { id: 'viewer.goto-bottom', label: 'Go to bottom', layer: 'viewer' },
+  { id: 'viewer.save', label: 'Save note', layer: 'viewer' },
 ];
 
 /** Executes app actions that are shared by multiple input layers. */

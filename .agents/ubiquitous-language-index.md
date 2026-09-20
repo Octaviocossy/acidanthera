@@ -131,6 +131,7 @@
 | Vault | Vault and note navigation |
 | Vault-change event | Vault and note navigation |
 | View toggle | Cross-cutting presentation vocabulary |
+| Viewer layer | Config files and command registry |
 | Wikilink resolution | Editor session |
 | Wikilink rewrite | Vault and note navigation |
 | Wikilink scan and rewrite | Vault and note navigation |
