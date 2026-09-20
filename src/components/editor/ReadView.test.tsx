@@ -1,5 +1,9 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { useViewerKeymap } from '@/hooks/use-viewer-keymap';
+import { getViewerScrollContainer } from '@/lib/editor/viewer-scroll-container';
+import { detectPlatform } from '@/lib/keymap/chord';
 import { useAppStore } from '@/stores/app-store';
 import { type EditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
@@ -122,5 +126,59 @@ describe('ReadView', () => {
     act(() => useAppStore.getState().focusEditor());
 
     expect(container).toHaveFocus();
+  });
+
+  describe('viewer scroll container', () => {
+    it('registers its container as the viewer scroll container while active and showing', () => {
+      render(<ReadView buffer={openBuffer('/vault/note.md')} active hidden={false} />);
+
+      expect(getViewerScrollContainer()).toBe(screen.getByLabelText('note.md, read view'));
+    });
+
+    it('does not register while hidden', () => {
+      render(<ReadView buffer={openBuffer('/vault/note.md')} active hidden />);
+
+      expect(getViewerScrollContainer()).toBeNull();
+    });
+
+    it('does not register while inactive', () => {
+      render(<ReadView buffer={openBuffer('/vault/note.md')} active={false} hidden={false} />);
+
+      expect(getViewerScrollContainer()).toBeNull();
+    });
+
+    it('clears the registration on unmount', () => {
+      const { unmount } = render(<ReadView buffer={openBuffer('/vault/note.md')} active hidden={false} />);
+      expect(getViewerScrollContainer()).not.toBeNull();
+
+      unmount();
+
+      expect(getViewerScrollContainer()).toBeNull();
+    });
+  });
+
+  describe('saving from the read view', () => {
+    /** Mounts the `[viewer]` layer alongside `ReadView`, exactly as `App.tsx` mounts them both,
+     *  so `mod-s` goes through the real dispatcher rather than calling `requestSave` directly. */
+    function ViewerWithKeymap({ buffer }: { buffer: EditorBuffer }) {
+      useViewerKeymap();
+      return <ReadView buffer={buffer} active hidden={false} />;
+    }
+
+    it('ticking a task then pressing mod-s enqueues exactly one save request with the ticked content', async () => {
+      const buffer = openBuffer('/vault/tasks.md', '- [ ] buy milk\n');
+      render(<ViewerWithKeymap buffer={buffer} />);
+
+      await userEvent.click(screen.getByRole('checkbox', { name: 'buy milk' }));
+      const modKey = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true };
+      window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 's', ...modKey }));
+
+      // `mod-s` reaches the same `EditorSaveRequest` lifecycle as `editor.save` — there is still
+      // only one save path (invariant 37): one buffer, one request, carrying the content the
+      // checkbox just wrote.
+      const requests = useEditorStore.getState().saveRequests;
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.content).toBe('- [x] buy milk\n');
+    });
   });
 });

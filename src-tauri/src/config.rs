@@ -75,6 +75,17 @@ const DEFAULT_KEYMAPS_TOML: &str = r#"# acidanthera keymaps
 # "chat.history.cursor-up"   = ["k"]
 # "chat.history.open"        = ["l", "enter"]
 
+# [viewer] — every command, with its default chords.
+# Uncomment a line and edit it to change it.
+#
+# "viewer.scroll-down"    = ["j"]
+# "viewer.scroll-up"      = ["k"]
+# "viewer.half-page-down" = ["ctrl-d"]
+# "viewer.half-page-up"   = ["ctrl-u"]
+# "viewer.goto-top"       = ["g g"]
+# "viewer.goto-bottom"    = ["shift-g"]
+# "viewer.save"           = ["mod-s"]
+
 # [modal] — every command, with its default chords.
 # Uncomment a line and edit it to change it.
 #

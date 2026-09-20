@@ -19,11 +19,13 @@ A single shared window-level dispatcher (`src/lib/keymap/dispatcher.ts`) resolve
 below — there is no longer one independent `keydown` listener per region. It walks layers in a
 fixed precedence order, **first match wins, with no fallthrough**: the editor (CodeMirror, which
 wins by DOM event-propagation order before the dispatcher ever runs), then the modal layer, then
-the active region (sidebar or the agent panel's History tab), then global. The modal layer additionally
-**swallows** every keydown it does not match while it is active (invariant 25, ADR 0112) — which
-is why sidebar chords are inert underneath a dialog. A chord sequence like `Ctrl-w` `f` arms a 1.5s
-pending window for its next step; any non-continuing key, the window expiring, or the owning
-layer going inactive mid-sequence all silently disarm it with no action taken.
+the active region (sidebar, the agent panel's History tab, or the read view), then global. The
+modal layer additionally **swallows** every keydown it does not match while it is active
+(invariant 25, ADR 0112) — which is why region chords are inert underneath a dialog; the read
+view's layer does not swallow, so an unclaimed chord (e.g. `Ctrl-w b`) still reaches global from
+there. A chord sequence like `Ctrl-w` `f` arms a 1.5s pending window for its next step; any
+non-continuing key, the window expiring, or the owning layer going inactive mid-sequence all
+silently disarm it with no action taken.
 
 ## App-level navigation (works everywhere)
 
@@ -59,6 +61,23 @@ target not editable).
 | `r` | `sidebar.rename` | Rename the cursor entry | Edits the stem inline. For a note, rewrites the wikilinks that point at it, behind a confirmation shown only when at least one is found |
 | `D` (`Shift-d`) | `sidebar.duplicate` | Duplicate the cursor entry | Places the sidebar cursor on the duplicate |
 | `d` then `d` | `sidebar.delete` | Move the cursor entry to Trash | Opens a confirmation that names any dirty buffers whose edits will be discarded |
+
+## Read view (when focused)
+
+Active only while the viewer region has focus, the app is in normal mode, and the active buffer
+is showing its read view — inactive in edit view, and inactive on the home surface (no buffer
+open). This layer never swallows: a chord it does not claim, like `Ctrl-w b`, still reaches the
+global layer beneath it.
+
+| Keys | Command id | Action | Notes |
+|------|------------|--------|-------|
+| `j` | `viewer.scroll-down` | Scroll down about one line | |
+| `k` | `viewer.scroll-up` | Scroll up about one line | |
+| `Ctrl-d` | `viewer.half-page-down` | Scroll down half a page | |
+| `Ctrl-u` | `viewer.half-page-up` | Scroll up half a page | |
+| `g` then `g` | `viewer.goto-top` | Scroll to the top | |
+| `G` (`Shift-g`) | `viewer.goto-bottom` | Scroll to the bottom | |
+| `Cmd-S` (macOS) / `Ctrl-S` (Linux/Windows) | `viewer.save` | Save the current file | Same `EditorSaveRequest` lifecycle as the editor's own `Mod-S` — there is still only one save path. Ticking a task checkbox (invariant 37) then pressing this is how a read-view edit reaches disk |
 
 ## File finder
 
@@ -154,7 +173,7 @@ Opened via `:` from normal mode (see App-level navigation above). In v0, both `E
 This doc reflects the current implementation. Source of truth: `src/lib/keymap/defaults.ts` (the
 default chord for every rebindable command), `src/lib/keymap/dispatcher.ts` (precedence and
 sequence matching), `src/hooks/use-global-keymap.ts`, `src/hooks/use-sidebar-keymap.ts`,
-`src/hooks/use-chat-history-keymap.ts`, `src/hooks/use-modal-keymap.ts`,
-`src/lib/keymap/modal-overlay.ts`, `src/lib/editor/region-exit.ts`, `src/lib/editor/save.ts`,
-`src/lib/editor/yank.ts`, `src/components/layout/FileFinder.tsx`. Update this file whenever a
-keybinding is added, changed, or removed.
+`src/hooks/use-chat-history-keymap.ts`, `src/hooks/use-viewer-keymap.ts`,
+`src/hooks/use-modal-keymap.ts`, `src/lib/keymap/modal-overlay.ts`, `src/lib/editor/region-exit.ts`,
+`src/lib/editor/save.ts`, `src/lib/editor/yank.ts`, `src/components/layout/FileFinder.tsx`. Update
+this file whenever a keybinding is added, changed, or removed.
