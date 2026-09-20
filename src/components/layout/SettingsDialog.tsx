@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { SectionLabel } from '@/components/ui/section-label';
 import { Segmented } from '@/components/ui/segmented';
+import { clampContentZoom } from '@/hooks/use-apply-content-zoom';
 import { listModels } from '@/lib/agent/model-catalog';
 import { displayPath } from '@/lib/vault/display-path';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
@@ -20,7 +21,7 @@ function SettingsRow({ label, description, children }: { label: string; descript
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
-        <span className="shrink-0 font-sans text-body text-text-primary">{label}</span>
+        <span className="shrink-0 font-sans text-prose text-text-primary">{label}</span>
         {children}
       </div>
       {description && <span className="font-sans text-caption text-text-secondary">{description}</span>}
@@ -134,7 +135,7 @@ export function SettingsDialog() {
                 key={item}
                 type="button"
                 aria-current={item === category ? 'page' : undefined}
-                className={`flex w-full rounded-item px-[10px] py-2 text-left font-sans text-body ${item === category ? 'bg-elevated text-text-primary' : 'text-text-secondary'}`}
+                className={`flex w-full rounded-item px-[10px] py-2 text-left font-sans text-prose ${item === category ? 'bg-elevated text-text-primary' : 'text-text-secondary'}`}
                 onClick={() => setCategory(item)}
               >
                 {item}
@@ -180,22 +181,40 @@ export function SettingsDialog() {
             )}
 
             {settings !== null && !syntaxError && category === 'Editor' && (
-              <SettingsRow label="Editor font" description="Applied to the editor canvas.">
-                <input
-                  value={fontDraft}
-                  onChange={(event) => setFontDraft(event.currentTarget.value)}
-                  onBlur={commitFont}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      commitFont();
-                    }
-                  }}
-                  className="w-56 rounded-card border border-border bg-[var(--surface-input)] px-3 py-2 font-sans text-input text-text-primary outline-none focus:border-border-strong"
-                  spellCheck={false}
-                  aria-label="Editor font"
-                />
-              </SettingsRow>
+              <div className="flex flex-col gap-6">
+                <SettingsRow label="Editor font" description="Applied to the editor canvas.">
+                  <input
+                    value={fontDraft}
+                    onChange={(event) => setFontDraft(event.currentTarget.value)}
+                    onBlur={commitFont}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        commitFont();
+                      }
+                    }}
+                    className="w-56 rounded-card border border-border bg-[var(--surface-input)] px-3 py-2 font-sans text-input text-text-primary outline-none focus:border-border-strong"
+                    spellCheck={false}
+                    aria-label="Editor font"
+                  />
+                </SettingsRow>
+                <SettingsRow label="Content zoom" description="Scales note text in the editor and read view. The sidebar, tabs and dialogs never resize.">
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: clampContentZoom(settings.contentZoom - 0.1) })} aria-label="Zoom out">
+                      −
+                    </Button>
+                    <span className="w-10 text-center font-mono text-meta text-text-muted">{Math.round(settings.contentZoom * 100)}%</span>
+                    <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: clampContentZoom(settings.contentZoom + 0.1) })} aria-label="Zoom in">
+                      +
+                    </Button>
+                    {settings.contentZoom !== 1 && (
+                      <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: 1 })}>
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                </SettingsRow>
+              </div>
             )}
 
             {settings !== null && !syntaxError && category === 'Vault' && (

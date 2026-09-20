@@ -29,4 +29,23 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
+
+  /* Content zoom (#171): a multiplier over the type steps note content actually renders in,
+     applied only where the editor and the read view use them. Chrome, the sidebar and dialogs
+     read the unscoped :root steps above and never resize. */
+  --content-scale: 1;
+}
+
+/* Scopes the four steps content uses to --content-scale, on the two content roots: CodeMirror's
+   `.cm-content` and the read view's prose root (`ReadView.tsx`'s `data-content-root`). The literal
+   px values are copies of the :root steps above, not `var()` references to them — a custom
+   property that referenced itself (even through --content-scale) would be cyclic and therefore
+   guaranteed-invalid at computed-value time, so this can't read "the inherited value times the
+   scale" the way a normal computed style could. */
+.cm-content,
+[data-content-root] {
+  --font-size-ui: calc(12.5px * var(--content-scale));
+  --font-size-body: calc(13.5px * var(--content-scale));
+  --font-size-h2: calc(15px * var(--content-scale));
+  --font-size-h1: calc(20px * var(--content-scale));
 }

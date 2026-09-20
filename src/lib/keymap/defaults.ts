@@ -29,6 +29,14 @@ export const DEFAULT_KEYMAP: Partial<Record<AppCommandId, string[]>> = {
   'global.new-note': ['ctrl-w n'],
   'global.daily-note': ['ctrl-w d'],
   'global.toggle-view': ['ctrl-w e'],
+  // The physical Equals/Plus key reports `key: '='` unshifted and `key: '+'` with Shift held —
+  // still `shiftKey: true` either way (chord.ts's "two chord facts" doc comment). `matchesChordStep`
+  // requires an exact modifier match, so catching the common "Ctrl-w then Shift-Equals" gesture
+  // needs the second chord written against the shifted character, not against `=` with `shift`
+  // added (that combination never actually arrives from a keyboard).
+  'global.zoom-in': ['ctrl-w =', 'ctrl-w shift-+'],
+  'global.zoom-out': ['ctrl-w minus'],
+  'global.zoom-reset': ['ctrl-w 0'],
 
   // [sidebar]
   'sidebar.cursor-down': ['j'],

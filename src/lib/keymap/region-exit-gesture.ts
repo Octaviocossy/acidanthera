@@ -14,14 +14,17 @@ type RegionExitCommandId =
   | 'global.find-file'
   | 'global.new-note'
   | 'global.daily-note'
-  | 'global.toggle-view';
+  | 'global.toggle-view'
+  | 'global.zoom-in'
+  | 'global.zoom-out'
+  | 'global.zoom-reset';
 
 /**
  * The `[global]` commands this gesture completes after arming on a Ctrl-w prefix (epic #94,
- * child #99 step 4), and the effect each runs. `global.new-note`, `global.daily-note` and
- * `global.toggle-view` are here because a verb promoted to the global layer must fire from *any*
- * region — and the *view toggle*'s is the one that most obviously has to, since the surface it
- * switches away from is the editor holding focus.
+ * child #99 step 4), and the effect each runs. `global.new-note`, `global.daily-note`,
+ * `global.toggle-view` and the three `zoom-*` ids are here because a verb promoted to the global
+ * layer must fire from *any* region — content zoom especially, since it is meant to work from
+ * both the editor and the read view.
  *
  * Both this gesture and the window dispatcher (`useGlobalKeymap`) read the very same
  * `resolved.layers.global` bindings, so rebinding one of these in `keymaps.toml` changes what it
@@ -38,6 +41,9 @@ const REGION_EXIT_COMMANDS: ReadonlyArray<{ id: RegionExitCommandId; run: () => 
   { id: 'global.new-note', run: () => executeAppCommand('global.new-note') },
   { id: 'global.daily-note', run: () => executeAppCommand('global.daily-note') },
   { id: 'global.toggle-view', run: () => executeAppCommand('global.toggle-view') },
+  { id: 'global.zoom-in', run: () => executeAppCommand('global.zoom-in') },
+  { id: 'global.zoom-out', run: () => executeAppCommand('global.zoom-out') },
+  { id: 'global.zoom-reset', run: () => executeAppCommand('global.zoom-reset') },
 ];
 
 function isCtrlWPrefixStep(step: ChordKey): boolean {

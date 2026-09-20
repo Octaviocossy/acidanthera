@@ -61,7 +61,7 @@ export function FileTreeItem({
       onContextMenu={onContextMenu}
       style={{ paddingLeft: depth * 12 + 10 }}
       className={cn(
-        'group flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-body leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',
+        'group flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-prose leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',
         active ? 'bg-elevated text-text-primary' : cursor ? 'bg-hover text-text-secondary' : 'bg-transparent text-text-secondary hover:bg-hover'
       )}
     >
