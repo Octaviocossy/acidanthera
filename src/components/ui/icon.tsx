@@ -5,6 +5,7 @@ export type { LucideIcon } from 'lucide-react';
 export {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
