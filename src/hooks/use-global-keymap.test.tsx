@@ -1,7 +1,14 @@
 import { render } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { commandIdsForLayer } from '@/lib/keymap/defaults';
+import * as dispatcherModule from '@/lib/keymap/dispatcher';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useGlobalKeymap } from './use-global-keymap';
+
+vi.mock('@/lib/keymap/dispatcher', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/keymap/dispatcher')>();
+  return { ...actual, useDispatcherLayer: vi.fn(actual.useDispatcherLayer) };
+});
 
 const initialFileFinderState = useFileFinderStore.getState();
 
@@ -55,5 +62,18 @@ describe('useGlobalKeymap', () => {
     press('f');
 
     expect(useFileFinderStore.getState().open).toBe(false);
+  });
+
+  it('registers every global command declared in the catalog', () => {
+    render(<GlobalKeymap />);
+
+    const calls = vi.mocked(dispatcherModule.useDispatcherLayer).mock.calls;
+    const layer = calls[calls.length - 1]?.[0];
+    const registeredIds = (layer?.commands ?? []).map((command: dispatcherModule.DispatcherCommand) => command.id).sort();
+
+    // Derived from APP_COMMANDS rather than a literal list, so an eleventh `global.*` command
+    // added to app-command.ts without being wired here fails this test instead of silently
+    // going dead everywhere except the editor and the agent dock (issue #169).
+    expect(registeredIds).toEqual([...commandIdsForLayer('global')].sort());
   });
 });
