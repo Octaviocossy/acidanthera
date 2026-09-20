@@ -1,9 +1,10 @@
-import { Segmented } from '@/components/ui/segmented';
+import { Button } from '@/components/ui/button';
+import { BookOpen, Icon, Pencil } from '@/components/ui/icon';
+import { TooltipHint } from '@/components/ui/tooltip-hint';
+import { useCommandChord } from '@/hooks/use-chord-title';
+import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
+import { cn } from '@/lib/utils';
 import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
-
-const READ = 'Read';
-const EDIT = 'Edit';
-const OPTIONS = [READ, EDIT] as const;
 
 /**
  * The *view toggle*: the control that changes the active buffer's *buffer view*, right-aligned in
@@ -18,14 +19,45 @@ const OPTIONS = [READ, EDIT] as const;
  * the *sidebar context menu* already follows for an inapplicable item (decision 2). It is also the
  * read view's only mode indicator, which is why the *editor status cluster* carries none.
  *
- * No icons, deviating from the mockup: `Segmented` takes `readonly string[]`, and widening a
- * primitive the settings dialog shares for two glyphs is churn against its one job.
+ * Two icon-only buttons, following the sidebar's chrome pattern (`Sidebar.tsx`) rather than the
+ * shared `Segmented` — widening `Segmented`'s `readonly string[]` contract for two glyphs would be
+ * churn against the one job it still does for the settings theme row. Each carries a hover reveal
+ * with its label and the live `global.toggle-view` chord, read through the hook rather than a
+ * `getState()` snapshot so a `keymaps.toml` rebind updates it without a restart (invariant 31).
  */
 export function ViewToggle() {
   const buffer = useEditorStore(activeEditorBuffer);
   const setBufferView = useEditorStore((state) => state.setBufferView);
+  const toggleViewChord = useCommandChord('global.toggle-view');
 
   if (buffer === null || buffer.source === 'config') return null;
 
-  return <Segmented options={OPTIONS} value={buffer.view === 'read' ? READ : EDIT} onChange={(option) => setBufferView(buffer.id, option === READ ? 'read' : 'edit')} />;
+  const isRead = buffer.view === 'read';
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn('h-6 w-6 p-0', isRead && 'bg-elevated')}
+        aria-label="Read view"
+        aria-pressed={isRead}
+        {...tooltipTarget(<TooltipHint label="Read" chord={toggleViewChord} />)}
+        onClick={() => setBufferView(buffer.id, 'read')}
+      >
+        <Icon icon={BookOpen} size={15} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn('h-6 w-6 p-0', !isRead && 'bg-elevated')}
+        aria-label="Edit view"
+        aria-pressed={!isRead}
+        {...tooltipTarget(<TooltipHint label="Edit" chord={toggleViewChord} />)}
+        onClick={() => setBufferView(buffer.id, 'edit')}
+      >
+        <Icon icon={Pencil} size={15} />
+      </Button>
+    </div>
+  );
 }

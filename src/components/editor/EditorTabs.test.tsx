@@ -101,7 +101,7 @@ describe('EditorTabs', () => {
 
     // Inside the `overflow-x-auto` tablist it would scroll out of reach once enough tabs are open;
     // it lives in the strip's `shrink-0` sibling instead.
-    const toggle = screen.getByRole('button', { name: 'Read' });
+    const toggle = screen.getByRole('button', { name: 'Read view' });
     expect(screen.getByRole('tablist')).not.toContainElement(toggle);
     expect(screen.getByRole('tablist').parentElement).toContainElement(toggle);
   });
