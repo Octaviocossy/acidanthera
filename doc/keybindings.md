@@ -38,6 +38,8 @@ isn't inside an editable field (e.g. the command bar or chat input).
 | `Ctrl-w` then `c` | `global.toggle-chat` | Toggle the agent panel open/closed | The command id stays `global.toggle-chat`: the rename covers the region and panel only |
 | `Ctrl-w` then `s` | `global.toggle-settings` | Toggle the settings dialog | |
 | `Ctrl-w` then `f` | `global.find-file` | Open the file finder | |
+| `Ctrl-w` then `d` | `global.daily-note` | Open today's daily note | |
+| `Ctrl-w` then `e` | `global.toggle-view` | Toggle the active buffer between read and edit | Drawn only for a vault note, never a config buffer |
 | `:` | `global.command-mode` | Enter command mode, opens the command bar | Only from normal mode |
 | `Escape` | — | Exit command mode, closes the command bar | Only from command mode; not a rebindable command, like `:w` |
 
