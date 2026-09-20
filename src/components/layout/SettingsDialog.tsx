@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Icon, Minus, Plus } from '@/components/ui/icon';
 import { SectionLabel } from '@/components/ui/section-label';
 import { Segmented } from '@/components/ui/segmented';
 import { clampContentZoom } from '@/hooks/use-apply-content-zoom';
@@ -201,11 +202,11 @@ export function SettingsDialog() {
                 <SettingsRow label="Content zoom" description="Scales note text in the editor and read view. The sidebar, tabs and dialogs never resize.">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: clampContentZoom(settings.contentZoom - 0.1) })} aria-label="Zoom out">
-                      −
+                      <Icon icon={Minus} size={15} />
                     </Button>
                     <span className="w-10 text-center font-mono text-meta text-text-muted">{Math.round(settings.contentZoom * 100)}%</span>
                     <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: clampContentZoom(settings.contentZoom + 0.1) })} aria-label="Zoom in">
-                      +
+                      <Icon icon={Plus} size={15} />
                     </Button>
                     {settings.contentZoom !== 1 && (
                       <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: 1 })}>
