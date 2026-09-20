@@ -174,7 +174,7 @@ export function SidebarContextMenu() {
                   aria-disabled={placeholder || undefined}
                   title={placeholder ? 'Coming soon' : undefined}
                   className={cn(
-                    'flex items-center gap-[9px] rounded-item px-2.5 py-2.5 font-sans text-body',
+                    'flex items-center gap-[9px] rounded-item px-2.5 py-2.5 font-sans text-prose',
                     placeholder ? 'cursor-default text-text-secondary' : danger ? 'cursor-pointer text-danger hover:bg-hover' : 'cursor-pointer text-text-secondary hover:bg-hover'
                   )}
                   onClick={placeholder ? undefined : () => selectAction(row.action)}

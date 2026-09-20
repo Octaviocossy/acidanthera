@@ -47,6 +47,9 @@ const NAMED_KEYS: Record<string, string> = {
   end: 'End',
   pageup: 'PageUp',
   pagedown: 'PageDown',
+  // `parseChordKey` splits every step on '-', so a bare "-" step (`ctrl-w -`) parses to zero parts
+  // and throws — this named alias is the only way to bind the minus key at all (#171).
+  minus: '-',
 };
 
 const MODIFIER_TOKENS: ReadonlySet<ChordModifierToken> = new Set(['ctrl', 'alt', 'shift', 'meta', 'mod']);

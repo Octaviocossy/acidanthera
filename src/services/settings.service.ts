@@ -16,6 +16,11 @@ export interface Settings {
   /** Folder daily notes are filed in, relative to the vault root. Defaults to `daily`; a blank or
    *  non-string value degrades to that default with a `field` diagnostic. */
   dailyNoteFolder: string;
+  /** Multiplier over the editor/read-view type ladder's `ui`/`body`/`h2`/`h1` steps, applied by
+   *  `useApplyContentZoom` via `--content-scale`. Defaults to `1.0`, clamped to `[0.8, 1.6]`.
+   *  Unlike every other key, an absent or out-of-range value degrades silently — no diagnostic —
+   *  so upgrading installs never see a spurious toast on first launch. */
+  contentZoom: number;
 }
 
 /** A single settings.toml degradation. Mirrors the Rust `SettingsDiagnostic`

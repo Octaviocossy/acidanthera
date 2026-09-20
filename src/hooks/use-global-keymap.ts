@@ -65,6 +65,9 @@ export function useGlobalKeymap() {
       { id: 'global.new-note', chords: layerBindings.get('global.new-note') ?? [], run: () => executeAppCommand('global.new-note') },
       { id: 'global.daily-note', chords: layerBindings.get('global.daily-note') ?? [], run: () => executeAppCommand('global.daily-note') },
       { id: 'global.toggle-view', chords: layerBindings.get('global.toggle-view') ?? [], run: () => executeAppCommand('global.toggle-view') },
+      { id: 'global.zoom-in', chords: layerBindings.get('global.zoom-in') ?? [], run: () => executeAppCommand('global.zoom-in') },
+      { id: 'global.zoom-out', chords: layerBindings.get('global.zoom-out') ?? [], run: () => executeAppCommand('global.zoom-out') },
+      { id: 'global.zoom-reset', chords: layerBindings.get('global.zoom-reset') ?? [], run: () => executeAppCommand('global.zoom-reset') },
       {
         id: 'global.command-mode',
         chords: layerBindings.get('global.command-mode') ?? [],

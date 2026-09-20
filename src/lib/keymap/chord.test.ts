@@ -42,6 +42,18 @@ describe('parseChord', () => {
   it('throws on an unknown modifier', () => {
     expect(() => parseChord('foo-w')).toThrow();
   });
+
+  it('throws on a bare "-" step, since parseChordKey splits on the same character', () => {
+    expect(() => parseChord('-')).toThrow();
+  });
+
+  it('resolves the "minus" alias to a literal "-" base key', () => {
+    expect(parseChord('minus')).toEqual([{ modifiers: new Set(), key: '-' }]);
+    expect(parseChord('ctrl-w minus')).toEqual([
+      { modifiers: new Set(['ctrl']), key: 'w' },
+      { modifiers: new Set(), key: '-' },
+    ]);
+  });
 });
 
 describe('resolveModifiers', () => {
@@ -141,5 +153,24 @@ describe('matchesChordStep', () => {
 
     expect(matchesChordStep(step, keyEvent({ key: 'a' }))).toBe(true);
     expect(matchesChordStep(step, keyEvent({ key: 'A', shiftKey: true }))).toBe(false);
+  });
+
+  it('matches the "minus" alias against a bare "-" keydown', () => {
+    const [step] = parseChord('minus');
+
+    expect(matchesChordStep(step, keyEvent({ key: '-' }))).toBe(true);
+    expect(matchesChordStep(step, keyEvent({ key: '_', shiftKey: true }))).toBe(false);
+  });
+
+  it('does not match a bare "+" chord against a Shift-Equals keypress (arrives with shiftKey: true)', () => {
+    const [step] = parseChord('+');
+
+    expect(matchesChordStep(step, keyEvent({ key: '+', shiftKey: true }))).toBe(false);
+  });
+
+  it('matches "shift-+" against the Shift-Equals keypress a real keyboard produces', () => {
+    const [step] = parseChord('shift-+');
+
+    expect(matchesChordStep(step, keyEvent({ key: '+', shiftKey: true }))).toBe(true);
   });
 });

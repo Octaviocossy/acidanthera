@@ -39,6 +39,7 @@
 | Config parse result | Config files and command registry |
 | Config store | Config files and command registry |
 | Config-dir watcher | Config files and command registry |
+| Content zoom | Editor session |
 | Conversation/thread | Conversations and history |
 | Conversational message | Conversations and history |
 | Daily note | Vault and note navigation |

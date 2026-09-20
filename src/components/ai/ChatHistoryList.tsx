@@ -115,7 +115,7 @@ export function ChatHistoryList() {
                 open(row.id);
               }}
               className={cn(
-                'relative flex cursor-pointer select-none flex-col gap-0.5 rounded-item px-[10px] py-2 font-sans text-body',
+                'relative flex cursor-pointer select-none flex-col gap-0.5 rounded-item px-[10px] py-2 font-sans text-prose',
                 isCursor ? 'bg-elevated text-text-primary' : 'text-text-secondary hover:text-text-primary'
               )}
             >

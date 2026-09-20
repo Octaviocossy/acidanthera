@@ -1,4 +1,5 @@
 import { Layout } from '@/components/layout/Layout';
+import { useApplyContentZoom } from '@/hooks/use-apply-content-zoom';
 import { useApplyTheme } from '@/hooks/use-apply-theme';
 import { useConfigWatcher } from '@/hooks/use-config-watcher';
 import { useGlobalKeymap } from '@/hooks/use-global-keymap';
@@ -13,6 +14,7 @@ function App() {
   useSettingsBootstrap();
   useConfigWatcher();
   useApplyTheme();
+  useApplyContentZoom();
 
   return <Layout />;
 }

@@ -82,7 +82,7 @@ const SKIPPED_NODES = new Set([
 const STYLE = {
   h1: 'mt-8 mb-3 text-h1 font-medium text-text-primary',
   h2: 'mt-7 mb-3 text-h2 font-medium text-text-primary',
-  h3: 'mt-6 mb-2 text-body font-medium text-text-primary',
+  h3: 'mt-6 mb-2 text-prose font-medium text-text-primary',
   paragraph: 'my-3',
   blockquote: 'my-4 border-l-2 border-border pl-4 text-text-secondary italic',
   bulletList: 'my-3 list-disc pl-5',

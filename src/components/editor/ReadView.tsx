@@ -21,7 +21,7 @@ const MEASURE = 'mx-auto max-w-[680px] px-9 py-7';
  * rule sharpens to "mono is for source, sans is for rendered prose". `[&>*:first-child]:mt-0` keeps
  * the first block flush against the header's divider instead of adding its own heading margin.
  */
-const PROSE = 'font-sans text-body text-text-body leading-[var(--leading-prose)] [&>*:first-child]:mt-0';
+const PROSE = 'font-sans text-prose text-text-body leading-[var(--leading-prose)] [&>*:first-child]:mt-0';
 
 interface ReadViewProps {
   buffer: EditorBuffer;
@@ -142,7 +142,12 @@ export function ReadView({ buffer, active, hidden }: ReadViewProps) {
     >
       <div className={MEASURE}>
         <NoteHeader filePath={buffer.filePath} content={buffer.content} modified={modified} />
-        <div className={PROSE}>{rendered}</div>
+        {/* `data-content-root`: the *content zoom* scale (`typography.css`) applies here, not to
+            the note header above — the header's breadcrumb/title/meta line is chrome-ish metadata,
+            not the note's own text. */}
+        <div data-content-root className={PROSE}>
+          {rendered}
+        </div>
       </div>
     </article>
   );

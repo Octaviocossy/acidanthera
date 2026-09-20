@@ -8,6 +8,7 @@ import { saveBuffer } from '@/lib/editor/save-buffer';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, createEditorSaveRequest, useEditorStore } from '@/stores/editor-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useToastStore } from '@/stores/toast-store';
 
 /** The editor region, keeping every open buffer mounted to retain CodeMirror state. */
@@ -22,6 +23,7 @@ export function Viewer() {
   const activateBuffer = useEditorStore((state) => state.activateBuffer);
   const closeBuffer = useEditorStore((state) => state.closeBuffer);
   const completeSaveRequest = useEditorStore((state) => state.completeSaveRequest);
+  const contentZoom = useSettingsStore((state) => state.settings?.contentZoom ?? 1);
   const [closingBufferId, setClosingBufferId] = useState<string | null>(null);
   const closingBuffer = buffers.find((buffer) => buffer.id === closingBufferId);
 
@@ -85,11 +87,13 @@ export function Viewer() {
             {view === 'read' ? (
               <span className="font-mono text-meta text-text-muted">
                 {words} words · {minutes} min read
+                {contentZoom !== 1 && ` · ${Math.round(contentZoom * 100)}%`}
               </span>
             ) : (
               <>
                 <span className="font-mono text-meta text-text-muted">
                   ln {cursor.line} · col {cursor.col}
+                  {contentZoom !== 1 && ` · ${Math.round(contentZoom * 100)}%`}
                 </span>
                 {vimMode !== undefined && <span className="font-mono text-meta uppercase tracking-label text-text-muted">{vimMode}</span>}
               </>

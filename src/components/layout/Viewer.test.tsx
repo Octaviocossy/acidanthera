@@ -1,11 +1,16 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveKeymap } from '@/lib/keymap/resolve';
+import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
 import { useKeymapStore } from '@/stores/keymap-store';
+import { useSettingsStore } from '@/stores/settings-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { Viewer } from './Viewer';
+
+const BASE_SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'JetBrains Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily', contentZoom: 1 };
+const initialSettingsState = useSettingsStore.getState();
 
 /**
  * Asserts that nothing on screen states a read time.
@@ -27,6 +32,7 @@ describe('Viewer', () => {
     useEditorStore.setState({ buffers: [], activeBufferId: null, cursor: { line: 1, col: 1 }, saveRequests: [] });
     useSidebarStore.setState({ tree: [] });
     useKeymapStore.setState({ resolved: resolveKeymap(null) });
+    useSettingsStore.setState(initialSettingsState, true);
   });
 
   // The three states, the greeting copy and each row's dispatch belong to `HomeSurface.test.tsx`;
@@ -90,6 +96,44 @@ describe('Viewer', () => {
     // The cursor readout and the vim mode belong to the surface that has a cursor.
     expect(screen.queryByText(/^ln /)).not.toBeInTheDocument();
     expect(screen.queryByText('normal')).not.toBeInTheDocument();
+  });
+
+  it('omits the zoom readout from the status cluster while editing at the default zoom', () => {
+    useSettingsStore.setState({ settings: { ...BASE_SETTINGS, contentZoom: 1 }, diagnostics: [] });
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note', 'vault', 'edit'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it('appends the zoom level to the status cluster while editing away from the default zoom', () => {
+    useSettingsStore.setState({ settings: { ...BASE_SETTINGS, contentZoom: 1.2 }, diagnostics: [] });
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note', 'vault', 'edit'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('ln 1 · col 1 · 120%')).toBeInTheDocument();
+  });
+
+  it('omits the zoom readout from the status cluster while reading at the default zoom', () => {
+    useSettingsStore.setState({ settings: { ...BASE_SETTINGS, contentZoom: 1 }, diagnostics: [] });
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# A short note'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('4 words · 1 min read')).toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it('appends the zoom level to the status cluster while reading away from the default zoom', () => {
+    useSettingsStore.setState({ settings: { ...BASE_SETTINGS, contentZoom: 1.2 }, diagnostics: [] });
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# A short note'));
+
+    render(<Viewer />);
+
+    expect(screen.getByText('4 words · 1 min read · 120%')).toBeInTheDocument();
   });
 
   it('swaps the cluster in place when the buffer view toggles, rather than adding a mode indicator', () => {

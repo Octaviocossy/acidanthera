@@ -20,7 +20,7 @@ function BindingRowView({ row }: { row: BindingRow }) {
   return (
     <div className="flex items-start justify-between gap-4 py-[6px]">
       <div className="flex min-w-0 flex-col gap-[1px]">
-        <span className="font-sans text-body text-text-primary">{row.label}</span>
+        <span className="font-sans text-prose text-text-primary">{row.label}</span>
         <span className="truncate font-mono text-meta text-text-muted">{row.id}</span>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-[3px]">

@@ -42,6 +42,9 @@ isn't inside an editable field (e.g. the command bar or chat input).
 | `Ctrl-w` then `f` | `global.find-file` | Open the file finder | |
 | `Ctrl-w` then `d` | `global.daily-note` | Open today's daily note | |
 | `Ctrl-w` then `e` | `global.toggle-view` | Toggle the active buffer between read and edit | Drawn only for a vault note, never a config buffer |
+| `Ctrl-w` then `=` (or `Shift-=`, the "plus" key) | `global.zoom-in` | Increase note text size by 10%, up to 160% | Scales the editor and read view only — never the sidebar, tabs, or dialogs. Two chords because the physical Equals/Plus key reports `=` unshifted and `+` shifted |
+| `Ctrl-w` then `-` (minus) | `global.zoom-out` | Decrease note text size by 10%, down to 80% | |
+| `Ctrl-w` then `0` | `global.zoom-reset` | Reset note text size to 100% | |
 | `:` | `global.command-mode` | Enter command mode, opens the command bar | Only from normal mode |
 | `Escape` | — | Exit command mode, closes the command bar | Only from command mode; not a rebindable command, like `:w` |
 
