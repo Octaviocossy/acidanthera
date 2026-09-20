@@ -42,7 +42,7 @@ export function ViewToggle() {
         className={cn('h-6 w-6 p-0', isRead && 'bg-elevated')}
         aria-label="Read view"
         aria-pressed={isRead}
-        {...tooltipTarget(<TooltipHint label="Read" chord={toggleViewChord} />)}
+        {...tooltipTarget(<TooltipHint label="Read" chord={toggleViewChord} />, { placement: 'below' })}
         onClick={() => setBufferView(buffer.id, 'read')}
       >
         <Icon icon={BookOpen} size={15} />
@@ -53,7 +53,7 @@ export function ViewToggle() {
         className={cn('h-6 w-6 p-0', !isRead && 'bg-elevated')}
         aria-label="Edit view"
         aria-pressed={!isRead}
-        {...tooltipTarget(<TooltipHint label="Edit" chord={toggleViewChord} />)}
+        {...tooltipTarget(<TooltipHint label="Edit" chord={toggleViewChord} />, { placement: 'below' })}
         onClick={() => setBufferView(buffer.id, 'edit')}
       >
         <Icon icon={Pencil} size={15} />

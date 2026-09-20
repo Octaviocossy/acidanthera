@@ -1,10 +1,17 @@
 import type { PointerEvent, ReactNode } from 'react';
 import { hasModalOverlay } from '@/lib/keymap/modal-overlay';
 
+/** Which side of the target the panel opens on. `'right'` (the sidebar's vertical icon stacks)
+ *  centers vertically on the target; `'below'` (a horizontal row, such as the *view toggle*)
+ *  centers horizontally instead. Defaults to `'right'` so every existing sidebar call site is
+ *  unaffected. */
+export type TooltipPlacement = 'right' | 'below';
+
 export interface TooltipState {
   content: ReactNode;
   /** Viewport rect of the hovered target, converted to layer-local by the host. */
   rect: DOMRect;
+  placement: TooltipPlacement;
 }
 
 const OPEN_DELAY_MS = 500;
@@ -81,6 +88,8 @@ export function isClipped(element: HTMLElement): boolean {
 export interface TooltipTargetOptions {
   /** Text targets only: suppress the reveal when the label already fits. */
   whenTruncated?: boolean;
+  /** @default 'right' */
+  placement?: TooltipPlacement;
 }
 
 export interface TooltipTargetHandlers {
@@ -93,12 +102,12 @@ export interface TooltipTargetHandlers {
  * inside a `.map()` and after an early return.
  */
 export function tooltipTarget(content: ReactNode, options: TooltipTargetOptions = {}): TooltipTargetHandlers {
-  const { whenTruncated = false } = options;
+  const { whenTruncated = false, placement = 'right' } = options;
   return {
     onPointerEnter: (event) => {
       const element = event.currentTarget;
       if (whenTruncated && !isClipped(element)) return;
-      requestTooltip({ content, rect: element.getBoundingClientRect() });
+      requestTooltip({ content, rect: element.getBoundingClientRect(), placement });
     },
     onPointerLeave: hideTooltip,
   };

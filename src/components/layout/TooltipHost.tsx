@@ -27,8 +27,10 @@ export function TooltipHost() {
 
     const layerBounds = layer.getBoundingClientRect();
     const panelBounds = panel.getBoundingClientRect();
-    const left = state.rect.right - layerBounds.left + GAP;
-    const top = state.rect.top - layerBounds.top + state.rect.height / 2 - panelBounds.height / 2;
+    const [left, top] =
+      state.placement === 'below'
+        ? [state.rect.left - layerBounds.left + state.rect.width / 2 - panelBounds.width / 2, state.rect.bottom - layerBounds.top + GAP]
+        : [state.rect.right - layerBounds.left + GAP, state.rect.top - layerBounds.top + state.rect.height / 2 - panelBounds.height / 2];
     setPosition({
       left: Math.max(0, Math.min(left, Math.max(0, layerBounds.width - panelBounds.width))),
       top: Math.max(0, Math.min(top, Math.max(0, layerBounds.height - panelBounds.height))),
