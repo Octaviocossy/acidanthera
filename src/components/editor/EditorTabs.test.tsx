@@ -1,6 +1,7 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RAIL_WIDTH, SIDEBAR_DEFAULT_WIDTH, sidebarRenderedWidth } from '@/lib/layout/panel-widths';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
 import { EditorTabs } from './EditorTabs';
@@ -39,6 +40,7 @@ describe('EditorTabs', () => {
     cleanup();
     useAppStore.setState(initialAppState, true);
     useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
+    sidebarRenderedWidth.jump(SIDEBAR_DEFAULT_WIDTH);
   });
 
   it('exposes the active and dirty buffers through tab semantics', () => {
@@ -106,17 +108,30 @@ describe('EditorTabs', () => {
     expect(screen.getByRole('tablist').parentElement).toContainElement(toggle);
   });
 
-  it('insets the strip past the traffic lights only while the sidebar is collapsed', () => {
-    useAppStore.setState({ sidebarExpanded: true });
-    const { rerender } = render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+  it('leaves the strip uninset while the sidebar renders at full width', () => {
+    sidebarRenderedWidth.jump(SIDEBAR_DEFAULT_WIDTH);
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '0px' });
+  });
 
-    act(() => {
-      useAppStore.setState({ sidebarExpanded: false });
-    });
-    rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
-
+  it('insets the strip by what the rail leaves of the traffic-light clearance', () => {
+    sidebarRenderedWidth.jump(RAIL_WIDTH);
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
     // 87px of measured clearance, minus the 40px rail the lights already sit on.
     expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '47px' });
+  });
+
+  it('derives the inset from the rendered width mid-tween, not from the expanded flag', () => {
+    useAppStore.setState({ sidebarExpanded: false });
+    sidebarRenderedWidth.jump(60);
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '27px' });
+  });
+
+  it('follows the rendered width as it changes after mount', async () => {
+    sidebarRenderedWidth.jump(SIDEBAR_DEFAULT_WIDTH);
+    render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+    act(() => sidebarRenderedWidth.jump(RAIL_WIDTH));
+    await waitFor(() => expect(screen.getByRole('tablist').parentElement).toHaveStyle({ paddingLeft: '47px' }));
   });
 });

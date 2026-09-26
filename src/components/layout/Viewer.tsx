@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { BufferPane } from '@/components/editor/BufferPane';
 import { CloseBufferDialog } from '@/components/editor/CloseBufferDialog';
@@ -5,11 +6,15 @@ import { EditorTabs } from '@/components/editor/EditorTabs';
 import { HomeSurface } from '@/components/layout/HomeSurface';
 import { countWords, readingMinutes } from '@/lib/editor/note-stats';
 import { saveBuffer } from '@/lib/editor/save-buffer';
+import { enterTransition } from '@/lib/motion/tokens';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { activeEditorBuffer, createEditorSaveRequest, useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { useToastStore } from '@/stores/toast-store';
+
+/** The home surface's fade-in when the last buffer closes (spec decision 22). */
+const HOME_ARRIVAL = enterTransition('slow');
 
 /** The editor region, keeping every open buffer mounted to retain CodeMirror state. */
 export function Viewer() {
@@ -26,6 +31,14 @@ export function Viewer() {
   const contentZoom = useSettingsStore((state) => state.settings?.contentZoom ?? 1);
   const [closingBufferId, setClosingBufferId] = useState<string | null>(null);
   const closingBuffer = buffers.find((buffer) => buffer.id === closingBufferId);
+
+  // Set the first time the viewer holds a buffer and never cleared, so every later return to zero
+  // buffers is a last-buffer close — the one arrival that fades. The boot render has never held one,
+  // so its home surface paints at once. Adjusted during render (react.dev, "storing information from
+  // previous renders"), so the render that drops the last buffer already reads it.
+  const hasBuffers = buffers.length > 0;
+  const [hasHeldBuffer, setHasHeldBuffer] = useState(hasBuffers);
+  if (hasBuffers && !hasHeldBuffer) setHasHeldBuffer(true);
 
   // Only the read variant of the cluster needs these, and both walk the whole note — so they are
   // memoized on the content rather than recomputed for every cursor movement the edit variant
@@ -75,7 +88,15 @@ export function Viewer() {
         className={cn('relative mr-2 mb-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border bg-canvas', isActive ? 'border-border-strong' : 'border-hairline')}
       >
         <div className="min-h-0 flex-1">
-          {buffers.length === 0 ? <HomeSurface /> : buffers.map((buffer) => <BufferPane key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)}
+          {buffers.length === 0 ? (
+            // No AnimatePresence: opening a buffer is a keyboard hot path (decision 3), so the home
+            // surface leaves in the same commit the buffer arrives, with no exit phase.
+            <motion.div initial={hasHeldBuffer ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={HOME_ARRIVAL}>
+              <HomeSurface />
+            </motion.div>
+          ) : (
+            buffers.map((buffer) => <BufferPane key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} />)
+          )}
         </div>
         {/* The *editor status cluster*, whose content follows the buffer's *buffer view* while its
             place does not: it stays inside the card in both, because the mockup's full-width gutter

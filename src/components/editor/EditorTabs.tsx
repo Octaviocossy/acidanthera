@@ -1,7 +1,8 @@
+import { motion, useTransform } from 'motion/react';
 import { ViewToggle } from '@/components/editor/ViewToggle';
 import { FileText, Icon, X } from '@/components/ui/icon';
+import { sidebarRenderedWidth } from '@/lib/layout/panel-widths';
 import { cn } from '@/lib/utils';
-import { useAppStore } from '@/stores/app-store';
 import type { EditorBuffer } from '@/stores/editor-store';
 
 /**
@@ -23,8 +24,10 @@ import type { EditorBuffer } from '@/stores/editor-store';
  */
 const TRAFFIC_LIGHT_CLEARANCE = 87;
 
-const SIDEBAR_WIDTH_EXPANDED = 224;
-const SIDEBAR_WIDTH_COLLAPSED = 40;
+/** How far the strip's first tab must move right to clear the traffic lights, given the sidebar's rendered width. */
+function trafficLightInset(sidebarWidth: number): number {
+  return Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
+}
 
 interface EditorTabsProps {
   buffers: readonly EditorBuffer[];
@@ -51,12 +54,13 @@ interface EditorTabsProps {
  * of reach at the eighth tab — a control that acts on what the window is showing has to stay put.
  */
 export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: EditorTabsProps) {
-  const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
-  const sidebarWidth = sidebarExpanded ? SIDEBAR_WIDTH_EXPANDED : SIDEBAR_WIDTH_COLLAPSED;
-  const leftInset = Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
+  // Per frame from the sidebar's *rendered* width, never from the expanded/collapsed flag: that flag
+  // flips at a tween's first frame, so an inset keyed on it would jump 47px while the sidebar is
+  // still 224px wide. No React re-render per frame — the MotionValue writes the style.
+  const leftInset = useTransform(sidebarRenderedWidth, trafficLightInset);
 
   return (
-    <div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] shrink-0 items-center bg-panel" style={{ paddingLeft: leftInset }}>
+    <motion.div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] shrink-0 items-center bg-panel" style={{ paddingLeft: leftInset }}>
       <div role="tablist" aria-label="Open files" data-tauri-drag-region="deep" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {buffers.map((buffer) => {
           const active = buffer.id === activeBufferId;
@@ -105,6 +109,6 @@ export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: Edi
       <div className="flex shrink-0 items-center pr-2">
         <ViewToggle />
       </div>
-    </div>
+    </motion.div>
   );
 }
