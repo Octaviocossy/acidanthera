@@ -234,6 +234,12 @@ describe('HomeSurface', () => {
 
       expect(dock()).toHaveFocus();
       expect(dock()?.closest('[inert]')).toBeNull();
+      expect(dock()?.closest('[style*="opacity"]')).toHaveStyle({ opacity: '0' });
+    });
+
+    it('paints the dock at once on first render, without a fade', () => {
+      render(<HomeSurface />);
+      expect(dock()?.closest('[style*="opacity"]')).not.toHaveStyle({ opacity: '0' });
     });
 
     it('reclaims focus when the panel closes before the dock has finished leaving', () => {

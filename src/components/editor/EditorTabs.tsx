@@ -47,7 +47,9 @@ const CHIP_PRESENCE = { full: collapsePresence('width', false), reduced: collaps
  * editor appears in frame 0 and only the chip enters. It widens in, and on close collapses its
  * width in flow, which is what slides its neighbours into the gap. The spacing is the wrapper's
  * `pr-1` rather than the tablist's `gap`, so a collapsing chip takes its gap with it. It is inert
- * from its first exit frame (invariant 60).
+ * from its first exit frame (invariant 60). Its content is frozen on one line at its natural width,
+ * so the widening wrapper clips it rather than re-wrapping the title every frame (motion-polish spec
+ * decision 2).
  */
 function EditorTabChip({
   buffer,
@@ -75,7 +77,12 @@ function EditorTabChip({
       animate={presence.animate}
       exit={presence.exit}
     >
-      <div className={cn('group flex shrink-0 items-center rounded-tab border border-transparent', active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted')}>
+      <div
+        className={cn(
+          'group flex w-max shrink-0 items-center whitespace-nowrap rounded-tab border border-transparent',
+          active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted'
+        )}
+      >
         <button
           type="button"
           role="tab"

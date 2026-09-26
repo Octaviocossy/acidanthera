@@ -51,7 +51,16 @@ describe('AgentPanel', () => {
     render(<AgentPanel />);
     const aside = card() as HTMLElement;
     expect(aside).toHaveStyle({ width: '340px' });
+    // Card 340 + the 8px gutter; the parent `AnimatePresence` skips the enter on first paint.
+    expect(aside.parentElement).toHaveStyle({ width: '348px' });
     expect(aside.closest('[inert]')).toBeNull();
+  });
+
+  it('slides its frame open from a zero width when the panel opens', async () => {
+    render(<AgentPanel />);
+    act(() => useAppStore.getState().openAgent());
+    expect(card()?.parentElement).toHaveStyle({ width: '0px' });
+    await waitFor(() => expect(card()?.parentElement).toHaveStyle({ width: '348px' }));
   });
 
   it('takes typing in its composer from the first frame of its entrance', async () => {

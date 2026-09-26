@@ -5,9 +5,8 @@ import { ChatInput } from '@/components/ai/ChatInput';
 import { ChatTranscript } from '@/components/ai/ChatTranscript';
 import { Button } from '@/components/ui/button';
 import { useChatHistoryKeymap } from '@/hooks/use-chat-history-keymap';
-import { panelTransition } from '@/lib/layout/panel-motion';
 import { usePanelWidths } from '@/lib/layout/panel-widths';
-import { crossfadePresence } from '@/lib/motion/presence-props';
+import { crossfadePresence, panelFramePresence } from '@/lib/motion/presence-props';
 import { useExitPhase } from '@/lib/motion/use-exit-phase';
 import { useReleaseFocusOnExit } from '@/lib/motion/use-release-focus-on-exit';
 import { cn } from '@/lib/utils';
@@ -46,17 +45,16 @@ const AGENT_CARD_GUTTER = 8;
  */
 function AgentPanelFrame({ cardWidth, instant, children }: { cardWidth: number; instant: boolean; children: ReactNode }) {
   const { exiting, exitPhaseProps } = useExitPhase();
-  const frameWidth = cardWidth + AGENT_CARD_GUTTER;
+  const presence = panelFramePresence(cardWidth + AGENT_CARD_GUTTER, instant);
   return (
     <motion.div
       className="flex h-full shrink-0 overflow-hidden"
       style={{ ...exitPhaseProps.style }}
       inert={exitPhaseProps.inert}
       aria-hidden={exiting}
-      initial={false}
-      animate={{ width: frameWidth }}
-      exit={{ width: 0 }}
-      transition={panelTransition(exiting ? 'close' : 'open', instant)}
+      initial={presence.initial}
+      animate={presence.animate}
+      exit={presence.exit}
     >
       {children}
     </motion.div>
@@ -121,7 +119,7 @@ export function AgentPanel() {
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {agentOpen && (
         <AgentPanelFrame cardWidth={panelWidths.agent} instant={instantWidth}>
           {/* The agent *inset card*: the same `--bg-canvas` card on the same `--bg-panel` ground as the

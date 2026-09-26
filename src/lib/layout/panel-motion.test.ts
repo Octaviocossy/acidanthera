@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { enterTransition, exitTransition } from '@/lib/motion/tokens';
-import { panelTransition } from './panel-motion';
+import { PANEL_CLOSE, PANEL_OPEN, PANEL_SECONDS, panelTransition } from './panel-motion';
 
 describe('panelTransition', () => {
   it('opens on the enter transition of the slow step', () => {
@@ -14,5 +14,12 @@ describe('panelTransition', () => {
   it('is instant for either gesture when asked', () => {
     expect(panelTransition('open', true)).toEqual({ duration: 0 });
     expect(panelTransition('close', true)).toEqual({ duration: 0 });
+  });
+});
+
+describe('PANEL_SECONDS', () => {
+  it("matches the length of each gesture's transition", () => {
+    expect(PANEL_SECONDS.open).toBe((PANEL_OPEN as { duration: number }).duration);
+    expect(PANEL_SECONDS.close).toBe((PANEL_CLOSE as { duration: number }).duration);
   });
 });
