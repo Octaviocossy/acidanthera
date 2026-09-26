@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import type { Settings } from '@/services/settings.service';
@@ -23,6 +23,11 @@ const initialSettingsState = useSettingsStore.getState();
 function expectNoVisibleReadTime() {
   for (const node of screen.queryAllByText(/min read/)) expect(node).not.toBeVisible();
 }
+
+// The arrival wrapper is the first child of the card's content slot. A structural probe, because an
+// animation has no role or name to query by.
+const homeArrival = () => (screen.getByRole('main', { name: 'Editor' }).firstElementChild?.firstElementChild as HTMLElement) ?? null;
+const homeRow = () => screen.queryByRole('button', { name: /Open an existing vault/ });
 
 describe('Viewer', () => {
   afterEach(cleanup);
@@ -150,5 +155,30 @@ describe('Viewer', () => {
 
     expect(screen.getByText('ln 1 · col 1')).toBeInTheDocument();
     expectNoVisibleReadTime();
+  });
+
+  it('paints the home surface at once on the first render', () => {
+    render(<Viewer />);
+
+    expect(homeArrival()).not.toHaveStyle({ opacity: '0' });
+  });
+
+  it('fades the home surface in when the last buffer closes', async () => {
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
+    render(<Viewer />);
+
+    act(() => useEditorStore.getState().closeBuffer(useEditorStore.getState().buffers[0].id));
+
+    expect(homeArrival()).toHaveStyle({ opacity: '0' });
+    await waitFor(() => expect(homeArrival()).toHaveStyle({ opacity: '1' }));
+  });
+
+  it('drops the home surface in the same commit a buffer opens', () => {
+    render(<Viewer />);
+    expect(homeRow()).toBeInTheDocument();
+
+    act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
+
+    expect(homeRow()).not.toBeInTheDocument();
   });
 });
