@@ -30,7 +30,10 @@ interface SettingsState {
   /** Reads settings from disk once; later calls return the in-memory copy. */
   loadSettings: () => Promise<Settings>;
   /** Merges `patch` into the current settings and writes the result through to disk. Throws
-   *  without writing if the file currently has a syntax error. */
+   *  without writing if the file currently has a syntax error. The patch reaches `settings`
+   *  synchronously, before the write's first `await`, so a caller that clears transient state
+   *  right after calling it (the *resize handle* on release) never renders a frame between the
+   *  two. */
   updateSettings: (patch: Partial<Settings>) => Promise<void>;
   /** Applies a settings reload triggered by the config-dir watcher (`useConfigWatcher`, #98). */
   applyReloadedSettings: (result: SettingsReadResult) => ReloadOutcome;

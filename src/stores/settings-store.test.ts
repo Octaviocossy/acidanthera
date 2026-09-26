@@ -50,3 +50,14 @@ describe('applyReloadedSettings', () => {
     expect(useSettingsStore.getState().diagnostics).toEqual(reloaded.diagnostics);
   });
 });
+
+describe('updateSettings', () => {
+  it('applies the patch before the write resolves', () => {
+    vi.mocked(invoke).mockReturnValueOnce(new Promise(() => {})); // write_settings never settles
+    useSettingsStore.setState({ settings: BASE_SETTINGS, diagnostics: [] });
+
+    void useSettingsStore.getState().updateSettings({ sidebarWidth: 300 });
+
+    expect(useSettingsStore.getState().settings?.sidebarWidth).toBe(300);
+  });
+});

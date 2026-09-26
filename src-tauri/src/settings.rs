@@ -1,6 +1,7 @@
 //! Persisted user settings (epic #24, child #25; migrated to TOML for #96/epic #94): a
 //! `settings.toml` file in the platform app-config dir holding the agent model, editor font,
-//! theme, vault path, and daily-note folder. Read once at boot by the frontend settings store; the
+//! theme, vault path, daily-note folder, content zoom and both panel widths. Read once at boot by
+//! the frontend settings store; the
 //! dialog edits it
 //! in place through `toml_edit`, preserving the user's comments and key order (ADR 0101). A
 //! legacy `settings.json` (the pre-#96 format) is migrated once at boot, before `config::init`'s
@@ -60,6 +61,16 @@ fn default_content_zoom() -> f64 {
 const CONTENT_ZOOM_MIN: f64 = 0.8;
 const CONTENT_ZOOM_MAX: f64 = 1.6;
 
+/// *Panel width* defaults and bounds, in CSS pixels (spec 2026-09-26 smooth-motion, decisions 7-8).
+/// Mirrored by hand in `src/lib/layout/panel-widths.ts`, as `CONTENT_ZOOM_MIN`/`MAX` are in
+/// `use-apply-content-zoom.ts`.
+const DEFAULT_SIDEBAR_WIDTH: u32 = 224;
+const DEFAULT_AGENT_WIDTH: u32 = 340;
+const SIDEBAR_WIDTH_MIN: u32 = 180;
+const SIDEBAR_WIDTH_MAX: u32 = 420;
+const AGENT_WIDTH_MIN: u32 = 280;
+const AGENT_WIDTH_MAX: u32 = 640;
+
 /// The persisted user settings. Every field carries a `serde` default so a file written by an
 /// older version (or hand-edited with fields removed) still deserializes. `vault_path` defaults
 /// to the empty string as a sentinel — it needs an `AppHandle` to resolve, so `read_settings`
@@ -73,6 +84,8 @@ pub struct Settings {
     pub vault_path: String,
     pub daily_note_folder: String,
     pub content_zoom: f64,
+    pub sidebar_width: u32,
+    pub agent_width: u32,
 }
 
 impl Default for Settings {
@@ -84,6 +97,8 @@ impl Default for Settings {
             vault_path: String::new(),
             daily_note_folder: default_daily_note_folder(),
             content_zoom: default_content_zoom(),
+            sidebar_width: DEFAULT_SIDEBAR_WIDTH,
+            agent_width: DEFAULT_AGENT_WIDTH,
         }
     }
 }
@@ -287,6 +302,38 @@ fn extract_content_zoom(table: &toml::Table, diagnostics: &mut Vec<SettingsDiagn
     }
 }
 
+/// Mirrors `extract_content_zoom`: an absent width, or a numeric one out of `[min, max]`,
+/// degrades **silently** — absent falls back to `default`, out of range is clamped — because
+/// `use-config-watcher.ts` toasts every field diagnostic and every upgraded install would see
+/// one. A float is rounded (a hand edit may write `250.5`); `nan` falls back to `default`,
+/// silently. Only a present value that is not a number at all diagnoses, like every other key.
+fn extract_panel_width(
+    table: &toml::Table,
+    key: &str,
+    default: u32,
+    min: u32,
+    max: u32,
+    diagnostics: &mut Vec<SettingsDiagnostic>,
+) -> u32 {
+    match table.get(key) {
+        Some(toml::Value::Integer(value)) => {
+            u32::try_from((*value).clamp(i64::from(min), i64::from(max))).unwrap_or(default)
+        }
+        Some(toml::Value::Float(value)) if value.is_nan() => default,
+        Some(toml::Value::Float(value)) => {
+            value.round().clamp(f64::from(min), f64::from(max)) as u32
+        }
+        Some(_) => {
+            diagnostics.push(SettingsDiagnostic::Field {
+                key: key.to_string(),
+                message: format!("\"{key}\" must be a number; using the default"),
+            });
+            default
+        }
+        None => default,
+    }
+}
+
 /// Parses `contents` as TOML, degrading per key rather than rejecting the whole document on a
 /// single bad value (spec decision 10). Only a genuine syntax error — the document doesn't parse
 /// as TOML at all — rejects everything and reports the line it starts on.
@@ -320,6 +367,22 @@ fn parse_settings(contents: &str) -> (Settings, Vec<SettingsDiagnostic>) {
         vault_path: extract_string(table, "vaultPath", "", &mut diagnostics),
         daily_note_folder: extract_daily_note_folder(table, &mut diagnostics),
         content_zoom: extract_content_zoom(table, &mut diagnostics),
+        sidebar_width: extract_panel_width(
+            table,
+            "sidebarWidth",
+            DEFAULT_SIDEBAR_WIDTH,
+            SIDEBAR_WIDTH_MIN,
+            SIDEBAR_WIDTH_MAX,
+            &mut diagnostics,
+        ),
+        agent_width: extract_panel_width(
+            table,
+            "agentWidth",
+            DEFAULT_AGENT_WIDTH,
+            AGENT_WIDTH_MIN,
+            AGENT_WIDTH_MAX,
+            &mut diagnostics,
+        ),
     };
     (settings, diagnostics)
 }
@@ -380,7 +443,7 @@ fn set_field(doc: &mut DocumentMut, key: &str, new_value: Value) {
     }
 }
 
-/// Loads the existing document (if any) and updates only the four settings keys in place,
+/// Loads the existing document (if any) and updates every settings key in place,
 /// preserving every comment and the existing key order (spec decision 10 / ADR 0101). Returns
 /// `SettingsError::Toml` if the existing file is not valid TOML — never regenerates a broken file
 /// from `settings`, since that would silently discard whatever the user was mid-edit on.
@@ -413,13 +476,23 @@ fn write_settings_to(file: &Path, settings: &Settings) -> SettingsResult<()> {
         Value::from(settings.daily_note_folder.clone()),
     );
     set_field(&mut doc, "contentZoom", Value::from(settings.content_zoom));
+    set_field(
+        &mut doc,
+        "sidebarWidth",
+        Value::from(i64::from(settings.sidebar_width)),
+    );
+    set_field(
+        &mut doc,
+        "agentWidth",
+        Value::from(i64::from(settings.agent_width)),
+    );
     write_atomic(file, &doc.to_string())
 }
 
 /// Writes a fresh `settings.toml` documenting each key's valid values, in the fixed
-/// model/editorFont/theme/vaultPath/dailyNoteFolder/contentZoom order. Used only for first-run
-/// scaffolding/migration — the dialog's writes go through `write_settings_to`, which never
-/// regenerates the file.
+/// model/editorFont/theme/vaultPath/dailyNoteFolder/contentZoom/sidebarWidth/agentWidth order.
+/// Used only for first-run scaffolding/migration — the dialog's writes go through
+/// `write_settings_to`, which never regenerates the file.
 fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()> {
     let contents = format!(
         "# acidanthera settings\n\
@@ -440,7 +513,13 @@ fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()>
          dailyNoteFolder = {daily_note_folder}\n\
          \n\
          # contentZoom: scales note text in the editor and read view, between 0.8 and 1.6 (1.0 = 100%)\n\
-         contentZoom = {content_zoom}\n",
+         contentZoom = {content_zoom}\n\
+         \n\
+         # sidebarWidth: the expanded sidebar's width in pixels, between 180 and 420; drag its edge to change it, double-click the edge to reset\n\
+         sidebarWidth = {sidebar_width}\n\
+         \n\
+         # agentWidth: the agent panel's width in pixels, between 280 and 640; drag its edge to change it, double-click the edge to reset\n\
+         agentWidth = {agent_width}\n",
         model_ids = KNOWN_MODELS.join(", "),
         model = Value::from(settings.model.clone()),
         editor_font = Value::from(settings.editor_font.clone()),
@@ -448,6 +527,8 @@ fn write_documented_toml(file: &Path, settings: &Settings) -> SettingsResult<()>
         vault_path = Value::from(settings.vault_path.clone()),
         daily_note_folder = Value::from(settings.daily_note_folder.clone()),
         content_zoom = Value::from(settings.content_zoom),
+        sidebar_width = settings.sidebar_width,
+        agent_width = settings.agent_width,
     );
     write_atomic(file, &contents)
 }
@@ -560,6 +641,8 @@ mod tests {
             json.contains("\"editorFont\"")
                 && json.contains("\"vaultPath\"")
                 && json.contains("\"dailyNoteFolder\"")
+                && json.contains("\"sidebarWidth\"")
+                && json.contains("\"agentWidth\"")
         );
     }
 
@@ -574,9 +657,20 @@ mod tests {
                 settings.theme.as_str(),
                 settings.vault_path.as_str(),
                 settings.daily_note_folder.as_str(),
-                settings.content_zoom
+                settings.content_zoom,
+                settings.sidebar_width,
+                settings.agent_width,
             ),
-            ("gpt-5.4-mini", "JetBrains Mono", "dark", "", "daily", 1.0)
+            (
+                "gpt-5.4-mini",
+                "JetBrains Mono",
+                "dark",
+                "",
+                "daily",
+                1.0,
+                224,
+                340
+            )
         );
     }
 
@@ -873,6 +967,96 @@ mod tests {
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
+    #[test]
+    fn read_settings_from_should_default_panel_widths_with_no_diagnostic_when_absent() {
+        let dir = temp_dir("panel-width-absent");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "theme = \"dark\"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades panel widths silently");
+
+        assert_eq!(result.settings.sidebar_width, 224);
+        assert_eq!(result.settings.agent_width, 340);
+        assert!(
+            result.diagnostics.iter().all(|d| !matches!(
+                d,
+                SettingsDiagnostic::Field { key, .. } if key == "sidebarWidth" || key == "agentWidth"
+            )),
+            "an absent panel width must never raise a diagnostic: {:?}",
+            result.diagnostics
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_clamp_out_of_range_panel_widths_with_no_diagnostic() {
+        let dir = temp_dir("panel-width-out-of-range");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "sidebarWidth = 1000\nagentWidth = 10\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("clamps panel widths silently");
+
+        assert_eq!(result.settings.sidebar_width, 420);
+        assert_eq!(result.settings.agent_width, 280);
+        assert!(
+            result.diagnostics.iter().all(|d| !matches!(
+                d,
+                SettingsDiagnostic::Field { key, .. } if key == "sidebarWidth" || key == "agentWidth"
+            )),
+            "an out-of-range panel width must never raise a diagnostic: {:?}",
+            result.diagnostics
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_round_a_float_panel_width() {
+        let dir = temp_dir("panel-width-float");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "sidebarWidth = 250.6\nagentWidth = 300.0\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("rounds float panel widths");
+
+        assert_eq!(result.settings.sidebar_width, 251);
+        assert_eq!(result.settings.agent_width, 300);
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_default_a_nan_panel_width_silently() {
+        let dir = temp_dir("panel-width-nan");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "agentWidth = nan\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades nan panel width silently");
+
+        assert_eq!(result.settings.agent_width, 340);
+        assert!(
+            result.diagnostics.iter().all(
+                |d| !matches!(d, SettingsDiagnostic::Field { key, .. } if key == "agentWidth")
+            ),
+            "a nan panel width must never raise a diagnostic: {:?}",
+            result.diagnostics
+        );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn read_settings_from_should_diagnose_a_non_numeric_panel_width() {
+        let dir = temp_dir("panel-width-wrong-type");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "sidebarWidth = \"wide\"\n").expect("writes file");
+
+        let result = read_settings_from(&file).expect("degrades panel width");
+
+        assert_eq!(result.settings.sidebar_width, 224);
+        assert!(result
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, SettingsDiagnostic::Field { key, .. } if key == "sidebarWidth")));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
     // --- write_settings_to --------------------------------------------------------------------
 
     #[test]
@@ -886,6 +1070,8 @@ mod tests {
             vault_path: "/vault".into(),
             daily_note_folder: "journal".into(),
             content_zoom: 1.2,
+            sidebar_width: 260,
+            agent_width: 400,
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
@@ -893,7 +1079,7 @@ mod tests {
 
         assert_eq!(
             contents,
-            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\ncontentZoom = 1.2\n"
+            "model = \"sonnet-5\"\neditorFont = \"Menlo\"\ntheme = \"light\"\nvaultPath = \"/vault\"\ndailyNoteFolder = \"journal\"\ncontentZoom = 1.2\nsidebarWidth = 260\nagentWidth = 400\n"
         );
         fs::remove_dir_all(&dir).expect("cleans up");
     }
@@ -1018,6 +1204,8 @@ mod tests {
             vault_path: "/vault".into(),
             daily_note_folder: "daily".into(),
             content_zoom: 1.0,
+            sidebar_width: 224,
+            agent_width: 340,
         };
 
         write_settings_to(&file, &settings).expect("writes settings");
@@ -1027,8 +1215,30 @@ mod tests {
         // appended rather than sorted into place.
         assert_eq!(
             contents,
-            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\ndailyNoteFolder = \"daily\"\ncontentZoom = 1.0\n"
+            "vaultPath = \"/vault\"\nmodel = \"sonnet-5\"\ntheme = \"light\"\neditorFont = \"Menlo\"\ndailyNoteFolder = \"daily\"\ncontentZoom = 1.0\nsidebarWidth = 224\nagentWidth = 340\n"
         );
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn write_settings_to_should_preserve_a_trailing_comment_on_a_panel_width() {
+        let dir = temp_dir("panel-width-comment");
+        let file = dir.join("settings.toml");
+        fs::write(&file, "sidebarWidth = 224 # snug\n").expect("writes commented contents");
+        let settings = Settings {
+            sidebar_width: 300,
+            ..Settings::default()
+        };
+
+        write_settings_to(&file, &settings).expect("writes settings");
+        let contents = fs::read_to_string(&file).expect("reads back");
+
+        assert!(
+            contents.starts_with("sidebarWidth = 300 # snug\n"),
+            "trailing comment on the changed key survives: {contents:?}"
+        );
+        let result = read_settings_from(&file).expect("round-trips");
+        assert_eq!(result.settings.sidebar_width, 300);
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 
@@ -1041,6 +1251,22 @@ mod tests {
         let error = write_settings_to(&file, &Settings::default()).expect_err("rejects the write");
 
         assert!(matches!(error, SettingsError::Toml(_)));
+        fs::remove_dir_all(&dir).expect("cleans up");
+    }
+
+    #[test]
+    fn write_documented_toml_should_document_and_seed_the_panel_widths() {
+        let dir = temp_dir("write-documented-panel-widths");
+        let file = dir.join("settings.toml");
+
+        write_documented_toml(&file, &Settings::default()).expect("writes documented toml");
+        let contents = fs::read_to_string(&file).expect("reads back");
+
+        assert!(contents.contains("# sidebarWidth:") && contents.contains("# agentWidth:"));
+        let result = read_settings_from(&file).expect("reads seeded toml");
+        assert_eq!(result.settings.sidebar_width, 224);
+        assert_eq!(result.settings.agent_width, 340);
+        assert!(result.diagnostics.is_empty());
         fs::remove_dir_all(&dir).expect("cleans up");
     }
 

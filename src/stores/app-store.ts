@@ -6,6 +6,17 @@ export type FocusRegion = 'sidebar' | 'viewer' | 'agent';
 /** The app-level global vim mode — distinct from the editor's own vim mode (doc/v0-spec.md §3.4). */
 export type GlobalMode = 'normal' | 'command';
 
+/** A panel a *resize handle* can drag. The rail has no *panel width*, so it is not one. */
+export type ResizablePanel = 'sidebar' | 'agent';
+
+/** A live *resize handle* drag: the panel following the pointer, at its requested width in px
+ *  (already inside the panel's range). Transient, never persisted; the *panel width* preference
+ *  is written only on release. */
+export interface ResizeDrag {
+  panel: ResizablePanel;
+  width: number;
+}
+
 const REGION_ORDER: FocusRegion[] = ['sidebar', 'viewer', 'agent'];
 
 /**
@@ -35,6 +46,8 @@ interface AppState {
   sidebarExpanded: boolean;
   /** Whether the agent panel is open. It genuinely unmounts when closed, unlike the sidebar. */
   agentOpen: boolean;
+  /** The live resize drag, or `null`. A panel that collapses or closes ends a drag on itself. */
+  resizeDrag: ResizeDrag | null;
   /** Whether the settings dialog overlay is up (#29). An overlay, not a `FocusRegion`. */
   settingsOpen: boolean;
   /** Root path of the open vault. Seeded here (not the filesystem slice) so the chat's
@@ -53,6 +66,7 @@ interface AppState {
   openAgent: () => void;
   closeAgent: () => void;
   toggleAgent: () => void;
+  setResizeDrag: (drag: ResizeDrag | null) => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -65,6 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   mode: 'normal',
   sidebarExpanded: true,
   agentOpen: false,
+  resizeDrag: null,
   settingsOpen: false,
   vaultRoot: null,
 
@@ -105,6 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       sidebarExpanded: false,
       activeRegion: state.activeRegion === 'sidebar' ? 'viewer' : state.activeRegion,
+      resizeDrag: state.resizeDrag?.panel === 'sidebar' ? null : state.resizeDrag,
     })),
 
   toggleSidebar: () => (get().sidebarExpanded ? get().collapseSidebar() : get().expandSidebar()),
@@ -115,9 +131,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       agentOpen: false,
       activeRegion: state.activeRegion === 'agent' ? 'viewer' : state.activeRegion,
+      resizeDrag: state.resizeDrag?.panel === 'agent' ? null : state.resizeDrag,
     })),
 
   toggleAgent: () => (get().agentOpen ? get().closeAgent() : get().openAgent()),
+
+  setResizeDrag: (resizeDrag) => set({ resizeDrag }),
 
   openSettings: () => set({ settingsOpen: true }),
 
