@@ -3,8 +3,6 @@
  * Fixed dimensions for the app shell's chrome regions.
  */
 :root {
-  --rail-sidebar: 224px;
   --rail-sidebar-collapsed: 40px;
-  --rail-agent: 340px;
   --rail-titlebar: 40px;
 }

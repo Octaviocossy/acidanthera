@@ -3,6 +3,7 @@ import { CommandBar } from '@/components/layout/CommandBar';
 import { DeleteEntryDialog } from '@/components/layout/DeleteEntryDialog';
 import { FileFinder } from '@/components/layout/FileFinder';
 import { RenameEntryDialog } from '@/components/layout/RenameEntryDialog';
+import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { SettingsDialog } from '@/components/layout/SettingsDialog';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
@@ -27,6 +28,12 @@ export function Layout() {
         <Sidebar />
         <Viewer />
         <AgentPanel />
+        {/* The *resize handles*: after the three regions and before every overlay, with no z-index,
+            so DOM order paints them above the cards they straddle and beneath every scrim — no seam
+            can be dragged under a dialog (invariant 25). Each positions itself on its seam; the agent
+            handle renders only while the panel is open. */}
+        <ResizeHandle panel="sidebar" />
+        <ResizeHandle panel="agent" />
         <CommandBar />
         <FileFinder />
         <SidebarContextMenu />

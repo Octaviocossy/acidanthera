@@ -110,6 +110,18 @@ describe('sidebar expansion', () => {
     useAppStore.getState().focusRegion('sidebar');
     expect(useAppStore.getState().activeRegion).toBe('viewer');
   });
+
+  it('collapseSidebar ends a live drag on the sidebar', () => {
+    useAppStore.getState().setResizeDrag({ panel: 'sidebar', width: 200 });
+    useAppStore.getState().collapseSidebar();
+    expect(useAppStore.getState().resizeDrag).toBeNull();
+  });
+
+  it('collapseSidebar leaves a live agent drag alone', () => {
+    useAppStore.getState().setResizeDrag({ panel: 'agent', width: 400 });
+    useAppStore.getState().collapseSidebar();
+    expect(useAppStore.getState().resizeDrag).toEqual({ panel: 'agent', width: 400 });
+  });
 });
 
 describe('agent panel visibility', () => {
@@ -135,6 +147,22 @@ describe('agent panel visibility', () => {
     expect(useAppStore.getState().agentOpen).toBe(true);
     useAppStore.getState().toggleAgent();
     expect(useAppStore.getState().agentOpen).toBe(false);
+  });
+
+  it('closeAgent ends a live drag on the agent panel', () => {
+    useAppStore.getState().openAgent();
+    useAppStore.getState().setResizeDrag({ panel: 'agent', width: 400 });
+    useAppStore.getState().closeAgent();
+    expect(useAppStore.getState().resizeDrag).toBeNull();
+  });
+});
+
+describe('resize drag', () => {
+  it('setResizeDrag records and clears a live drag', () => {
+    useAppStore.getState().setResizeDrag({ panel: 'sidebar', width: 300 });
+    expect(useAppStore.getState().resizeDrag).toEqual({ panel: 'sidebar', width: 300 });
+    useAppStore.getState().setResizeDrag(null);
+    expect(useAppStore.getState().resizeDrag).toBeNull();
   });
 });
 

@@ -91,12 +91,14 @@
 | Note row | Vault and note navigation |
 | Open config file | Config files and command registry |
 | Open vault file | Vault and note navigation |
+| Panel width | Application shell and commands |
 | Primary nav | Cross-cutting presentation vocabulary |
 | Radius ladder | Cross-cutting presentation vocabulary |
 | Read view | Editor session |
 | Region visibility | Application shell and commands |
 | Region-exit gesture | Config files and command registry |
 | Rename confirmation | Vault and note navigation |
+| Resize handle | Cross-cutting presentation vocabulary |
 | Resolved keymap | Config files and command registry |
 | Resume prompt | Conversations and history |
 | Root entry | Vault and note navigation |
