@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VaultEntry } from '@/services/vault.service';
-import { flattenVisibleTree } from './flatten-tree';
+import { flattenVisibleTree, treeVaultRoot } from './flatten-tree';
 
 function file(name: string, path = name): VaultEntry {
   return { name, path, isDir: false, modified: null, children: null };
@@ -68,5 +68,29 @@ describe('flattenVisibleTree', () => {
       { entry: childA, depth: 1 },
       { entry: entries[1], depth: 0 },
     ]);
+  });
+});
+
+describe('treeVaultRoot', () => {
+  it('returns null for an empty tree', () => {
+    expect(treeVaultRoot([])).toBeNull();
+  });
+
+  it("returns the vault root for a tree whose first entry is '/vault/notes'", () => {
+    expect(treeVaultRoot([file('notes', '/vault/notes')])).toBe('/vault');
+  });
+
+  it('splits on a backslash for a Windows path', () => {
+    expect(treeVaultRoot([file('a.md', 'C:\\vault\\a.md')])).toBe('C:\\vault');
+  });
+
+  it('gives the same key for two trees read from one vault', () => {
+    const first = treeVaultRoot([file('a.md', '/vault/a.md')]);
+    const second = treeVaultRoot([file('b.md', '/vault/b.md'), file('a.md', '/vault/a.md')]);
+    expect(first).toBe(second);
+  });
+
+  it('gives different keys for trees rooted at different depths', () => {
+    expect(treeVaultRoot([file('a.md', '/a/a.md')])).not.toBe(treeVaultRoot([file('b.md', '/a/b/b.md')]));
   });
 });

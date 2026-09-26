@@ -201,6 +201,18 @@ describe('sendMessage', () => {
     expect(state.turnActive).toBe(false);
     expect(state.items.some((item) => item.kind === 'agent_message' && item.text === 'hi there')).toBe(true);
   });
+
+  it('keeps the transcript generation while appending', async () => {
+    useAppStore.getState().setVaultRoot('/vault');
+    const backend = fakeBackend('codex');
+    registerBackend(backend);
+    vi.mocked(chatsService.saveChat).mockResolvedValue('x');
+    const before = useChatStore.getState().transcriptGeneration;
+
+    await useChatStore.getState().sendMessage('hello');
+
+    expect(useChatStore.getState().transcriptGeneration).toBe(before);
+  });
 });
 
 describe('newChat', () => {
@@ -228,6 +240,14 @@ describe('newChat', () => {
     expect(state.turnActive).toBe(false);
     expect(state.sessionStarted).toBe(false);
     expect(state.pendingResume).toBe(false);
+  });
+
+  it('starts a new transcript generation', () => {
+    const before = useChatStore.getState().transcriptGeneration;
+
+    useChatStore.getState().newChat();
+
+    expect(useChatStore.getState().transcriptGeneration).toBe(before + 1);
   });
 });
 
@@ -263,6 +283,17 @@ describe('loadChat', () => {
 
     expect(useChatStore.getState().modelId).toBe('sonnet-5');
     expect(useChatStore.getState().pendingResume).toBe(false);
+  });
+
+  it('starts a new transcript generation', () => {
+    const before = useChatStore.getState().transcriptGeneration;
+
+    useChatStore.getState().loadChat({
+      meta: { schema: 1, id: 'chat-9', title: '', model: 'sonnet-5', created: '', updated: '' },
+      items: [],
+    });
+
+    expect(useChatStore.getState().transcriptGeneration).toBe(before + 1);
   });
 });
 

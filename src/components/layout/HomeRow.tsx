@@ -14,7 +14,7 @@ export function HomeRow({ icon, label, trailing, onSelect }: { icon: LucideIcon;
   return (
     <button
       type="button"
-      className="flex h-11 w-full items-center gap-3 rounded-item border border-hairline px-3 text-left font-sans text-ui text-text-secondary outline-none transition-colors duration-[var(--dur)] ease-acidanthera hover:bg-hover focus-visible:ring-1 focus-visible:ring-border-strong"
+      className="flex h-11 w-full items-center gap-3 rounded-item border border-hairline px-3 text-left font-sans text-ui text-text-secondary outline-none transition-colors duration-[var(--dur-fast)] ease-acidanthera hover:bg-hover focus-visible:ring-1 focus-visible:ring-border-strong"
       onClick={onSelect}
     >
       <Icon icon={icon} size={15} className="shrink-0" />

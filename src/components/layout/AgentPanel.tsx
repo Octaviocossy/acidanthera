@@ -1,41 +1,19 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { ChatHistoryList } from '@/components/ai/ChatHistoryList';
 import { ChatInput } from '@/components/ai/ChatInput';
-import { ChatMessage } from '@/components/ai/ChatMessage';
-import { ThinkingIndicator } from '@/components/ai/ThinkingIndicator';
-import { ToolChip, type ToolChipStatus } from '@/components/ai/ToolChip';
+import { ChatTranscript } from '@/components/ai/ChatTranscript';
 import { Button } from '@/components/ui/button';
 import { useChatHistoryKeymap } from '@/hooks/use-chat-history-keymap';
-import { toolCallPath } from '@/lib/chat/tool-path';
 import { panelTransition } from '@/lib/layout/panel-motion';
 import { usePanelWidths } from '@/lib/layout/panel-widths';
+import { crossfadePresence } from '@/lib/motion/presence-props';
 import { useExitPhase } from '@/lib/motion/use-exit-phase';
+import { useReleaseFocusOnExit } from '@/lib/motion/use-release-focus-on-exit';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 import { type ChatTab, useChatHistoryStore } from '@/stores/chat-history-store';
-import { type ChatItem, type ChatToolCallStatus, useChatStore } from '@/stores/chat-store';
-
-const TOOL_CHIP_STATUS: Record<ChatToolCallStatus, ToolChipStatus> = { running: 'running', ok: 'done', error: 'error' };
-
-function ChatItemRow({ item, vaultRoot }: { item: ChatItem; vaultRoot: string | null }) {
-  switch (item.kind) {
-    case 'user_message':
-      // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
-      return <ChatMessage role="user" text={item.text} />;
-    case 'agent_message':
-      // biome-ignore lint/a11y/useValidAriaRole: `role` is ChatMessage's own prop (user|agent), not a DOM ARIA role.
-      return <ChatMessage role="agent" text={item.text} />;
-    case 'error':
-      return <div className="mx-4 my-3 rounded-card border border-border-strong px-3 py-2 font-sans text-ui text-text-secondary">{item.message}</div>;
-    case 'tool_call':
-      return (
-        <div className="px-4 py-2">
-          <ToolChip verb={item.call.toolName} path={toolCallPath(item.call.args, vaultRoot)} status={TOOL_CHIP_STATUS[item.call.status]} />
-        </div>
-      );
-  }
-}
+import { useChatStore } from '@/stores/chat-store';
 
 /** One tab in the panel's header strip (#71). `role="tab"` overrides the button's implicit role. */
 function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: string; active: boolean; onSelect: (tab: ChatTab) => void }) {
@@ -46,7 +24,7 @@ function TabButton({ tab, label, active, onSelect }: { tab: ChatTab; label: stri
       aria-selected={active}
       onClick={() => onSelect(tab)}
       className={cn(
-        'border-b pb-0.5 font-mono text-label uppercase tracking-label transition-colors duration-[var(--dur)] ease-acidanthera',
+        'border-b pb-0.5 font-mono text-label uppercase tracking-label transition-colors duration-[var(--dur-fast)] ease-acidanthera',
         active ? 'border-border-strong text-text-primary' : 'border-transparent text-text-muted hover:text-text-primary'
       )}
     >
@@ -85,6 +63,28 @@ function AgentPanelFrame({ cardWidth, instant, children }: { cardWidth: number; 
   );
 }
 
+/** One tab's content as an `AnimatePresence` child: Chat and History crossfade with both present
+ *  (decision 22). The outgoing layer is inert, and a focused composer inside it is blurred
+ *  (invariant 60). The History keymap already gates on the store's `tab`, so keys move at once. */
+function AgentTabLayer({ children }: { children: ReactNode }) {
+  const { exiting, exitPhaseProps } = useExitPhase();
+  const ref = useRef<HTMLDivElement>(null);
+  useReleaseFocusOnExit(ref, exiting);
+  return (
+    <motion.div
+      ref={ref}
+      className="absolute inset-0 flex min-h-0 flex-1 flex-col"
+      style={exitPhaseProps.style}
+      inert={exitPhaseProps.inert}
+      initial={crossfadePresence.initial}
+      animate={crossfadePresence.animate}
+      exit={crossfadePresence.exit}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /** The invocable AI agent region (doc/v0-spec.md §5.2): a two-tab surface (#71) — the live `AgentEvent`
  *  transcript, plus a keyboard-navigable list of the conversations saved under `.acidanthera/chats/`.
  *  The region and the panel are named *agent*; the transcript it renders stays *chat* (glossary:
@@ -98,18 +98,11 @@ export function AgentPanel() {
   const agentOpen = useAppStore((state) => state.agentOpen);
   const isActive = useAppStore((state) => state.activeRegion === 'agent');
   const focusRegion = useAppStore((state) => state.focusRegion);
-  const vaultRoot = useAppStore((state) => state.vaultRoot);
-  const items = useChatStore((state) => state.items);
   const turnActive = useChatStore((state) => state.turnActive);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const newChat = useChatStore((state) => state.newChat);
   const tab = useChatHistoryStore((state) => state.tab);
   const setTab = useChatHistoryStore((state) => state.setTab);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [items, turnActive]);
 
   const panelWidths = usePanelWidths();
   const reduceMotion = useReducedMotion();
@@ -154,23 +147,22 @@ export function AgentPanel() {
               </Button>
             </div>
 
-            {tab === 'chat' ? (
-              <>
-                <div ref={listRef} role="tabpanel" aria-label="Chat" className="min-h-0 flex-1 overflow-y-auto">
-                  <div className="py-2">
-                    {items.map((item) => (
-                      <ChatItemRow key={item.id} item={item} vaultRoot={vaultRoot} />
-                    ))}
-                    {turnActive && <ThinkingIndicator />}
-                  </div>
-                </div>
-                <ChatInput disabled={turnActive} onSubmit={sendMessage} />
-              </>
-            ) : (
-              <div role="tabpanel" aria-label="History" className="min-h-0 flex-1 overflow-y-auto">
-                <ChatHistoryList />
-              </div>
-            )}
+            <div className="relative min-h-0 flex-1">
+              <AnimatePresence initial={false}>
+                {tab === 'chat' ? (
+                  <AgentTabLayer key="chat">
+                    <ChatTranscript />
+                    <ChatInput disabled={turnActive} onSubmit={sendMessage} />
+                  </AgentTabLayer>
+                ) : (
+                  <AgentTabLayer key="history">
+                    <div role="tabpanel" aria-label="History" className="min-h-0 flex-1 overflow-y-auto">
+                      <ChatHistoryList />
+                    </div>
+                  </AgentTabLayer>
+                )}
+              </AnimatePresence>
+            </div>
           </aside>
         </AgentPanelFrame>
       )}

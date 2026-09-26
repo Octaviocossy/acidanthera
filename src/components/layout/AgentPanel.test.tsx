@@ -1,10 +1,20 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStore } from '@/stores/app-store';
 import { useChatHistoryStore } from '@/stores/chat-history-store';
 import { useChatStore } from '@/stores/chat-store';
 import { AgentPanel } from './AgentPanel';
+
+vi.mock('@/services/chats.service', () => ({
+  chatsService: {
+    saveChat: vi.fn(),
+    readChat: vi.fn(),
+    listChats: vi.fn(() => Promise.resolve([])),
+    deleteChat: vi.fn(),
+  },
+}));
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const initialAppState = useAppStore.getState();
 const initialChatState = useChatStore.getState();
@@ -59,5 +69,32 @@ describe('AgentPanel', () => {
     expect(card()?.closest('[inert]')).not.toBeNull();
     expect(useAppStore.getState().activeRegion).toBe('viewer');
     await waitFor(() => expect(card()).not.toBeInTheDocument());
+  });
+
+  describe('tab crossfade', () => {
+    beforeEach(() => {
+      useAppStore.setState({ agentOpen: true });
+    });
+
+    it('keeps the outgoing tab inert while the incoming one fades in', async () => {
+      render(<AgentPanel />);
+
+      act(() => useChatHistoryStore.getState().setTab('history'));
+
+      expect(screen.getByRole('tabpanel', { name: 'History' })).toBeInTheDocument();
+      expect(screen.getByRole('tabpanel', { name: 'Chat', hidden: true }).closest('[inert]')).not.toBeNull();
+      await waitFor(() => expect(screen.queryByRole('tabpanel', { name: 'Chat', hidden: true })).not.toBeInTheDocument());
+    });
+
+    it('moves DOM focus out of the composer when the tab switches away', () => {
+      render(<AgentPanel />);
+      const input = screen.getByRole('textbox', { name: 'Chat input' });
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      act(() => useChatHistoryStore.getState().setTab('history'));
+
+      expect(document.activeElement).not.toBe(input);
+    });
   });
 });

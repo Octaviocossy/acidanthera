@@ -1,10 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EMPTY_NAVIGATION_HISTORY } from '@/lib/editor/navigation-history';
 import { resolveKeymap } from '@/lib/keymap/resolve';
 import { resetTooltip } from '@/lib/tooltip/tooltip-overlay';
+import { startNoteDraft } from '@/lib/vault/start-draft';
 import type { Settings } from '@/services/settings.service';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
@@ -532,6 +533,92 @@ describe('Sidebar', () => {
       });
 
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('list motion', () => {
+    const wrapperOf = (text: string) => screen.getByText(text).closest('[role="treeitem"]')?.parentElement as HTMLElement;
+
+    beforeEach(() => {
+      useAppStore.setState({ sidebarExpanded: true });
+    });
+
+    it('grows a row the watcher adds in from zero height', () => {
+      render(<Sidebar />);
+
+      act(() => useSidebarStore.getState().setTree([...tree, { name: 'new.md', path: '/vault/new.md', isDir: false, modified: NOW, children: null }]));
+
+      expect(wrapperOf('new.md')).toHaveStyle({ height: '0px', opacity: '0' });
+    });
+
+    it('paints the rows present at mount without animating them', () => {
+      render(<Sidebar />);
+
+      expect(wrapperOf('readme.md')).not.toHaveStyle({ opacity: '0' });
+    });
+
+    it('makes a removed row inert at once, then drops it', async () => {
+      render(<Sidebar />);
+      // Lets the mount-time `readVaultTree` promise settle (a no-op: it resolves to the same
+      // `tree` already in the store) before the manual removal below, so it cannot race in and
+      // restore the row this test is about to remove.
+      await screen.findByText('readme.md');
+
+      act(() => useSidebarStore.getState().setTree([tree[0]]));
+
+      expect(screen.getByText('readme.md').closest('[inert]')).not.toBeNull();
+      await waitFor(() => expect(screen.queryByText('readme.md')).toBeNull());
+    });
+
+    it('swaps a row into its rename input in place, without animating', () => {
+      render(<Sidebar />);
+      const captured = wrapperOf('readme.md');
+
+      act(() => useSidebarStore.getState().beginRename('/vault/readme.md'));
+
+      const renamed = screen.getByRole('textbox', { name: 'Rename note' }).closest('[role="treeitem"]')?.parentElement;
+      expect(renamed).toBe(captured);
+      expect(renamed).not.toHaveStyle({ opacity: '0' });
+    });
+
+    it("remounts the list without animating when another vault's tree replaces it", () => {
+      render(<Sidebar />);
+      const otherTree = [{ name: 'other.md', path: '/other/other.md', isDir: false, modified: null, children: null }];
+      readVaultTree.mockResolvedValue(otherTree);
+
+      act(() => {
+        useAppStore.setState({ vaultRoot: '/other' });
+        useSidebarStore.getState().setTree(otherTree);
+      });
+
+      expect(screen.queryByText('readme.md')).toBeNull();
+      expect(wrapperOf('other.md')).not.toHaveStyle({ opacity: '0' });
+    });
+
+    it('moves DOM focus off the draft input the moment its row starts leaving', async () => {
+      const user = userEvent.setup();
+      render(<Sidebar />);
+
+      await user.click(screen.getByRole('button', { name: 'New note' }));
+      const draftInput = screen.getByRole('textbox', { name: 'New note name' });
+      expect(document.activeElement).toBe(draftInput);
+
+      act(() => useSidebarStore.getState().cancelDraft());
+
+      expect(document.activeElement).not.toBe(draftInput);
+    });
+
+    it("mounts a fresh, focused draft when one restarts inside the last one's exit", () => {
+      render(<Sidebar />);
+
+      act(() => startNoteDraft('note'));
+      act(() => useSidebarStore.getState().cancelDraft());
+      act(() => startNoteDraft('note'));
+
+      const drafts = screen.getAllByRole('textbox', { name: 'New note name', hidden: true });
+      expect(drafts).toHaveLength(2);
+      const focused = drafts.find((input) => input.closest('[inert]') === null);
+      expect(focused).toBe(document.activeElement);
     });
   });
 });
