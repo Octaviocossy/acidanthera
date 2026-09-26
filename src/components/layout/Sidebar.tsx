@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, FilePlu
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
 import { TooltipHint } from '@/components/ui/tooltip-hint';
+import { AnimatedTreeRow } from '@/components/vault/AnimatedTreeRow';
 import { EntryDraftRow } from '@/components/vault/EntryDraftRow';
 import { FileTreeItem } from '@/components/vault/FileTreeItem';
 import { AcidantheraMarkGlyph } from '@/components/vault/glyphs';
@@ -20,7 +21,7 @@ import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
 import { createVaultEntry, draftPlacement } from '@/lib/vault/create-entry';
 import { displayPath } from '@/lib/vault/display-path';
-import { flattenVisibleTree } from '@/lib/vault/flatten-tree';
+import { flattenVisibleTree, treeVaultRoot } from '@/lib/vault/flatten-tree';
 import { countNotes } from '@/lib/vault/note-count';
 import { openVaultFile } from '@/lib/vault/open-file';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
@@ -33,7 +34,7 @@ import { activeEditorBuffer, useEditorStore } from '@/stores/editor-store';
 import { useFileFinderStore } from '@/stores/file-finder-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 import { useSettingsStore } from '@/stores/settings-store';
-import { useSidebarStore } from '@/stores/sidebar-store';
+import { type EntryDraft, useSidebarStore } from '@/stores/sidebar-store';
 
 /**
  * The sidebar's *chrome strip*: the drag region the native traffic lights sit on (decisions 16,
@@ -153,7 +154,7 @@ function NavRow({
       aria-label={label}
       aria-pressed={ariaPressed}
       className={cn(
-        'flex w-full items-center gap-2 rounded-item px-2 py-[5px] text-left font-sans text-ui outline-none transition-colors duration-[var(--dur)] ease-acidanthera hover:bg-hover focus-visible:ring-1 focus-visible:ring-border-strong',
+        'flex w-full items-center gap-2 rounded-item px-2 py-[5px] text-left font-sans text-ui outline-none transition-colors duration-[var(--dur-fast)] ease-acidanthera hover:bg-hover focus-visible:ring-1 focus-visible:ring-border-strong',
         active ? 'bg-elevated text-text-primary' : 'text-text-secondary'
       )}
       onClick={onClick}
@@ -192,6 +193,22 @@ function SidebarLayer({ width, className, enter, exit, children }: { width?: Mot
       {children}
     </motion.div>
   );
+}
+
+const draftKeys = new WeakMap<EntryDraft, string>();
+let draftSeq = 0;
+
+/** One key per draft *instance*, since `beginDraft` builds a new object each time. With a fixed
+ *  key, a draft restarted inside the last one's exit phase would re-enter that exiting instance:
+ *  stale text, and no focus, because `InlineNameInput` focuses only on mount. */
+function draftRowKey(draft: EntryDraft): string {
+  let key = draftKeys.get(draft);
+  if (key === undefined) {
+    draftSeq += 1;
+    key = `entry-draft-${draftSeq}`;
+    draftKeys.set(draft, key);
+  }
+  return key;
 }
 
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). Since the panel-motion
@@ -299,13 +316,11 @@ export function Sidebar() {
   };
 
   const rowElements = vaultRows.map(({ entry, depth }) => {
-    if (entry.path === renamePath) {
-      const initialValue = entry.isDir ? entry.name : entry.name.replace(/\.md$/, '');
-      return (
+    const child =
+      entry.path === renamePath ? (
         <InlineNameInput
-          key={entry.path}
           depth={depth}
-          initialValue={initialValue}
+          initialValue={entry.isDir ? entry.name : entry.name.replace(/\.md$/, '')}
           placeholder={entry.isDir ? 'folder name' : 'note name'}
           ariaLabel={entry.isDir ? 'Rename folder' : 'Rename note'}
           icon={
@@ -327,41 +342,39 @@ export function Sidebar() {
           onCommit={(name) => void renameVaultEntry(entry.path, name, entry.isDir)}
           onCancel={cancelRename}
         />
+      ) : (
+        <FileTreeItem
+          label={entry.name}
+          kind={entry.isDir ? 'dir' : 'file'}
+          depth={depth}
+          active={entry.path === activeFilePath}
+          cursor={entry.path === cursorPath}
+          changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
+          collapsed={entry.isDir && !expanded.has(entry.path)}
+          modified={entry.modified}
+          // One meaning of a number in one panel: a folder's count and the footer's `N notes` are
+          // the same `countNotes` measure at two scopes, both from the already-cached tree.
+          noteCount={entry.isDir ? countNotes(entry.children ?? []) : undefined}
+          onClick={() => {
+            focusRegion('sidebar');
+            setCursor(entry.path);
+            if (entry.isDir) {
+              toggleExpanded(entry.path);
+            } else {
+              openVaultFile(entry.path);
+            }
+          }}
+          onContextMenu={(event) => {
+            if (vaultRoot === null) return;
+            event.preventDefault();
+            focusRegion('sidebar');
+            setCursor(entry.path);
+            showContextMenu(event.clientX, event.clientY, entry.path);
+          }}
+        />
       );
-    }
 
-    return (
-      <FileTreeItem
-        key={entry.path}
-        label={entry.name}
-        kind={entry.isDir ? 'dir' : 'file'}
-        depth={depth}
-        active={entry.path === activeFilePath}
-        cursor={entry.path === cursorPath}
-        changed={buffers.some((buffer) => buffer.filePath === entry.path && buffer.dirty)}
-        collapsed={entry.isDir && !expanded.has(entry.path)}
-        modified={entry.modified}
-        // One meaning of a number in one panel: a folder's count and the footer's `N notes` are
-        // the same `countNotes` measure at two scopes, both from the already-cached tree.
-        noteCount={entry.isDir ? countNotes(entry.children ?? []) : undefined}
-        onClick={() => {
-          focusRegion('sidebar');
-          setCursor(entry.path);
-          if (entry.isDir) {
-            toggleExpanded(entry.path);
-          } else {
-            openVaultFile(entry.path);
-          }
-        }}
-        onContextMenu={(event) => {
-          if (vaultRoot === null) return;
-          event.preventDefault();
-          focusRegion('sidebar');
-          setCursor(entry.path);
-          showContextMenu(event.clientX, event.clientY, entry.path);
-        }}
-      />
-    );
+    return <AnimatedTreeRow key={entry.path}>{child}</AnimatedTreeRow>;
   });
 
   if (draft !== null) {
@@ -369,7 +382,9 @@ export function Sidebar() {
     rowElements.splice(
       index,
       0,
-      <EntryDraftRow key="entry-draft" kind={draft.kind} depth={depth} onCommit={(name) => void createVaultEntry(draft, name)} onCancel={cancelDraft} />
+      <AnimatedTreeRow key={draftRowKey(draft)}>
+        <EntryDraftRow kind={draft.kind} depth={depth} onCommit={(name) => void createVaultEntry(draft, name)} onCancel={cancelDraft} />
+      </AnimatedTreeRow>
     );
   }
 
@@ -474,7 +489,16 @@ export function Sidebar() {
                   {/* Not a row: absent from `flattenVisibleTree`, so `j`/`k` never land on it and it
                       carries no `treeitem` role. Suppressed while a draft is open, or naming the first
                       note would show the placeholder and the input at once (decision 29). */}
-                  {vaultRows.length === 0 && draft === null ? <span className="font-sans text-ui text-text-secondary">Nothing here yet.</span> : rowElements}
+                  {vaultRows.length === 0 && draft === null ? (
+                    <span className="font-sans text-ui text-text-secondary">Nothing here yet.</span>
+                  ) : (
+                    // Mounted only once rows exist, so the boot-time tree read paints without animating. Keyed on
+                    // the vault the cached tree came from, so another vault's tree remounts it instead of
+                    // collapsing one vault's rows while growing the next's (Out of Scope: wholesale replacement).
+                    <AnimatePresence key={treeVaultRoot(tree)} initial={false}>
+                      {rowElements}
+                    </AnimatePresence>
+                  )}
                 </div>
               </>
             )}

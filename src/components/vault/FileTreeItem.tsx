@@ -1,5 +1,6 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { ChevronRight, FileText, Folder, Icon } from '@/components/ui/icon';
+import { POINTER_HOVER_LAYER } from '@/lib/motion/hover-layer';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
 import { relativeTime } from '@/lib/vault/relative-time';
@@ -61,14 +62,22 @@ export function FileTreeItem({
       onContextMenu={onContextMenu}
       style={{ paddingLeft: depth * 12 + 10 }}
       className={cn(
-        'group flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-prose leading-[var(--leading-ui)] transition-[background-color,color] duration-[150ms] ease-[ease]',
-        active ? 'bg-elevated text-text-primary' : cursor ? 'bg-hover text-text-secondary' : 'bg-transparent text-text-secondary hover:bg-hover'
+        // The row's own background carries the open buffer and the keyboard cursor and never
+        // transitions: a cursor that eases reads as latency (decisions 3, 19; ADR 0133).
+        'group relative isolate flex shrink-0 cursor-pointer select-none items-center gap-[9px] rounded-item px-2.5 py-2 font-sans text-prose leading-[var(--leading-ui)]',
+        // Pointer hover lives on its own layer, whose opacity is the only thing here that transitions.
+        POINTER_HOVER_LAYER,
+        active ? 'before:hidden bg-elevated text-text-primary' : cursor ? 'bg-hover text-text-secondary' : 'bg-transparent text-text-secondary'
       )}
     >
       {kind === 'dir' ? (
         <>
           <span className={active ? 'opacity-80' : 'opacity-65'}>
-            <Icon icon={ChevronRight} size={12} className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera', collapsed ? '' : 'rotate-90')} />
+            <Icon
+              icon={ChevronRight}
+              size={12}
+              className={cn('shrink-0 transition-transform duration-[var(--dur)] ease-acidanthera motion-reduce:transition-none', collapsed ? '' : 'rotate-90')}
+            />
           </span>
           <Icon icon={Folder} size={15} className={active ? 'opacity-80' : 'opacity-65'} />
           {/* Muted only at rest. A folder is a subdued group header (decision 26), but the
