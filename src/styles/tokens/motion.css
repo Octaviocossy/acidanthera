@@ -1,9 +1,17 @@
 /*
- * acidanthera design tokens — motion.
- * Fades only, no bounce. Easing/duration follow Factory's short, mechanical feel
- * (`new-system-design-files-to-use/DESIGN.md` "Motion Philosophy").
+ * acidanthera design tokens — motion (ADR 0133).
+ * Mechanical, never expressive: fades, short translates and real width transitions; no bounce,
+ * spring, overshoot or stagger. Three durations by role: --dur-fast for state and hover, --dur for
+ * overlays and lists, --dur-slow for panels and scroll. An enter decelerates on --ease-out; an exit
+ * accelerates on --ease-in and lasts ~70% of its enter. --ease stays the symmetric curve for plain
+ * CSS transitions. Keyboard hot paths never animate. Motion takes numbers, so these are mirrored in
+ * src/lib/motion/tokens.ts, and tokens.test.ts fails the moment the two drift.
  */
 :root {
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --dur-fast: 120ms;
   --dur: 180ms;
+  --dur-slow: 240ms;
 }
