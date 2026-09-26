@@ -28,14 +28,14 @@ The wikilink entry carries its own boundary, and the boundary is what keeps the 
 
 Chrome stays monochrome unless the control **is** the AI surface. The *view toggle* is the case to remember: it changes what the window is showing and asserts no AI agency, so it is monochrome — which is why `Segmented` itself is monochrome, having had an ember active state removed as a standing violation rather than given a variant.
 
-The **brand mark is exempt**: it is identity rather than signal, so the accent system does not apply to it at all, and its ember ring renders **wherever the mark renders** — the app icon, the favicon, the sidebar's brand row, the footer identity tile, and the collapsed rail (ADR 0122, which supersedes ADR 0117 and reverses ADR 0109 decision 16). The test is what the element *is*, not where it is drawn. The exemption covers the mark, never a fill behind it: the footer tile is `--bg-elevated`, never `--accent-soft`.
+The **brand mark is exempt**: it is identity rather than signal, so the accent system does not apply to it at all, and its *ember centre* renders **wherever the mark renders** — the app icon, the favicon, the lockups, the sidebar's brand row, the footer identity tile, the collapsed rail, and the home surface (ADR 0122, which supersedes ADR 0117 and reverses ADR 0109 decision 16). The test is what the element *is*, not where it is drawn. The exemption covers the mark, never a fill behind it: the footer tile is `--bg-elevated`, never `--accent-soft`.
 
 `--danger` is the only other colored fill in the system and marks the destructive path — the menu row that starts it and the button that commits it, nothing else (ADRs 0113, 0018). A failed operation stays monochrome. Diff add/delete colors remain a separate directional encoding.
 
 ## Iconography and voice
 
 - Use the Unicode vocabulary for characters that live **inside text**: `✦` AI, `◈` context/file, `⌕` search, `＋` add, and `·` separator. These are typography, not an icon set; keep them as characters and do not substitute emoji.
-- Every *drawn* icon comes from Lucide through the `Icon` primitive (ADR 0115), the only place `strokeWidth={1.2}` with `absoluteStrokeWidth` is set. Do not hand-write an SVG and do not set the stroke at a call site. `AcidantheraMarkGlyph` is the one hand-drawn survivor — a brand mark is not an icon. Disclosure (`▸`/`▾`) is a rotated Lucide chevron, not a character.
+- Every *drawn* icon comes from Lucide through the `Icon` primitive (ADR 0115), the only place `strokeWidth={1.2}` with `absoluteStrokeWidth` is set. Do not hand-write an SVG and do not set the stroke at a call site. `AcidantheraMarkGlyph` is the one hand-drawn survivor — a brand mark is not an icon. It is filled, not stroked: never give it the house stroke. Disclosure (`▸`/`▾`) is a rotated Lucide chevron, not a character.
 - Keep copy terse and lowercase-leaning. Use sentence case for labels and lowercase mono for metadata. Do not use emoji.
 
 ## Layout and chrome

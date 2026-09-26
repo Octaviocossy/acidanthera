@@ -9,37 +9,35 @@ interface GlyphProps {
 }
 
 /**
- * The acidanthera brand mark: a vertically-stretched hexagon with points top and bottom and
- * vertical side edges, six circular arcs bowing inward from each edge, and a ring at the centre.
+ * The brand mark's outline: a regular pointy-top hexagon minus a six-point concave star, in the
+ * glyph's own coordinates (centred on the origin, circumradius 14). Filled with `evenodd`, so the
+ * star is a knockout and whatever surface sits behind the mark shows through it.
  *
- * Reconstructed as stroked geometry rather than autotraced — a trace yields filled paths, which
- * cannot carry the house 1.2px stroke. The source render has neither a constant arc radius nor a
- * constant sagitta (the vertical edges measure a 3.89 sagitta, the diagonals 3.34), so one rule is
- * applied to all six: a constant sagitta of 3.72, giving R 7.28 across the side edges and R 7.897
- * across the diagonals.
+ * Every brand SVG — the favicon, the mark master, both lockups and the app-icon master — embeds
+ * this exact string and positions it only with `transform`; `glyphs.test.ts` fails on a copy that
+ * drifts. Change the geometry here, then paste it into each of them.
+ */
+export const ACIDANTHERA_MARK_PATH =
+  'M0 -14 L12.124 -7 L12.124 7 L0 14 L-12.124 7 L-12.124 -7 Z M0 -11.2 A8.018 8.018 0 0 0 9.699 -5.6 A8.018 8.018 0 0 0 9.699 5.6 A8.018 8.018 0 0 0 0 11.2 A8.018 8.018 0 0 0 -9.699 5.6 A8.018 8.018 0 0 0 -9.699 -5.6 A8.018 8.018 0 0 0 0 -11.2 Z';
+
+/** Radius of the mark's *ember centre*, drawn at the origin. */
+export const ACIDANTHERA_MARK_DOT_RADIUS = 2.52;
+
+/**
+ * The acidanthera *brand mark*: a filled hexagon with a six-point concave star knocked out and an
+ * *ember centre*. Filled rather than stroked — the house 1.2px stroke governs icons, and the mark is
+ * not one; a stroked mark's six arcs converged on each vertex and smudged below 24px. One geometry
+ * serves every size (brand-refresh spec, decisions 1–2).
  *
- * The centre ring is ember, matching the app icon and the favicon, and renders wherever the mark
- * renders — brand row, footer identity tile, and the collapsed rail included. The brand mark is
- * **identity rather than signal**, so the accent system does not govern it at all (ADR 0122,
- * superseding ADR 0117). The exemption covers the mark, never a fill behind it.
+ * The ember centre renders wherever the mark renders. The brand mark is **identity rather than
+ * signal**, so the accent system does not govern it at all (ADR 0122). The exemption covers the
+ * mark, never a fill behind it.
  */
 export function AcidantheraMarkGlyph({ className }: GlyphProps) {
   return (
-    <svg
-      width="24"
-      height="28"
-      viewBox="0 0 24 28"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M12 .6 L23.4 7.65 L23.4 20.35 L12 27.4 L.6 20.35 L.6 7.65 Z" />
-      <path d="M12 .6 A7.897 7.897 0 0 0 23.4 7.65 A7.28 7.28 0 0 0 23.4 20.35 A7.897 7.897 0 0 0 12 27.4 A7.897 7.897 0 0 0 .6 20.35 A7.28 7.28 0 0 0 .6 7.65 A7.897 7.897 0 0 0 12 .6 Z" />
-      <circle cx="12" cy="14" r="1.73" className="stroke-accent" />
+    <svg width="24" height="28" viewBox="-12.124 -14 24.249 28" fill="none" className={className} aria-hidden="true">
+      <path d={ACIDANTHERA_MARK_PATH} fill="currentColor" fillRule="evenodd" />
+      <circle cx="0" cy="0" r={ACIDANTHERA_MARK_DOT_RADIUS} className="fill-accent" />
     </svg>
   );
 }

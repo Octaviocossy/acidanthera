@@ -1,11 +1,11 @@
 # The brand mark is identity, not signal
 
-ADR 0117 admitted the ember ring only on an icon that never renders inside the window — the app
+ADR 0117 admitted the ember only on an icon that never renders inside the window — the app
 icon and the favicon — so the ember stayed a reliable *the AI acted here* signal everywhere else.
 The unified-sidebar design draws the marked hexagon inside the window, in the sidebar's brand row
 and the footer identity tile, which that test cannot accommodate. We replace the test rather than
 bend it: the brand mark is **identity rather than signal**, so the accent system does not apply to
-it at all, and the ring renders wherever the mark renders — app icon, favicon, brand row, footer
+it at all, and its *ember centre* renders wherever the mark renders — app icon, favicon, brand row, footer
 tile, and the collapsed rail.
 
 ## Consequences

@@ -21,6 +21,7 @@
 | App command | Config files and command registry |
 | App store | Application shell and commands |
 | Backend registry | Agents and models |
+| Brand mark | Cross-cutting presentation vocabulary |
 | Buffer source | Editor session |
 | Buffer view | Editor session |
 | Chat file | Conversations and history |

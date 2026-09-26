@@ -102,10 +102,12 @@ export function HomeSurface() {
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
         <div className="flex flex-col items-center gap-3">
-          {/* The mark sits above the wordmark (spec decision 6), carrying its ember ring as it does
+          {/* The mark sits above the wordmark (spec decision 6), carrying its ember centre as it does
               wherever it renders — identity rather than signal, so this is not an accent use
-              (ADR 0122, invariant 21). */}
-          <AcidantheraMarkGlyph className="h-[65px] w-[56px] text-text-secondary" />
+              (ADR 0122, invariant 21). `text-text-primary` here, where mark and wordmark form the
+              lockup; every sidebar placement stays `text-text-secondary` (brand-refresh spec,
+              decision 3). */}
+          <AcidantheraMarkGlyph className="h-[65px] w-[56px] text-text-primary" />
           <span className="font-sans text-hero font-medium text-text-primary tracking-display">acidanthera</span>
           <div className="flex flex-col items-center gap-1.5">
             {greeting !== null && <span className="font-sans text-h1 text-text-primary">{greeting}</span>}

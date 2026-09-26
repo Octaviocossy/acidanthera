@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/acidanthera-lockup-dark.png">
-    <img src="assets/brand/acidanthera-lockup-light.png" width="420" alt="acidanthera">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/acidanthera-lockup-dark.svg">
+    <img src="assets/brand/acidanthera-lockup-light.svg" width="420" alt="acidanthera">
   </picture>
   <p><strong>A local-first, vim-first markdown notes app with a coding agent living inside it.</strong></p>
   <p>
