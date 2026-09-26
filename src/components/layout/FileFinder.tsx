@@ -1,8 +1,12 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { useDeferredValue, useEffect, useId, useRef } from 'react';
 import { Chip } from '@/components/ui/chip';
 import { Kbd } from '@/components/ui/kbd';
 import { SectionLabel } from '@/components/ui/section-label';
+import { useReleaseFocusOnExit } from '@/hooks/use-release-focus-on-exit';
 import { openConfigFile } from '@/lib/config/open-config-file';
+import { useExitPhase } from '@/lib/motion/use-exit-phase';
+import { overlayPresence, risingPanelVariants, scrimVariants } from '@/lib/motion/variants';
 import { collectConfigCandidates, collectVaultFiles, rankVaultFiles } from '@/lib/vault/file-search';
 import { openVaultFile } from '@/lib/vault/open-file';
 import type { ConfigFileName } from '@/services/config.service';
@@ -14,6 +18,10 @@ import { useToastStore } from '@/stores/toast-store';
 /** Spotlight-like overlay for opening a Markdown note from the current vault. */
 export function FileFinder() {
   const open = useFileFinderStore((state) => state.open);
+  return <AnimatePresence>{open && <FileFinderPanel />}</AnimatePresence>;
+}
+
+function FileFinderPanel() {
   const query = useFileFinderStore((state) => state.query);
   const cursor = useFileFinderStore((state) => state.cursor);
   const hide = useFileFinderStore((state) => state.hide);
@@ -28,11 +36,15 @@ export function FileFinder() {
   const candidates = [...(vaultRoot === null ? [] : collectVaultFiles(tree, vaultRoot)), ...collectConfigCandidates()];
   const results = rankVaultFiles(candidates, deferredQuery);
 
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+  const { exiting, exitPhaseProps } = useExitPhase();
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  if (!open) return null;
+  // Takes keys from its first frame (invariant 60) — and again on a re-entry mid-exit.
+  useEffect(() => {
+    if (!exiting) inputRef.current?.focus();
+  }, [exiting]);
+
+  useReleaseFocusOnExit(panelRef, exiting);
 
   /** Closes the finder without opening anything, handing DOM focus back to the editor so the
    *  keyboard isn't left on `<body>` once this overlay's input unmounts. Deliberately the nonce-only
@@ -60,13 +72,17 @@ export function FileFinder() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; the dialog receives keyboard input.
-    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center bg-scrim pt-[12vh]" onMouseDown={dismiss}>
-      <div
+    <div role="presentation" className="absolute inset-0 z-10 flex items-start justify-center pt-[12vh]" onMouseDown={dismiss} {...exitPhaseProps}>
+      <motion.div className="absolute inset-0 bg-scrim" variants={scrimVariants} {...overlayPresence} />
+      <motion.div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Find file"
-        className="w-[min(600px,calc(100%-2rem))] overflow-hidden rounded-panel border border-hairline bg-surface shadow-modal"
+        className="relative w-[min(600px,calc(100%-2rem))] overflow-hidden rounded-panel border border-hairline bg-surface shadow-modal"
         onMouseDown={(event) => event.stopPropagation()}
+        variants={risingPanelVariants}
+        {...overlayPresence}
       >
         <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">
           <span aria-hidden="true" className="font-mono text-input text-text-muted">
@@ -131,7 +147,7 @@ export function FileFinder() {
           <span className="font-mono text-micro text-text-muted">·</span>
           <Kbd boxed={false}>esc dismiss</Kbd>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

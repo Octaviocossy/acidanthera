@@ -1,6 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
+import { hasModalOverlay, topModalOverlay } from '@/lib/keymap/modal-overlay';
 import { requestDeleteConfirmation } from '@/lib/vault/confirm-delete';
 import { DeleteEntryDialog } from './DeleteEntryDialog';
 
@@ -42,5 +43,19 @@ describe('DeleteEntryDialog', () => {
     expect(screen.getByText('~/brain/note.md')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Cancel/ }));
     await expect(decision).resolves.toBe('cancel');
+  });
+
+  it('holds the target on screen and releases the modal layer the moment it is answered', async () => {
+    const decision = requestDeleteConfirmation('/vault/notes', { counts: { files: 2, directories: 1 }, openBuffers: 1, dirtyBuffers: ['draft.md'] });
+    render(<DeleteEntryDialog />);
+    expect(hasModalOverlay()).toBe(true);
+
+    act(() => topModalOverlay()?.onConfirm?.()); // the Enter path, through the overlay
+
+    expect(topModalOverlay()).toBeNull(); // a second Enter now reaches nothing
+    expect(screen.getByText('/vault/notes')).toBeInTheDocument();
+    expect(screen.getByText('draft.md')).toBeInTheDocument();
+    await expect(decision).resolves.toBe('confirm');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });

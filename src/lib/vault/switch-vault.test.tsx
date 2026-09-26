@@ -1,7 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SwitchVaultDialog } from '@/components/layout/SwitchVaultDialog';
+import { hasModalOverlay } from '@/lib/keymap/modal-overlay';
 import { useAppStore } from '@/stores/app-store';
 import { useEditorStore } from '@/stores/editor-store';
 import { switchVault } from './switch-vault';
@@ -42,7 +43,7 @@ describe('switchVault', () => {
     // Cancel leaves the vault open, so its *navigation history* still points at open buffers.
     expect(useEditorStore.getState().history).toEqual({ entries: ['/old-vault/note.md'], index: 0 });
     expect(invoke).not.toHaveBeenCalledWith('open_vault', expect.anything());
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('discards dirty buffers and switches when the user discards', async () => {
@@ -79,5 +80,25 @@ describe('switchVault', () => {
     expect(useAppStore.getState().vaultRoot).toBe('/new-vault');
     expect(invoke).toHaveBeenCalledWith('open_vault', { path: '/new-vault' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps the new path on screen and releases the modal layer the moment the prompt is answered', async () => {
+    useAppStore.setState({ vaultRoot: '/old-vault' });
+    useEditorStore.getState().openFile('/old-vault/note.md', '# original');
+    const bufferId = useEditorStore.getState().activeBufferId;
+    if (bufferId === null) throw new Error('expected a buffer');
+    useEditorStore.getState().updateBufferContent(bufferId, '# unsaved edit');
+
+    render(<SwitchVaultDialog />);
+    const switching = switchVault('/new-vault');
+    const cancelButton = await screen.findByRole('button', { name: 'Cancel' });
+
+    fireEvent.click(cancelButton);
+
+    expect(hasModalOverlay()).toBe(false);
+    expect(screen.getByText('/new-vault')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Switch vault?' }).closest('[role="presentation"]')).toHaveAttribute('inert');
+    await expect(switching).resolves.toBe('cancelled');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });
