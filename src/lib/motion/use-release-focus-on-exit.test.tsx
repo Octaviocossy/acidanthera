@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { crossfadePresence } from '@/lib/motion/presence-props';
 import { useExitPhase } from '@/lib/motion/use-exit-phase';
 import { useReleaseFocusOnExit } from '@/lib/motion/use-release-focus-on-exit';
 
@@ -11,7 +12,7 @@ function Leaving() {
   const ref = useRef<HTMLDivElement>(null);
   useReleaseFocusOnExit(ref, exiting);
   return (
-    <motion.div ref={ref} initial={false} animate={{ opacity: 1 }} exit={{ opacity: 0 }} {...exitPhaseProps}>
+    <motion.div ref={ref} {...crossfadePresence} {...exitPhaseProps}>
       <input aria-label="Leaving input" />
     </motion.div>
   );

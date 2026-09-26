@@ -21,6 +21,10 @@ const PRESENT: ExitPhaseProps = {};
  * belongs stay the consumer's job, done in the same handler as the state change that closed it —
  * never deferred to unmount, which is where the exit phase *ends*.
  *
+ * The element's enter/exit props come from `@/lib/motion/presence-props`, never hand-written: an
+ * `initial={false}` on a presence child disables every enter, not just the first paint's, which is
+ * the parent `AnimatePresence`'s concern.
+ *
  * Outside `AnimatePresence` the element is always present, so `exiting` is always false.
  */
 export function useExitPhase(): { exiting: boolean; exitPhaseProps: ExitPhaseProps } {

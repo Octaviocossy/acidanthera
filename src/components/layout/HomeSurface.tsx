@@ -10,6 +10,7 @@ import { submitFromDock } from '@/lib/agent/submit-from-dock';
 import { executeAppCommand } from '@/lib/app-command';
 import { createRegionExitGesture } from '@/lib/keymap/region-exit-gesture';
 import { PANEL_CLOSE, PANEL_OPEN } from '@/lib/layout/panel-motion';
+import { fadePresence } from '@/lib/motion/presence-props';
 import { useExitPhase } from '@/lib/motion/use-exit-phase';
 import { displayPath } from '@/lib/vault/display-path';
 import { countNotes } from '@/lib/vault/note-count';
@@ -35,6 +36,9 @@ const AGENT_DOCK_SLOT_HEIGHT = 124;
  *  way in, not a fourth action row. */
 const AGENT_DOCK_PLACEHOLDER = 'Or ask — "set up a structure for PKM + work notes"';
 
+/** The dock arrives as the agent panel closes and leaves as it opens, so the two move in step. */
+const DOCK_PRESENCE = fadePresence(PANEL_CLOSE, PANEL_OPEN);
+
 /**
  * The *agent dock* as a presence child. It crossfades with the *agent panel* (spec decision 22): it
  * fades out on the panel's opening transition and back in on its closing one, so the two move in
@@ -43,16 +47,9 @@ const AGENT_DOCK_PLACEHOLDER = 'Or ask — "set up a structure for PKM + work no
  * (invariant 34).
  */
 function DockPresence({ children }: { children: ReactNode }) {
-  const { exiting, exitPhaseProps } = useExitPhase();
+  const { exitPhaseProps } = useExitPhase();
   return (
-    <motion.div
-      style={{ ...exitPhaseProps.style }}
-      inert={exitPhaseProps.inert}
-      initial={false}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={exiting ? PANEL_OPEN : PANEL_CLOSE}
-    >
+    <motion.div style={{ ...exitPhaseProps.style }} inert={exitPhaseProps.inert} initial={DOCK_PRESENCE.initial} animate={DOCK_PRESENCE.animate} exit={DOCK_PRESENCE.exit}>
       {children}
     </motion.div>
   );
@@ -191,7 +188,7 @@ export function HomeSurface() {
           never appear there is the same layout lie as reserving none where it will. */}
       {hasVault && (
         <div className="flex shrink-0 flex-col justify-end px-6 pb-6" style={{ height: AGENT_DOCK_SLOT_HEIGHT }}>
-          <AnimatePresence>
+          <AnimatePresence initial={false}>
             {showDock && (
               <DockPresence>
                 {/* The wrapper is not an affordance of its own: it exists to hold the slot's ref and to

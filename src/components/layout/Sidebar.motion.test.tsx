@@ -35,6 +35,9 @@ const initialSettingsState = useSettingsStore.getState();
 const SETTINGS: Settings = { model: 'sonnet-5', editorFont: 'Geist Mono', theme: 'dark', vaultPath: '/vault', dailyNoteFolder: 'daily', contentZoom: 1 };
 const tree = [{ name: 'readme.md', path: '/vault/readme.md', isDir: false, modified: null, children: null }];
 
+/** The face (a direct child of the aside) that contains `element`. */
+const faceOf = (element: HTMLElement) => Array.from(screen.getByRole('complementary', { name: 'Vault explorer' }).children).find((face) => face.contains(element)) as HTMLElement;
+
 describe('Sidebar panel motion', () => {
   beforeEach(() => {
     openVaultFile.mockReset();
@@ -117,12 +120,51 @@ describe('Sidebar panel motion', () => {
     expect(input).toHaveValue('plan');
   });
 
-  it('lands the width at once under Reduce Motion but keeps the crossfade', () => {
+  it('brings the rail in hidden but live as the explorer starts leaving', () => {
+    useAppStore.setState({ sidebarExpanded: true });
+    render(<Sidebar />);
+    act(() => useAppStore.getState().collapseSidebar());
+    const expand = screen.getByRole('button', { name: 'Expand sidebar' });
+    expect(faceOf(expand)).toHaveStyle({ opacity: '0' });
+    expect(expand.closest('[inert]')).toBeNull();
+  });
+
+  it('brings the explorer in hidden but live as the rail starts leaving', () => {
+    render(<Sidebar />);
+    act(() => useAppStore.getState().expandSidebar());
+    const tree = screen.getByRole('tree');
+    expect(faceOf(tree)).toHaveStyle({ opacity: '0' });
+    expect(tree.closest('[inert]')).toBeNull();
+  });
+
+  it('draws neither face hidden on the first paint', () => {
+    useAppStore.setState({ sidebarExpanded: true });
+    render(<Sidebar />);
+    expect(faceOf(screen.getByRole('tree'))).not.toHaveStyle({ opacity: '0' });
+    cleanup();
+    useAppStore.setState({ sidebarExpanded: false });
+    render(<Sidebar />);
+    expect(faceOf(screen.getByRole('button', { name: 'Expand sidebar' }))).not.toHaveStyle({ opacity: '0' });
+  });
+
+  it('returns the explorer live when the sidebar re-expands mid-collapse', () => {
+    useAppStore.setState({ sidebarExpanded: true });
+    render(<Sidebar />);
+    act(() => useAppStore.getState().collapseSidebar());
+    act(() => useAppStore.getState().expandSidebar());
+    const tree = screen.getByRole('tree');
+    expect(tree.closest('[inert]')).toBeNull();
+    expect(tree.closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Expand sidebar', hidden: true }).closest('[inert]')).not.toBeNull();
+  });
+
+  it('lands the width at once under Reduce Motion but keeps the sequenced fades', () => {
     reducedMotion.value = true;
     useAppStore.setState({ sidebarExpanded: true });
     render(<Sidebar />);
     act(() => useAppStore.getState().collapseSidebar());
     expect(sidebarRenderedWidth.get()).toBe(RAIL_WIDTH);
+    expect(faceOf(screen.getByRole('button', { name: 'Expand sidebar' }))).toHaveStyle({ opacity: '0' });
     expect(screen.getByRole('tree', { hidden: true })).toBeInTheDocument();
   });
 });

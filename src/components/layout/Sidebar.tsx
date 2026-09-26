@@ -1,5 +1,5 @@
-import { AnimatePresence, animate, type MotionValue, motion, type Transition, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
-import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
+import { AnimatePresence, animate, type MotionValue, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, FilePlus, FileText, Folder, FolderPlus, Icon, Moon, Search, Settings, Sun } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
@@ -16,6 +16,7 @@ import { canGoBack, canGoForward } from '@/lib/editor/navigation-history';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { PANEL_CLOSE, PANEL_OPEN } from '@/lib/layout/panel-motion';
 import { RAIL_WIDTH, sidebarRenderedWidth, usePanelWidths } from '@/lib/layout/panel-widths';
+import { type FacePresence, sequencedFacePresence } from '@/lib/motion/presence-props';
 import { useExitPhase } from '@/lib/motion/use-exit-phase';
 import { tooltipTarget } from '@/lib/tooltip/tooltip-overlay';
 import { cn } from '@/lib/utils';
@@ -170,25 +171,35 @@ function NavRow({
   );
 }
 
+/** The explorer arrives as the sidebar expands and leaves as it collapses; the rail, the other way round. */
+const EXPLORER_FACE = sequencedFacePresence('open', 'close');
+const RAIL_FACE = sequencedFacePresence('close', 'open');
+
 /**
  * One face of the sidebar — the explorer or the *sidebar rail* — as an `AnimatePresence` child. Both
- * faces are mounted while the aside's width tweens between them, crossfading on the gesture's own
- * transition. The leaving face is inert from its first frame (invariant 60) and `aria-hidden`, so
- * exactly one face is operable and announced at any moment. The entering face is neither, so it
- * takes keys from frame 0.
+ * faces are mounted while the aside's width tweens between them, and they swap **in sequence**
+ * (motion-polish spec decision 1): the leaving face fades out over the first half of the tween and
+ * the entering face fades in over the second, so no frame shows both. The leaving face is inert from
+ * its first frame (invariant 60) and `aria-hidden`; the entering face is neither, so it takes keys
+ * from frame 0 even while its pixels wait. A face that returns mid-exit fades back at once (decision 5).
  */
-function SidebarLayer({ width, className, enter, exit, children }: { width?: MotionValue; className?: string; enter: Transition; exit: Transition; children: ReactNode }) {
+function SidebarLayer({ width, className, presence, children }: { width?: MotionValue; className?: string; presence: FacePresence; children: ReactNode }) {
   const { exiting, exitPhaseProps } = useExitPhase();
+  // Once this face has begun leaving, coming back is a reversal: no sequencing wait (decision 5).
+  // Set in a layout effect, before paint, so the re-entering render already reads it.
+  const [returning, setReturning] = useState(false);
+  useLayoutEffect(() => {
+    if (exiting) setReturning(true);
+  }, [exiting]);
   return (
     <motion.div
       className={cn('absolute inset-0', className)}
       style={{ width, ...exitPhaseProps.style }}
       inert={exitPhaseProps.inert}
       aria-hidden={exiting}
-      initial={false}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={exiting ? exit : enter}
+      initial={presence.initial}
+      animate={returning ? { opacity: 1, transition: presence.reenter } : presence.animate}
+      exit={presence.exit}
     >
       {children}
     </motion.div>
@@ -214,7 +225,7 @@ function draftRowKey(draft: EntryDraft): string {
 /** Collapsible vault explorer — open/edit/save loop (doc/v0-spec.md §5.3, §6). Since the panel-motion
  *  slice (#180), the aside is permanent for the app's whole life (invariant 24): a collapse is a
  *  width tween of the shared `sidebarRenderedWidth`, its two faces — the explorer and the *sidebar
- *  rail* — crossfading in an `AnimatePresence` while the width runs. */
+ *  rail* — swapping in sequence in an `AnimatePresence` while the width runs. */
 export function Sidebar() {
   useSidebarKeymap();
 
@@ -398,7 +409,7 @@ export function Sidebar() {
     <motion.aside className="relative flex h-full shrink-0 flex-col overflow-hidden bg-panel" aria-label="Vault explorer" style={{ width: sidebarRenderedWidth }}>
       <AnimatePresence initial={false}>
         {sidebarExpanded ? (
-          <SidebarLayer key="explorer" width={explorerWidth} className="flex h-full flex-col" enter={PANEL_OPEN} exit={PANEL_CLOSE}>
+          <SidebarLayer key="explorer" width={explorerWidth} className="flex h-full flex-col" presence={EXPLORER_FACE}>
             <SidebarChromeStrip>
               <NavigationHistoryControls />
             </SidebarChromeStrip>
@@ -520,7 +531,7 @@ export function Sidebar() {
             )}
           </SidebarLayer>
         ) : (
-          <SidebarLayer key="rail" className="flex h-full w-[var(--rail-sidebar-collapsed)] flex-col items-center border-hairline" enter={PANEL_OPEN} exit={PANEL_CLOSE}>
+          <SidebarLayer key="rail" className="flex h-full w-[var(--rail-sidebar-collapsed)] flex-col items-center border-hairline" presence={RAIL_FACE}>
             <SidebarChromeStrip />
             <AcidantheraMarkGlyph className="text-text-secondary" />
             <div className="mt-2 flex min-h-0 flex-1 flex-col items-center gap-2">

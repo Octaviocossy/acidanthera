@@ -150,6 +150,16 @@ describe('EditorTabs', () => {
       expect(chipOf('one.md')).not.toHaveStyle({ opacity: '0' });
     });
 
+    it("keeps an entering chip's content on one line at its natural width, so the widening frame clips it", () => {
+      const { rerender } = render(<EditorTabs buffers={[buffers[0]]} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+      rerender(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
+
+      // jsdom has no layout, so the classes that size the content are the observable contract here.
+      const content = screen.getByRole('tab', { name: 'two.md, unsaved changes', hidden: true }).parentElement as HTMLElement;
+      expect(content).toHaveClass('w-max', 'whitespace-nowrap');
+    });
+
     it('animates no chip on the first render', () => {
       render(<EditorTabs buffers={buffers} activeBufferId="one" onActivate={vi.fn()} onClose={vi.fn()} />);
 
