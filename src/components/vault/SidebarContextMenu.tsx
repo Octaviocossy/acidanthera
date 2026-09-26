@@ -1,9 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Copy, FilePlus, FolderPlus, Icon, type LucideIcon, Pencil, Trash2 } from '@/components/ui/icon';
 import { Kbd } from '@/components/ui/kbd';
 import type { AppCommandId } from '@/lib/app-command';
 import { formatChord } from '@/lib/keymap/format-chord';
 import { pushModalOverlay } from '@/lib/keymap/modal-overlay';
+import { useExitPhase } from '@/lib/motion/use-exit-phase';
+import { anchoredVariants, overlayPresence } from '@/lib/motion/variants';
 import { cn } from '@/lib/utils';
 import { resolveParentForTarget } from '@/lib/vault/create-entry';
 import { deleteVaultEntry } from '@/lib/vault/delete-entry';
@@ -46,45 +49,17 @@ const MENU_GROUPS: readonly (readonly MenuRow[])[] = [
   [{ action: 'delete', label: 'Move to Trash', icon: Trash2, command: 'sidebar.delete', shown: (targetKind) => targetKind === 'directory' || targetKind === 'note' }],
 ];
 
+/** The menu opens with its top-left corner at the pointer, so it drops in from the top (decision 14). */
+const MENU_VARIANTS = anchoredVariants('top');
+
 /** App-drawn sidebar menu, mounted outside the scrollable explorer so it cannot be clipped. */
 export function SidebarContextMenu() {
   const open = useContextMenuStore((state) => state.open);
-  const x = useContextMenuStore((state) => state.x);
-  const y = useContextMenuStore((state) => state.y);
-  const target = useContextMenuStore((state) => state.target);
   const hide = useContextMenuStore((state) => state.hide);
-  const tree = useSidebarStore((state) => state.tree);
-  const expanded = useSidebarStore((state) => state.expanded);
-  const beginDraft = useSidebarStore((state) => state.beginDraft);
-  const beginRename = useSidebarStore((state) => state.beginRename);
-  const vaultRoot = useAppStore((state) => state.vaultRoot);
-  const sidebarBindings = useKeymapStore((state) => state.resolved.layers.sidebar);
-  const layerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<MenuPosition | null>(null);
-  const visibleRows = flattenVisibleTree(tree, expanded);
-  const targetEntry = target === null ? null : (visibleRows.find((row) => row.entry.path === target)?.entry ?? null);
-  const targetKind: TargetKind = target === null ? 'root' : targetEntry === null ? null : targetEntry.isDir ? 'directory' : 'note';
-  const visibleGroups = MENU_GROUPS.map((group) => group.filter((row) => row.shown(targetKind))).filter((group) => group.length > 0);
 
-  useLayoutEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
-
-    const layer = layerRef.current;
-    const panel = panelRef.current;
-    if (layer === null || panel === null) return;
-
-    const layerBounds = layer.getBoundingClientRect();
-    const panelBounds = panel.getBoundingClientRect();
-    setPosition({
-      left: Math.max(0, Math.min(x - layerBounds.left, Math.max(0, layerBounds.width - panelBounds.width))),
-      top: Math.max(0, Math.min(y - layerBounds.top, Math.max(0, layerBounds.height - panelBounds.height))),
-    });
-  }, [open, x, y]);
-
+  // Both effects key on `open`, not on the panel's mount. Closing drops the listeners and pops
+  // the modal overlay in the commit that starts the exit phase (invariants 25 and 60).
   useEffect(() => {
     if (!open) return;
 
@@ -106,6 +81,48 @@ export function SidebarContextMenu() {
     if (!open) return;
     return pushModalOverlay({ id: 'sidebar-context-menu', onCancel: hide });
   }, [open, hide]);
+
+  return <AnimatePresence>{open && <ContextMenuLayer key="sidebar-context-menu" panelRef={panelRef} />}</AnimatePresence>;
+}
+
+interface ContextMenuLayerProps {
+  panelRef: RefObject<HTMLDivElement | null>;
+}
+
+/** The click-catching layer and its panel. Present while open, then kept mounted and inert
+ *  through the exit phase, with the last target it rendered. */
+function ContextMenuLayer({ panelRef }: ContextMenuLayerProps) {
+  const x = useContextMenuStore((state) => state.x);
+  const y = useContextMenuStore((state) => state.y);
+  const target = useContextMenuStore((state) => state.target);
+  const hide = useContextMenuStore((state) => state.hide);
+  const tree = useSidebarStore((state) => state.tree);
+  const expanded = useSidebarStore((state) => state.expanded);
+  const beginDraft = useSidebarStore((state) => state.beginDraft);
+  const beginRename = useSidebarStore((state) => state.beginRename);
+  const vaultRoot = useAppStore((state) => state.vaultRoot);
+  const sidebarBindings = useKeymapStore((state) => state.resolved.layers.sidebar);
+  const { exitPhaseProps } = useExitPhase();
+  const layerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<MenuPosition | null>(null);
+  const visibleRows = flattenVisibleTree(tree, expanded);
+  const targetEntry = target === null ? null : (visibleRows.find((row) => row.entry.path === target)?.entry ?? null);
+  const targetKind: TargetKind = target === null ? 'root' : targetEntry === null ? null : targetEntry.isDir ? 'directory' : 'note';
+  const visibleGroups = MENU_GROUPS.map((group) => group.filter((row) => row.shown(targetKind))).filter((group) => group.length > 0);
+
+  // Measure frame: the panel lays out hidden, is clamped into the layer, and only then enters.
+  useLayoutEffect(() => {
+    const layer = layerRef.current;
+    const panel = panelRef.current;
+    if (layer === null || panel === null) return;
+
+    const layerBounds = layer.getBoundingClientRect();
+    const panelBounds = panel.getBoundingClientRect();
+    setPosition({
+      left: Math.max(0, Math.min(x - layerBounds.left, Math.max(0, layerBounds.width - panelBounds.width))),
+      top: Math.max(0, Math.min(y - layerBounds.top, Math.max(0, layerBounds.height - panelBounds.height))),
+    });
+  }, [x, y, target, panelRef]);
 
   const startDraft = (kind: EntryDraftKind) => {
     const parentPath = resolveParentForTarget(visibleRows, target, vaultRoot);
@@ -146,16 +163,18 @@ export function SidebarContextMenu() {
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div ref={layerRef} role="presentation" className="absolute inset-0 z-10">
-      <div
+    <div ref={layerRef} role="presentation" className="absolute inset-0 z-10" {...exitPhaseProps}>
+      <motion.div
         ref={panelRef}
         role="menu"
         aria-label="Sidebar actions"
         className="absolute w-[210px] rounded-card border border-border-strong bg-elevated p-1.5"
         style={position === null ? { visibility: 'hidden' } : { left: position.left, top: position.top }}
+        variants={MENU_VARIANTS}
+        {...overlayPresence}
+        initial="hidden"
+        animate={position === null ? 'hidden' : 'visible'}
       >
         {visibleGroups.map((group, groupIndex) => (
           <div key={group[0].action}>
@@ -197,7 +216,7 @@ export function SidebarContextMenu() {
             })}
           </div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }
