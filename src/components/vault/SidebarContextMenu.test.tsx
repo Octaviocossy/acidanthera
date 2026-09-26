@@ -1,11 +1,17 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { hasModalOverlay, topModalOverlay } from '@/lib/keymap/modal-overlay';
 import { useAppStore } from '@/stores/app-store';
 import { useContextMenuStore } from '@/stores/context-menu-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { SidebarContextMenu } from './SidebarContextMenu';
+
+/** Invariant 60: in the same act as the close, a closed overlay is gone or already inert. */
+function expectGoneOrInert(element: HTMLElement): void {
+  expect(!element.isConnected || element.closest('[inert]') !== null).toBe(true);
+}
 
 const { invoke, listen, openVaultFile } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -157,12 +163,39 @@ describe('SidebarContextMenu', () => {
     expect(useSidebarStore.getState().draft).toEqual({ kind: 'note', parentPath: '/vault/notes' });
   });
 
-  it('dismisses on an outside mousedown', () => {
+  it('dismisses on an outside mousedown', async () => {
     renderSidebarWithMenu();
     fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+    const menu = screen.getByRole('menu', { name: 'Sidebar actions' });
 
     fireEvent.mouseDown(document.body);
 
-    expect(screen.queryByRole('menu', { name: 'Sidebar actions' })).not.toBeInTheDocument();
+    expect(hasModalOverlay()).toBe(false);
+    expectGoneOrInert(menu);
+    await waitFor(() => expect(screen.queryByRole('menu', { name: 'Sidebar actions' })).not.toBeInTheDocument());
+  });
+
+  it('pops its modal overlay and goes inert in the same act as a cancel', async () => {
+    renderSidebarWithMenu();
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+    const menu = screen.getByRole('menu', { name: 'Sidebar actions' });
+    expect(hasModalOverlay()).toBe(true);
+
+    act(() => topModalOverlay()?.onCancel());
+
+    expect(useContextMenuStore.getState().open).toBe(false);
+    expect(hasModalOverlay()).toBe(false);
+    expectGoneOrInert(menu);
+    await waitFor(() => expect(menu).not.toBeInTheDocument());
+  });
+
+  it('lays out hidden, then enters from its hidden variant once positioned', () => {
+    renderSidebarWithMenu();
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'notes' }), { clientX: 80, clientY: 100 });
+
+    const menu = screen.getByRole('menu', { name: 'Sidebar actions' });
+    expect(menu).not.toHaveStyle({ visibility: 'hidden' });
+    expect(menu.style.opacity).toBe('0');
   });
 });

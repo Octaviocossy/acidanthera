@@ -14,10 +14,17 @@ export interface TooltipState {
   placement: TooltipPlacement;
 }
 
+/** An open tooltip: what was requested, plus how it opened. */
+export interface OpenTooltip extends TooltipState {
+  /** True when it opened inside the warm window, handed off from a tooltip that just closed. The
+   *  host swaps a warm open in place with no animation and fades a cold one in (decision 14). */
+  warm: boolean;
+}
+
 const OPEN_DELAY_MS = 500;
 const WARM_WINDOW_MS = 300;
 
-let current: TooltipState | null = null;
+let current: OpenTooltip | null = null;
 let openTimer: number | null = null;
 let warmUntil = 0;
 const listeners = new Set<() => void>();
@@ -33,7 +40,7 @@ export function subscribeTooltip(listener: () => void): () => void {
   };
 }
 
-export function getTooltip(): TooltipState | null {
+export function getTooltip(): OpenTooltip | null {
   return current;
 }
 
@@ -50,7 +57,7 @@ export function requestTooltip(state: TooltipState): void {
   if (hasModalOverlay()) return;
 
   if (Date.now() < warmUntil) {
-    current = state;
+    current = { ...state, warm: true };
     emit();
     return;
   }
@@ -59,11 +66,12 @@ export function requestTooltip(state: TooltipState): void {
     // Re-checked on fire, not only on request: a dialog opened by keyboard during the delay
     // pushes an overlay without a mousedown, and this tooltip must never open above it.
     if (hasModalOverlay()) return;
-    current = state;
+    current = { ...state, warm: false };
     emit();
   }, OPEN_DELAY_MS);
 }
 
+/** Ends a hover. The host animates the panel out unless a warm open takes over first. */
 export function hideTooltip(): void {
   cancelPendingTooltip();
   // Only a tooltip that actually opened warms the window — an early leave must not.
