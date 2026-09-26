@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import { useReducedMotion } from 'motion/react';
 import { useMemo } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerViewerScrollContainer, unregisterViewerScrollContainer } from '@/lib/editor/viewer-scroll-container';
@@ -15,6 +16,11 @@ vi.mock('@/lib/keymap/dispatcher', async (importOriginal) => {
   return { ...actual, useDispatcherLayer: vi.fn(actual.useDispatcherLayer) };
 });
 
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('motion/react')>();
+  return { ...actual, useReducedMotion: vi.fn(() => false) };
+});
+
 function ViewerKeymap() {
   useViewerKeymap();
   return null;
@@ -22,6 +28,10 @@ function ViewerKeymap() {
 
 function press(key: string, options: KeyboardEventInit = {}) {
   window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key, ...options }));
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Opens a vault buffer, which defaults to the read view (`openFile`'s own default). */
@@ -80,6 +90,7 @@ describe('useViewerKeymap', () => {
   beforeEach(() => {
     useAppStore.setState({ activeRegion: 'viewer', mode: 'normal' });
     useEditorStore.setState({ buffers: [], activeBufferId: null, saveRequests: [] });
+    vi.mocked(useReducedMotion).mockReturnValue(false);
   });
 
   it('registers every viewer command declared in the catalog', () => {
@@ -175,7 +186,85 @@ describe('useViewerKeymap', () => {
       unregisterViewerScrollContainer(container);
     });
 
-    it('scrolls down half the container height on half-page-down', () => {
+    it('scrolls down half the container height on half-page-down', async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.half-page-down');
+
+      await waitFor(() => expect(container.scrollTop).toBe(600));
+      unregisterViewerScrollContainer(container);
+    });
+
+    it('scrolls up half the container height on half-page-up', async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.half-page-up');
+
+      await waitFor(() => expect(container.scrollTop).toBe(400));
+      unregisterViewerScrollContainer(container);
+    });
+
+    it('reaches the top on goto-top', async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.goto-top');
+
+      await waitFor(() => expect(container.scrollTop).toBe(0));
+      unregisterViewerScrollContainer(container);
+    });
+
+    it('reaches the bottom on goto-bottom, clamped to scrollHeight - clientHeight', async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500, scrollHeight: 2000 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.goto-bottom');
+
+      await waitFor(() => expect(container.scrollTop).toBe(1800));
+      unregisterViewerScrollContainer(container);
+    });
+
+    it("measures a second quick half-page-down from the first one's target", async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.half-page-down');
+      runCommand('viewer.half-page-down');
+
+      await waitFor(() => expect(container.scrollTop).toBe(700));
+      unregisterViewerScrollContainer(container);
+    });
+
+    it("steps scroll-down instantly from an in-flight jump's target, and the jump never writes again", async () => {
+      openReadBuffer();
+      const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
+      registerViewerScrollContainer(container);
+      render(<ViewerKeymap />);
+
+      runCommand('viewer.half-page-down');
+      runCommand('viewer.scroll-down');
+
+      expect(container.scrollTop).toBe(624);
+
+      await wait(50);
+      expect(container.scrollTop).toBe(624);
+      unregisterViewerScrollContainer(container);
+    });
+
+    it('jumps instantly under reduced motion', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true);
       openReadBuffer();
       const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
       registerViewerScrollContainer(container);
@@ -184,42 +273,6 @@ describe('useViewerKeymap', () => {
       runCommand('viewer.half-page-down');
 
       expect(container.scrollTop).toBe(600);
-      unregisterViewerScrollContainer(container);
-    });
-
-    it('scrolls up half the container height on half-page-up', () => {
-      openReadBuffer();
-      const container = fakeScrollContainer({ scrollTop: 500, clientHeight: 200 });
-      registerViewerScrollContainer(container);
-      render(<ViewerKeymap />);
-
-      runCommand('viewer.half-page-up');
-
-      expect(container.scrollTop).toBe(400);
-      unregisterViewerScrollContainer(container);
-    });
-
-    it('reaches the top on goto-top', () => {
-      openReadBuffer();
-      const container = fakeScrollContainer({ scrollTop: 500 });
-      registerViewerScrollContainer(container);
-      render(<ViewerKeymap />);
-
-      runCommand('viewer.goto-top');
-
-      expect(container.scrollTop).toBe(0);
-      unregisterViewerScrollContainer(container);
-    });
-
-    it('reaches the bottom on goto-bottom', () => {
-      openReadBuffer();
-      const container = fakeScrollContainer({ scrollTop: 500, scrollHeight: 2000 });
-      registerViewerScrollContainer(container);
-      render(<ViewerKeymap />);
-
-      runCommand('viewer.goto-bottom');
-
-      expect(container.scrollTop).toBe(2000);
       unregisterViewerScrollContainer(container);
     });
 
@@ -242,7 +295,7 @@ describe('useViewerKeymap', () => {
     expect(requests[0]?.bufferId).toBe(buffer.id);
   });
 
-  it('presses through the resolved chords end-to-end (g g reaches the top)', () => {
+  it('presses through the resolved chords end-to-end (g g reaches the top)', async () => {
     openReadBuffer();
     const container = fakeScrollContainer({ scrollTop: 500 });
     registerViewerScrollContainer(container);
@@ -251,7 +304,7 @@ describe('useViewerKeymap', () => {
     press('g');
     press('g');
 
-    expect(container.scrollTop).toBe(0);
+    await waitFor(() => expect(container.scrollTop).toBe(0));
     unregisterViewerScrollContainer(container);
   });
 });

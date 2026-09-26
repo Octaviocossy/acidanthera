@@ -15,3 +15,29 @@
   --dur: 180ms;
   --dur-slow: 240ms;
 }
+
+/*
+ * The theme crossfade (spec decision 25). `useApplyTheme` wraps the `data-theme` flip in
+ * `document.startViewTransition`, and these rules retime the UA's root crossfade onto the motion
+ * tokens. Both halves share one curve, `--ease`: a crossfade is neither an enter nor an exit, and
+ * the UA blends the pair with `plus-lighter`, which only sums to full opacity when both fade on the
+ * same curve. Deliberately unguarded by a reduced-motion media query: it is a fade, and fades
+ * survive Reduce Motion (decision 5).
+ */
+/* biome-ignore lint/correctness/noUnknownTypeSelector: `root` is the view-transition name the UA gives the document element, not an element type. */
+::view-transition-old(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease);
+}
+
+/* biome-ignore lint/correctness/noUnknownTypeSelector: as above. */
+::view-transition-new(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease);
+}
+
+/* The snapshot overlay never takes a click: pointer input passes through to the live page beneath,
+   so a click during the crossfade lands (invariant 60). */
+::view-transition {
+  pointer-events: none;
+}
