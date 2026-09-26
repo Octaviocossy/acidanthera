@@ -30,4 +30,13 @@ describe('useFileFinderStore', () => {
     useFileFinderStore.getState().moveCursor(-3, 2);
     expect(useFileFinderStore.getState().cursor).toBe(0);
   });
+
+  it('keeps the last query and cursor when it closes, for the exit phase', () => {
+    useFileFinderStore.getState().show();
+    useFileFinderStore.getState().setQuery('notes');
+    useFileFinderStore.getState().moveCursor(1, 4);
+    useFileFinderStore.getState().hide();
+
+    expect(useFileFinderStore.getState()).toMatchObject({ open: false, query: 'notes', cursor: 1 });
+  });
 });

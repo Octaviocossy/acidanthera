@@ -1,21 +1,28 @@
+import { AnimatePresence } from 'motion/react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { useVaultSwitchPrompt } from '@/lib/vault/switch-vault';
+
+/** `PendingVaultSwitch` is not exported from the store; derive it rather than widen its API. */
+type PendingVaultSwitch = NonNullable<ReturnType<typeof useVaultSwitchPrompt>>;
 
 /**
  * The consolidated Save all / Discard all / Cancel prompt `switchVault` (`#98`, spec decision
  * 21) shows when a live `vaultPath` change would close dirty buffers. One prompt for every dirty
  * buffer, never a chain of per-buffer dialogs — mirrors `CloseBufferDialog`'s shape. Cancel is
  * the safety valve: `settings.toml` already holds `newPath` on disk, but the running app keeps
- * ignoring it until the buffers are resolved, so the copy below says so explicitly.
+ * ignoring it until the buffers are resolved, so the copy below says so explicitly. `pending`
+ * clears in the same update that answers it; the leaving element keeps the one it was rendered
+ * with, so the exiting dialog still has a path to show.
  */
 export function SwitchVaultDialog() {
   const pending = useVaultSwitchPrompt();
+  return <AnimatePresence>{pending !== null && <SwitchVaultModal pending={pending} />}</AnimatePresence>;
+}
+
+function SwitchVaultModal({ pending }: { pending: PendingVaultSwitch }) {
   const modalId = useId();
-
-  if (pending === null) return null;
-
   return (
     <Modal
       id={modalId}

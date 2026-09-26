@@ -1,8 +1,9 @@
+import { AnimatePresence } from 'motion/react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { formatChord } from '@/lib/keymap/format-chord';
-import { useRenamePrompt } from '@/lib/vault/confirm-rename';
+import { type PendingRenamePrompt, useRenamePrompt } from '@/lib/vault/confirm-rename';
 import { useAppStore } from '@/stores/app-store';
 import { useKeymapStore } from '@/stores/keymap-store';
 
@@ -20,11 +21,13 @@ function vaultRelativePath(path: string, vaultRoot: string | null): string {
 /** Confirmation gate before a rename updates unambiguous wikilinks. */
 export function RenameEntryDialog() {
   const pending = useRenamePrompt();
+  return <AnimatePresence>{pending !== null && <RenameEntryModal pending={pending} />}</AnimatePresence>;
+}
+
+function RenameEntryModal({ pending }: { pending: PendingRenamePrompt }) {
   const modalBindings = useKeymapStore((state) => state.resolved.layers.modal);
   const vaultRoot = useAppStore((state) => state.vaultRoot);
   const modalId = useId();
-
-  if (pending === null) return null;
 
   return (
     <Modal

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStore } from '@/stores/app-store';
@@ -124,5 +124,46 @@ describe('FileFinder', () => {
     expect(openConfigFile).toHaveBeenCalledWith('settings.toml');
     expect(openVaultFile).not.toHaveBeenCalled();
     expect(useFileFinderStore.getState().open).toBe(false);
+  });
+
+  it('hands focus back and stops taking keys the moment it is dismissed', async () => {
+    useFileFinderStore.getState().show();
+    const before = useAppStore.getState().editorFocusRequest;
+    render(<FileFinder />);
+    const combobox = screen.getByRole('combobox');
+
+    fireEvent.keyDown(combobox, { key: 'Escape' });
+
+    expect(useFileFinderStore.getState().open).toBe(false);
+    expect(useAppStore.getState().editorFocusRequest).toBe(before + 1);
+    expect(screen.getByRole('dialog', { name: 'Find file' }).closest('[role="presentation"]')).toHaveAttribute('inert');
+    expect(combobox).not.toHaveFocus();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Find file' })).not.toBeInTheDocument());
+  });
+
+  it('keeps its last query and matches on screen while it leaves', async () => {
+    useFileFinderStore.getState().show();
+    render(<FileFinder />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'idea' } });
+
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' });
+
+    expect(screen.getByRole('combobox')).toHaveValue('idea');
+    expect(screen.getByRole('option', { name: 'notes/ideas.md' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'config/settings.toml' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Find file' })).not.toBeInTheDocument());
+  });
+
+  it('re-enters with a fresh query and focus in its input when reopened mid-exit', () => {
+    useFileFinderStore.getState().show();
+    render(<FileFinder />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'idea' } });
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' });
+
+    act(() => useFileFinderStore.getState().show());
+
+    expect(screen.getAllByRole('dialog', { name: 'Find file' })).toHaveLength(1);
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(screen.getByRole('combobox')).toHaveFocus();
   });
 });
