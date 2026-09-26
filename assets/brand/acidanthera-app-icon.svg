@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1a1b" />
+      <stop offset="1" stop-color="#0c0d0d" />
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.23" />
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.10" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.08" />
+    </linearGradient>
+    <!-- Soft outer shadow on the tile's own edge (D6, Open Question: "keep it"), not on the mark. -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  <!-- Apple's 1024 grid: an 824-wide tile at a 100px margin (issue Step 7). The shadow is cast by
+       a plain solid-fill duplicate behind the gradient tile, not by the gradient tile itself:
+       some SVG rasterizers (including the one `tauri icon` uses) visibly band a gradient fill
+       filtered in place. -->
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#000000" filter="url(#shadow)" />
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#tile)" />
+  <rect x="107" y="107" width="810" height="810" rx="177" fill="none" stroke="url(#rim)" stroke-width="14" />
+  <!-- scale(19.71) = 0.58 (mark-to-tile width ratio, D6) * 824 (tile width) / 24.249 (mark's own viewBox width). -->
+  <g transform="translate(512 512) scale(19.71)">
+    <path d="M0 -14 L12.124 -7 L12.124 7 L0 14 L-12.124 7 L-12.124 -7 Z M0 -11.2 A8.018 8.018 0 0 0 9.699 -5.6 A8.018 8.018 0 0 0 9.699 5.6 A8.018 8.018 0 0 0 0 11.2 A8.018 8.018 0 0 0 -9.699 5.6 A8.018 8.018 0 0 0 -9.699 -5.6 A8.018 8.018 0 0 0 0 -11.2 Z" fill="#ecedee" fill-rule="evenodd" />
+    <circle cx="0" cy="0" r="2.52" fill="#e8683a" />
+  </g>
+</svg>

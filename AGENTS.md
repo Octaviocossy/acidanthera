@@ -80,6 +80,7 @@
 - Format (Rust): `pnpm format:rust`
 - Check (frontend, lint+format): `pnpm check`
 - Check (Rust, lint+format): `pnpm check:rust`
+- Icons: `pnpm icons` (regenerates the 17 bundle icons in `src-tauri/icons/` from `assets/brand/acidanthera-app-icon.svg`; deletes the Android/iOS sets `tauri icon` also writes)
 
 ## Verification Quirks
 _None documented yet._

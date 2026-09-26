@@ -88,9 +88,11 @@ surface ladder, four-step text ladder, and semantic radius ladder named by what 
 rather than by its size.
 
 The one rule worth stating here, because it is the easiest to break by accident: **the ember
-accent means "the AI acted here" and nothing else.** No success state, status indicator, brand
-mark, or decorative fill may use it. See
-[ADR 0105](.agents/adr/0105-accent-is-ai-only.md) and invariant 21.
+accent means "the AI acted here" — or "this links into the vault" — and nothing else.** No
+success state, status indicator, or decorative fill may use it. The brand mark is exempt, being
+identity rather than signal, and so is the dirty-note dot. See
+[ADR 0105](.agents/adr/0105-accent-is-ai-only.md), [ADR 0122](.agents/adr/0122-brand-mark-is-identity-not-signal.md),
+[ADR 0126](.agents/adr/0126-ember-extends-to-wikilinks.md) and invariant 21.
 
 ## Commit messages
 

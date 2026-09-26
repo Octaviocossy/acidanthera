@@ -19,10 +19,10 @@ in it is worse than a divergence recorded here.
 2. **The accent rule carries this repository's exemptions, not upstream's blanket ban.** Upstream's
    `## Accent discipline` forbids the ember for branding outright, which is what invariant 21 said
    when this was vendored. It then tracked ADR 0117, which carved out the one artifact that never
-   renders inside the window — the app icon and the favicon. **ADR 0122 has since superseded 0032**
+   renders inside the window — the app icon and the favicon. **ADR 0122 has since superseded 0117**
    with a broader test: the brand mark is *identity rather than signal*, so it sits outside the
-   accent system entirely and its ember ring renders wherever the mark renders, in-app included.
-   The clause now states 0036's rule and cites it. The permitted list also names the dirty-note dot
+   accent system entirely and its *ember centre* renders wherever the mark renders, in-app included.
+   The clause now states 0122's rule and cites it. The permitted list also names the dirty-note dot
    and, at disabled opacity, an AI action offered but not yet available — both reconciled from the
    glossary's *AI accent* row rather than invented here.
 3. **Attribution footer removed.** The body carried a trailing *"Vendored from Claude Design

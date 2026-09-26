@@ -22,6 +22,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "tauri icon assets/brand/acidanthera-app-icon.svg && rm -rf src-tauri/icons/android src-tauri/icons/ios",
     "lint": "biome lint",
     "lint:fix": "biome lint --write",
     "format": "biome format --write",

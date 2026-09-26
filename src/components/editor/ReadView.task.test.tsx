@@ -109,7 +109,7 @@ describe('ReadView task checkboxes', () => {
 
   it('ticks the right marker when the stripped heading is unusually long', async () => {
     // The offset is the heading's own width, not a constant, so a long title shifts further.
-    const source = '#' + ' A rather long note title that shifts every offset'.repeat(2) + '\n\n- [ ] one\n';
+    const source = `#${' A rather long note title that shifts every offset'.repeat(2)}\n\n- [ ] one\n`;
     renderBuffer(openBuffer(source));
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'one' }));
