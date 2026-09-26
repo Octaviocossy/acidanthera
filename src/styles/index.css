@@ -67,6 +67,8 @@
   --radius-pill: var(--radius-pill);
 
   --ease-acidanthera: var(--ease);
+  --ease-acidanthera-out: var(--ease-out);
+  --ease-acidanthera-in: var(--ease-in);
   --shadow-modal: var(--elevation-modal);
 }
 

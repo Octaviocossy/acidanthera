@@ -6,11 +6,11 @@ the scaffold sync, so this project's own vendored skill is recorded here, in a f
 rather than appended to a file it does not.
 
 **`.agents/skills/acidanthera-design/`** — from Claude Design project
-`d333dc32-6b35-4f89-9982-66bbc1014fcb`, *Orbit Design System*. Six divergences: three from the
-rebrand (#134), three from the unified sidebar and chrome strip (#141, landed by #147). This is the
-most heavily diverged vendored artifact here, and deliberately so — it encodes a design system that
-has kept moving since it was vendored, and a reviewer loads it to check UI work, so a stale clause
-in it is worse than a divergence recorded here.
+`d333dc32-6b35-4f89-9982-66bbc1014fcb`, *Orbit Design System*. Seven divergences: three from the
+rebrand (#134), three from the unified sidebar and chrome strip (#141, landed by #147), and one
+from the motion widening (#177). This is the most heavily diverged vendored artifact here, and
+deliberately so — it encodes a design system that has kept moving since it was vendored, and a
+reviewer loads it to check UI work, so a stale clause in it is worse than a divergence recorded here.
 
 1. **Renamed.** Vendored as `orbit-design`; renamed with the product, since
    `.agents/rules/skill-creation.md` requires `name` to equal the directory name (checked by
@@ -44,6 +44,18 @@ in it is worse than a divergence recorded here.
    The *inset card*'s hairline-never-shadow rule went into the **existing** `## Motion and
    elevation` section instead, beside upstream's own hairlines-not-shadows guidance, which is the
    rule it qualifies.
+
+7. **Motion widened, and `Modal`'s side effect restated.** Upstream's `## Motion and elevation`
+   opens with "Use 150ms fades only. Never bounce." **ADR 0133 reverses it**: motion is mechanical
+   but widened — fades, a 4px translate and real width transitions on three duration tokens, an
+   enter on `--ease-out` and a shorter exit on `--ease-in` — and keyboard hot paths never animate,
+   so the line now states that rule, points Motion at `src/lib/motion/tokens.ts`, and cites
+   invariant 60. "Hover moves one surface step up" survives unchanged. In the same pass the
+   `## In this repository` inventory stopped saying `Modal` "registers the modal keymap layer":
+   `Layout` registers that layer once through `useModalKeymap`, and `Modal` only pushes the overlay
+   entry that activates it — the correction the glossary's *Modal shell* row receives in the same
+   epic. Spec `.agents/specs/2026-09-26-smooth-motion-and-resizable-panels.md`, decisions 1, 3, 13
+   and 24.
 
 The upstream project title stays *Orbit Design System* here: it names an external artifact, and
 renaming it would falsify the provenance this ADR exists to preserve. That is why the citation
