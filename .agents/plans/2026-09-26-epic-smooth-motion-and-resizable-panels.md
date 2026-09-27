@@ -1,6 +1,6 @@
 # Plan: Epic — Smooth motion and resizable panels
 
-> Status: **draft**
+> Status: **completed**
 > Created: 2026-09-26
 > Issue: #176
 > Integration branch: epic/176-smooth-motion-and-resizable-panels
@@ -17,13 +17,14 @@ remembered in `settings.toml`, without changing anything for someone who never d
 
 | Wave | Issue | Branch | Title | Status |
 |------|-------|--------|-------|--------|
-| 1 | #177 | `177-motion-foundation` | feat: add the motion foundation — tokens, reduced motion, exit phase | pending |
-| 2 | #178 | `178-animate-dialogs` | feat: animate dialogs in and out | pending |
-| 2 | #179 | `179-animate-popovers-and-toasts` | feat: animate the context menu, tooltip and toasts | pending |
-| 2 | #180 | `180-animate-panels` | feat: animate the sidebar collapse and the agent panel | pending |
-| 2 | #181 | `181-smooth-scroll-and-theme` | feat: smooth read-view jumps and crossfade the theme switch | pending |
-| 3 | #182 | `182-resizable-panels` | feat: resize the sidebar and agent panel with the mouse | pending |
-| 3 | #183 | `183-animate-lists-and-hover` | feat: animate list changes and hover states | pending |
+| 1 | #177 | `177-motion-foundation` | feat: add the motion foundation — tokens, reduced motion, exit phase | integrated |
+| 2 | #178 | `178-animate-dialogs` | feat: animate dialogs in and out | integrated |
+| 2 | #179 | `179-animate-popovers-and-toasts` | feat: animate the context menu, tooltip and toasts | integrated |
+| 2 | #180 | `180-animate-panels` | feat: animate the sidebar collapse and the agent panel | integrated |
+| 2 | #181 | `181-smooth-scroll-and-theme` | feat: smooth read-view jumps and crossfade the theme switch | integrated |
+| 3 | #182 | `182-resizable-panels` | feat: resize the sidebar and agent panel with the mouse | integrated |
+| 3 | #183 | `183-animate-lists-and-hover` | feat: animate list changes and hover states | integrated |
+| 4 | #185 | `185-repair-enter-motion` | fix: repair enter motion for tab chips, agent panel, sidebar and dock | integrated |
 
 ## Dependency Edges
 
@@ -35,6 +36,8 @@ remembered in `settings.toml`, without changing anything for someone who never d
 182 -> 180
 183 -> 180
 183 -> 181
+185 -> 180
+185 -> 183
 ```
 
 ## File Ownership
@@ -59,6 +62,8 @@ are these:
     `panel-widths.ts`.
   - #183 alone edits the tree rows, the tab chips, the transcript, `chat-store.ts` and
     `ChatHistoryList.tsx`.
+- **Wave 4 — #185**, added after wave 3 integrated, from `.agents/specs/2026-09-26-motion-polish.md`.
+  It runs alone, so it shares no file with a sibling.
 
 ## Cross-Slice Contracts
 

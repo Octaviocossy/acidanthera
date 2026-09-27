@@ -126,7 +126,7 @@ export function AgentPanel() {
               editor, so the two read as two cards on one surface (spec decision 21). Its border carries the
               focus region on all four sides; hairline in both themes, never a shadow (decisions 22, 38). */}
           <aside
-            className={cn('mr-2 mb-2 flex shrink-0 flex-col overflow-hidden rounded-panel border bg-canvas', isActive ? 'border-border-strong' : 'border-hairline')}
+            className={cn('mr-2 my-2 flex shrink-0 flex-col overflow-hidden rounded-panel border bg-canvas mt-[]', isActive ? 'border-border-strong' : 'border-hairline')}
             style={{ width: panelWidths.agent }}
             aria-label="AI agent"
           >
