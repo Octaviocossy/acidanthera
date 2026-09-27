@@ -90,8 +90,10 @@ export function Viewer() {
         <div className="min-h-0 flex-1">
           {buffers.length === 0 ? (
             // No AnimatePresence: opening a buffer is a keyboard hot path (decision 3), so the home
-            // surface leaves in the same commit the buffer arrives, with no exit phase.
-            <motion.div initial={hasHeldBuffer ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={HOME_ARRIVAL}>
+            // surface leaves in the same commit the buffer arrives, with no exit phase. The wrapper
+            // carries the card's height, because the home surface centers itself in its parent's box:
+            // without `h-full` here it collapses to its content and pins itself to the card's top.
+            <motion.div className="h-full" initial={hasHeldBuffer ? { opacity: 0 } : false} animate={{ opacity: 1 }} transition={HOME_ARRIVAL}>
               <HomeSurface />
             </motion.div>
           ) : (

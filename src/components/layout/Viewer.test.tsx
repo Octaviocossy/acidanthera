@@ -163,6 +163,15 @@ describe('Viewer', () => {
     expect(homeArrival()).not.toHaveStyle({ opacity: '0' });
   });
 
+  // jsdom has no layout, so the class is the only observable guard: without it the arrival wrapper's
+  // height is `auto`, the home surface's own `h-full` resolves against nothing, and it collapses to
+  // its content at the card's top instead of centering above the dock.
+  it('lets the home surface fill the card rather than collapse to its content', () => {
+    render(<Viewer />);
+
+    expect(homeArrival()).toHaveClass('h-full');
+  });
+
   it('fades the home surface in when the last buffer closes', async () => {
     act(() => useEditorStore.getState().openFile('/vault/note.md', '# Note'));
     render(<Viewer />);
