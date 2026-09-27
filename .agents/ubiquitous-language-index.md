@@ -63,6 +63,7 @@
 | Empty editor state | Editor session |
 | Entry draft | Vault and note navigation |
 | Entry rename | Vault and note navigation |
+| Exit phase | Cross-cutting presentation vocabulary |
 | Fence language registry | Editor session |
 | File finder | Vault and note navigation |
 | Focus region | Application shell and commands |
@@ -84,17 +85,20 @@
 | Message-count truncation | Conversations and history |
 | Modal shell | Cross-cutting presentation vocabulary |
 | Model catalog | Agents and models |
+| Motion tokens | Cross-cutting presentation vocabulary |
 | Navigation history | Cross-cutting presentation vocabulary |
 | Note header block | Editor session |
 | Note row | Vault and note navigation |
 | Open config file | Config files and command registry |
 | Open vault file | Vault and note navigation |
+| Panel width | Application shell and commands |
 | Primary nav | Cross-cutting presentation vocabulary |
 | Radius ladder | Cross-cutting presentation vocabulary |
 | Read view | Editor session |
 | Region visibility | Application shell and commands |
 | Region-exit gesture | Config files and command registry |
 | Rename confirmation | Vault and note navigation |
+| Resize handle | Cross-cutting presentation vocabulary |
 | Resolved keymap | Config files and command registry |
 | Resume prompt | Conversations and history |
 | Root entry | Vault and note navigation |

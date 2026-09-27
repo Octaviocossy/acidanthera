@@ -21,6 +21,13 @@ export interface Settings {
    *  Unlike every other key, an absent or out-of-range value degrades silently — no diagnostic —
    *  so upgrading installs never see a spurious toast on first launch. */
   contentZoom: number;
+  /** The expanded sidebar's *panel width* preference in px: default 224, clamped to `[180, 420]`,
+   *  written only by a *resize handle* release or double click. Degrades silently, like
+   *  `contentZoom`. Optional in this type although `read_settings` always returns it: every reader
+   *  goes through `usePanelWidths`, which needs the default anyway while `settings` is `null`. */
+  sidebarWidth?: number;
+  /** The *agent panel*'s *panel width* preference in px: default 340, clamped to `[280, 640]`; as `sidebarWidth`. */
+  agentWidth?: number;
 }
 
 /** A single settings.toml degradation. Mirrors the Rust `SettingsDiagnostic`

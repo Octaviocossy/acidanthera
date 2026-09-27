@@ -44,6 +44,10 @@ interface ChatState {
   /** True when the running backend has no memory of this thread (loaded from disk, or the model was
    *  switched): the next turn replays the store's owned history via `buildResumePrompt` (#69). */
   pendingResume: boolean;
+  /** Bumped by `newChat` and `loadChat`, the only actions that replace `items` wholesale instead of
+   *  appending. `ChatTranscript` keys its list on it, so a replacement remounts without animating.
+   *  A render key, not thread identity: `chatId` is that, and it only appears on first save. */
+  transcriptGeneration: number;
 
   setModel: (id: AgentModelId) => void;
   sendMessage: (text: string) => Promise<void>;
@@ -124,6 +128,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   turnActive: false,
   sessionStarted: false,
   pendingResume: false,
+  transcriptGeneration: 0,
 
   setModel: (modelId) => {
     const state = get();
@@ -186,8 +191,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   newChat: () => {
-    stopRunningBackend(get());
-    set({ items: [], chatId: null, title: '', createdAt: null, turnActive: false, sessionStarted: false, pendingResume: false });
+    const state = get();
+    stopRunningBackend(state);
+    set({
+      items: [],
+      chatId: null,
+      title: '',
+      createdAt: null,
+      turnActive: false,
+      sessionStarted: false,
+      pendingResume: false,
+      transcriptGeneration: state.transcriptGeneration + 1,
+    });
   },
 
   loadChat: (file) => {
@@ -203,6 +218,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       turnActive: false,
       sessionStarted: false,
       pendingResume: countMessages(file.items) > 0,
+      transcriptGeneration: state.transcriptGeneration + 1,
     });
     useAppStore.getState().openAgent();
   },

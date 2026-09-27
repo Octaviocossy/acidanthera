@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatChord } from '@/lib/keymap/format-chord';
@@ -212,6 +212,44 @@ describe('HomeSurface', () => {
       await userEvent.keyboard('{Control>}w{/Control}y');
 
       expect(executeAppCommand).toHaveBeenCalledWith('global.new-note');
+    });
+
+    it('leaves the dock inert and unfocused in the same act the panel opens, then removes it', async () => {
+      render(<HomeSurface />);
+      const input = dock() as HTMLElement;
+      expect(input).toHaveFocus();
+
+      act(() => useAppStore.getState().openAgent());
+
+      expect(input).not.toHaveFocus();
+      expect(input.closest('[inert]')).not.toBeNull();
+      await waitFor(() => expect(dock()).not.toBeInTheDocument());
+    });
+
+    it('fades the dock back in, focused, when the panel closes', () => {
+      useAppStore.setState({ agentOpen: true });
+      render(<HomeSurface />);
+
+      act(() => useAppStore.getState().closeAgent());
+
+      expect(dock()).toHaveFocus();
+      expect(dock()?.closest('[inert]')).toBeNull();
+      expect(dock()?.closest('[style*="opacity"]')).toHaveStyle({ opacity: '0' });
+    });
+
+    it('paints the dock at once on first render, without a fade', () => {
+      render(<HomeSurface />);
+      expect(dock()?.closest('[style*="opacity"]')).not.toHaveStyle({ opacity: '0' });
+    });
+
+    it('reclaims focus when the panel closes before the dock has finished leaving', () => {
+      render(<HomeSurface />);
+
+      act(() => useAppStore.getState().openAgent());
+      act(() => useAppStore.getState().closeAgent());
+
+      expect(dock()).toHaveFocus();
+      expect(dock()?.closest('[inert]')).toBeNull();
     });
   });
 });

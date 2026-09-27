@@ -38,4 +38,10 @@ describe('Tooltip', () => {
     expect(panel.style.left).toBe('');
     expect(panel.style.top).toBe('');
   });
+
+  it('starts from the initial variant a host hands it', () => {
+    render(<Tooltip content="notes" left={0} top={0} initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }} />);
+
+    expect(screen.getByRole('tooltip')).toHaveStyle({ opacity: '0' });
+  });
 });

@@ -8,15 +8,11 @@ export interface Toast {
   id: number;
   message: string;
   tone: ToastTone;
-  /** True while the exit fade runs — the toast is removed once the fade completes. */
-  leaving: boolean;
 }
 
-/** How long a toast stays fully visible before its exit fade starts. */
+/** How long a toast stays before it leaves. */
 const INFO_DURATION_MS = 2000;
 const ERROR_DURATION_MS = 6000;
-/** Exit-fade length — mirrors the motion token `--dur` (160ms, fades only). */
-const FADE_MS = 160;
 
 let nextToastId = 1;
 
@@ -25,7 +21,8 @@ interface ToastState {
 
   /** Shows an auto-dismissing toast. Errors linger longer than info so they can be read. */
   showToast: (message: string, tone?: ToastTone) => void;
-  /** Starts the exit fade and removes the toast once it completes. Idempotent. */
+  /** Removes the toast at once. `ToastHost` keeps it on screen, inert, through its exit phase
+   *  (invariant 60), so the store never waits on an animation. Idempotent. */
   dismissToast: (id: number) => void;
 }
 
@@ -34,13 +31,12 @@ export const useToastStore = create<ToastState>((set, get) => ({
 
   showToast: (message, tone = 'info') => {
     const id = nextToastId++;
-    set((state) => ({ toasts: [...state.toasts, { id, message, tone, leaving: false }] }));
+    set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }));
     window.setTimeout(() => get().dismissToast(id), tone === 'error' ? ERROR_DURATION_MS : INFO_DURATION_MS);
   },
 
   dismissToast: (id) => {
-    if (!get().toasts.some((toast) => toast.id === id && !toast.leaving)) return;
-    set((state) => ({ toasts: state.toasts.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)) }));
-    window.setTimeout(() => set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })), FADE_MS);
+    if (!get().toasts.some((toast) => toast.id === id)) return;
+    set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }));
   },
 }));

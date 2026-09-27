@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -5,7 +6,10 @@ import { Icon, Minus, Plus } from '@/components/ui/icon';
 import { SectionLabel } from '@/components/ui/section-label';
 import { Segmented } from '@/components/ui/segmented';
 import { clampContentZoom } from '@/hooks/use-apply-content-zoom';
+import { useReleaseFocusOnExit } from '@/hooks/use-release-focus-on-exit';
 import { listModels } from '@/lib/agent/model-catalog';
+import { useExitPhase } from '@/lib/motion/use-exit-phase';
+import { overlayPresence, risingPanelVariants, scrimVariants } from '@/lib/motion/variants';
 import { displayPath } from '@/lib/vault/display-path';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
 import type { SettingsDiagnostic, ThemeName } from '@/services/settings.service';
@@ -35,11 +39,20 @@ function SettingsRow({ label, description, children }: { label: string; descript
  * model, theme, editor font, vault path, daily-note folder — through `useSettingsStore`'s write-through
  * `updateSettings`. Monochrome, hand-built on the design primitives. Selecting a model also
  * switches the chat model (and thus its engine) immediately; theme/font values are applied by
- * the theme slice. Opened from the titlebar control or the `Ctrl-w` `s` chord; Escape or a
- * scrim click closes.
+ * the theme slice. Opened from the sidebar's settings control or the `Ctrl-w` `s` chord; Escape or a
+ * scrim click closes. Renders as the keyed child of its own `AnimatePresence`: closing begins its
+ * *exit phase* (invariant 60), and `category` is held above that boundary so the dialog reopens on
+ * whatever category it was left on.
  */
 export function SettingsDialog() {
   const open = useAppStore((state) => state.settingsOpen);
+  // Above the presence boundary, so the dialog reopens on the category it was left on — as it
+  // did when this component stayed mounted and returned `null` while closed.
+  const [category, setCategory] = useState<SettingsCategory>('Appearance');
+  return <AnimatePresence>{open && <SettingsPanel category={category} onCategoryChange={setCategory} />}</AnimatePresence>;
+}
+
+function SettingsPanel({ category, onCategoryChange }: { category: SettingsCategory; onCategoryChange: (category: SettingsCategory) => void }) {
   const closeSettings = useAppStore((state) => state.closeSettings);
   const settings = useSettingsStore((state) => state.settings);
   const diagnostics = useSettingsStore((state) => state.diagnostics);
@@ -52,24 +65,24 @@ export function SettingsDialog() {
   const panelRef = useRef<HTMLDivElement>(null);
   const [fontDraft, setFontDraft] = useState('');
   const [dailyFolderDraft, setDailyFolderDraft] = useState('');
-  const [category, setCategory] = useState<SettingsCategory>('Appearance');
+  const { exiting, exitPhaseProps } = useExitPhase();
 
   // Settings are loaded at boot by `useSettingsBootstrap`; this covers the dialog racing it.
   useEffect(() => {
-    if (open && settings === null) void loadSettings();
-  }, [open, settings, loadSettings]);
+    if (!exiting && settings === null) void loadSettings();
+  }, [exiting, settings, loadSettings]);
 
   useEffect(() => {
-    if (!open) return;
+    if (exiting) return;
     setFontDraft(settings?.editorFont ?? '');
     setDailyFolderDraft(settings?.dailyNoteFolder ?? '');
     panelRef.current?.focus();
-  }, [open, settings?.editorFont, settings?.dailyNoteFolder]);
+  }, [exiting, settings?.editorFont, settings?.dailyNoteFolder]);
 
   // Window-level so Escape closes even when focus has wandered off the panel. Non-Escape
   // keys never bubble past the panel (see its onKeyDown), so this never double-handles.
   useEffect(() => {
-    if (!open) return;
+    if (exiting) return; // the Escape listener goes on the commit that closes the dialog
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -78,9 +91,9 @@ export function SettingsDialog() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, closeSettings]);
+  }, [exiting, closeSettings]);
 
-  if (!open) return null;
+  useReleaseFocusOnExit(panelRef, exiting);
 
   const commitFont = () => {
     if (settings === null) return;
@@ -106,14 +119,15 @@ export function SettingsDialog() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: scrim click-to-close; Escape (window listener above) is the keyboard path and the panel is the real dialog.
-    <div role="presentation" className="absolute inset-0 flex items-center justify-center bg-scrim" onClick={closeSettings}>
-      <div
+    <div role="presentation" className="absolute inset-0 flex items-center justify-center" onClick={closeSettings} {...exitPhaseProps}>
+      <motion.div className="absolute inset-0 bg-scrim" variants={scrimVariants} {...overlayPresence} />
+      <motion.div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="w-[760px] overflow-hidden rounded-modal border border-hairline bg-surface shadow-modal outline-none"
+        className="relative w-[760px] overflow-hidden rounded-modal border border-hairline bg-surface shadow-modal outline-none"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           // Keep keystrokes inside the modal: without this, `:`/`Ctrl-w` typed while a
@@ -121,6 +135,8 @@ export function SettingsDialog() {
           // through to the window listener above.
           if (event.key !== 'Escape') event.stopPropagation();
         }}
+        variants={risingPanelVariants}
+        {...overlayPresence}
       >
         <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <SectionLabel>Settings</SectionLabel>
@@ -137,7 +153,7 @@ export function SettingsDialog() {
                 type="button"
                 aria-current={item === category ? 'page' : undefined}
                 className={`flex w-full rounded-item px-[10px] py-2 text-left font-sans text-prose ${item === category ? 'bg-elevated text-text-primary' : 'text-text-secondary'}`}
-                onClick={() => setCategory(item)}
+                onClick={() => onCategoryChange(item)}
               >
                 {item}
               </button>
@@ -187,7 +203,9 @@ export function SettingsDialog() {
                   <input
                     value={fontDraft}
                     onChange={(event) => setFontDraft(event.currentTarget.value)}
-                    onBlur={commitFont}
+                    onBlur={() => {
+                      if (!exiting) commitFont();
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();
@@ -199,7 +217,7 @@ export function SettingsDialog() {
                     aria-label="Editor font"
                   />
                 </SettingsRow>
-                <SettingsRow label="Content zoom" description="Scales note text in the editor and read view. The sidebar, tabs and dialogs never resize.">
+                <SettingsRow label="Content zoom" description="Scales note text in the editor and read view. The sidebar, tabs and dialogs never scale.">
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => void updateSettings({ contentZoom: clampContentZoom(settings.contentZoom - 0.1) })} aria-label="Zoom out">
                       <Icon icon={Minus} size={15} />
@@ -234,7 +252,9 @@ export function SettingsDialog() {
                   <input
                     value={dailyFolderDraft}
                     onChange={(event) => setDailyFolderDraft(event.currentTarget.value)}
-                    onBlur={commitDailyFolder}
+                    onBlur={() => {
+                      if (!exiting) commitDailyFolder();
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();
@@ -255,7 +275,7 @@ export function SettingsDialog() {
             {category === 'Keymaps' && <KeymapsSettings />}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

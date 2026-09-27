@@ -1,7 +1,12 @@
+import { AnimatePresence, motion, useReducedMotion, useTransform } from 'motion/react';
+import { useRef } from 'react';
 import { ViewToggle } from '@/components/editor/ViewToggle';
 import { FileText, Icon, X } from '@/components/ui/icon';
+import { sidebarRenderedWidth } from '@/lib/layout/panel-widths';
+import { collapsePresence } from '@/lib/motion/presence-props';
+import { useExitPhase } from '@/lib/motion/use-exit-phase';
+import { useReleaseFocusOnExit } from '@/lib/motion/use-release-focus-on-exit';
 import { cn } from '@/lib/utils';
-import { useAppStore } from '@/stores/app-store';
 import type { EditorBuffer } from '@/stores/editor-store';
 
 /**
@@ -23,14 +28,98 @@ import type { EditorBuffer } from '@/stores/editor-store';
  */
 const TRAFFIC_LIGHT_CLEARANCE = 87;
 
-const SIDEBAR_WIDTH_EXPANDED = 224;
-const SIDEBAR_WIDTH_COLLAPSED = 40;
+/** How far the strip's first tab must move right to clear the traffic lights, given the sidebar's rendered width. */
+function trafficLightInset(sidebarWidth: number): number {
+  return Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
+}
 
 interface EditorTabsProps {
   buffers: readonly EditorBuffer[];
   activeBufferId: string | null;
   onActivate: (bufferId: string) => void;
   onClose: (bufferId: string) => void;
+}
+
+const CHIP_PRESENCE = { full: collapsePresence('width', false), reduced: collapsePresence('width', true) };
+
+/**
+ * One chip as an `AnimatePresence` child (decision 15). Opening a buffer is a hot path, so the
+ * editor appears in frame 0 and only the chip enters. It widens in, and on close collapses its
+ * width in flow, which is what slides its neighbours into the gap. The spacing is the wrapper's
+ * `pr-1` rather than the tablist's `gap`, so a collapsing chip takes its gap with it. It is inert
+ * from its first exit frame (invariant 60). Its content is frozen on one line at its natural width,
+ * so the widening wrapper clips it rather than re-wrapping the title every frame (motion-polish spec
+ * decision 2).
+ */
+function EditorTabChip({
+  buffer,
+  active,
+  onActivate,
+  onClose,
+}: {
+  buffer: EditorBuffer;
+  active: boolean;
+  onActivate: (bufferId: string) => void;
+  onClose: (bufferId: string) => void;
+}) {
+  const reduceMotion = useReducedMotion() === true;
+  const { exiting, exitPhaseProps } = useExitPhase();
+  const ref = useRef<HTMLDivElement>(null);
+  useReleaseFocusOnExit(ref, exiting);
+  const presence = reduceMotion ? CHIP_PRESENCE.reduced : CHIP_PRESENCE.full;
+  return (
+    <motion.div
+      ref={ref}
+      className="shrink-0 overflow-hidden pr-1"
+      style={exitPhaseProps.style}
+      inert={exitPhaseProps.inert}
+      initial={presence.initial}
+      animate={presence.animate}
+      exit={presence.exit}
+    >
+      <div
+        className={cn(
+          'group flex w-max shrink-0 items-center whitespace-nowrap rounded-tab border border-transparent',
+          active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted'
+        )}
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={active}
+          aria-controls={`editor-buffer-${buffer.id}`}
+          aria-label={buffer.dirty ? `${buffer.title}, unsaved changes` : buffer.title}
+          className="flex items-center gap-2 px-[14px] py-[7px] font-mono text-[12px] outline-none focus-visible:ring-1 focus-visible:ring-border-strong"
+          onClick={() => onActivate(buffer.id)}
+        >
+          {/* Every chip carries the file icon, reversing the icon clause of decision 42: an
+              active-only icon changes the chip's width on activation, reflowing the whole strip
+              on every tab switch. The icon inherits the chip's colour, so it dims with the label
+              rather than encoding active/inactive a fourth time. The `×` stays hover-only on an
+              inactive chip — that half of decision 42 is what its noise rationale supports — and
+              the dirty dot is untouched, being one of the two indicators invariant 21 permits
+              the ember. */}
+          <Icon icon={FileText} size={15} />
+          <span>{buffer.title}</span>
+          {buffer.dirty && <span aria-hidden="true" className="h-[6px] w-[6px] rounded-pill bg-accent" />}
+        </button>
+        {/* Keyed on `active`: the active swap has no transition (decision 3), and a fresh node per
+            activation is what keeps a fade from one activation ever carrying into the next. */}
+        <button
+          key={active ? 'active' : 'inactive'}
+          type="button"
+          className={cn(
+            'px-2 text-text-muted outline-none hover:text-text-primary focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-border-strong',
+            !active && 'opacity-0 transition-opacity duration-[var(--dur-fast)] ease-acidanthera group-hover:opacity-100'
+          )}
+          aria-label={`Close ${buffer.title}`}
+          onClick={() => onClose(buffer.id)}
+        >
+          <Icon icon={X} size={16} />
+        </button>
+      </div>
+    </motion.div>
+  );
 }
 
 /**
@@ -51,60 +140,25 @@ interface EditorTabsProps {
  * of reach at the eighth tab — a control that acts on what the window is showing has to stay put.
  */
 export function EditorTabs({ buffers, activeBufferId, onActivate, onClose }: EditorTabsProps) {
-  const sidebarExpanded = useAppStore((state) => state.sidebarExpanded);
-  const sidebarWidth = sidebarExpanded ? SIDEBAR_WIDTH_EXPANDED : SIDEBAR_WIDTH_COLLAPSED;
-  const leftInset = Math.max(0, TRAFFIC_LIGHT_CLEARANCE - sidebarWidth);
+  // Per frame from the sidebar's *rendered* width, never from the expanded/collapsed flag: that flag
+  // flips at a tween's first frame, so an inset keyed on it would jump 47px while the sidebar is
+  // still 224px wide. No React re-render per frame — the MotionValue writes the style.
+  const leftInset = useTransform(sidebarRenderedWidth, trafficLightInset);
 
   return (
-    <div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] shrink-0 items-center bg-panel" style={{ paddingLeft: leftInset }}>
-      <div role="tablist" aria-label="Open files" data-tauri-drag-region="deep" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-        {buffers.map((buffer) => {
-          const active = buffer.id === activeBufferId;
-          return (
-            <div
-              key={buffer.id}
-              className={cn('group flex shrink-0 items-center rounded-tab border border-transparent', active ? 'border-hairline bg-canvas text-text-primary' : 'text-text-muted')}
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-controls={`editor-buffer-${buffer.id}`}
-                aria-label={buffer.dirty ? `${buffer.title}, unsaved changes` : buffer.title}
-                className="flex items-center gap-2 px-[14px] py-[7px] font-mono text-[12px] outline-none focus-visible:ring-1 focus-visible:ring-border-strong"
-                onClick={() => onActivate(buffer.id)}
-              >
-                {/* Every chip carries the file icon, reversing the icon clause of decision 42: an
-                    active-only icon changes the chip's width on activation, reflowing the whole strip
-                    on every tab switch. The icon inherits the chip's colour, so it dims with the label
-                    rather than encoding active/inactive a fourth time. The `×` stays hover-only on an
-                    inactive chip — that half of decision 42 is what its noise rationale supports — and
-                    the dirty dot is untouched, being one of the two indicators invariant 21 permits
-                    the ember. */}
-                <Icon icon={FileText} size={15} />
-                <span>{buffer.title}</span>
-                {buffer.dirty && <span aria-hidden="true" className="h-[6px] w-[6px] rounded-pill bg-accent" />}
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  'px-2 text-text-muted outline-none transition-opacity duration-[var(--dur)] ease-acidanthera hover:text-text-primary focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-border-strong',
-                  !active && 'opacity-0 group-hover:opacity-100'
-                )}
-                aria-label={`Close ${buffer.title}`}
-                onClick={() => onClose(buffer.id)}
-              >
-                <Icon icon={X} size={16} />
-              </button>
-            </div>
-          );
-        })}
+    <motion.div data-tauri-drag-region="deep" className="flex h-[var(--rail-titlebar)] shrink-0 items-center bg-panel" style={{ paddingLeft: leftInset }}>
+      <div role="tablist" aria-label="Open files" data-tauri-drag-region="deep" className="flex min-w-0 flex-1 items-center overflow-x-auto">
+        <AnimatePresence initial={false}>
+          {buffers.map((buffer) => (
+            <EditorTabChip key={buffer.id} buffer={buffer} active={buffer.id === activeBufferId} onActivate={onActivate} onClose={onClose} />
+          ))}
+        </AnimatePresence>
       </div>
       {/* Outside the scroller, so enough open tabs scroll the list without taking the toggle with
           them. It draws nothing at all when no vault buffer is active. */}
       <div className="flex shrink-0 items-center pr-2">
         <ViewToggle />
       </div>
-    </div>
+    </motion.div>
   );
 }

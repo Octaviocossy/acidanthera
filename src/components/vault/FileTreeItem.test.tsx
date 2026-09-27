@@ -63,4 +63,20 @@ describe('FileTreeItem', () => {
 
     expect(screen.getByRole('treeitem')).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('never transitions the keyboard cursor, only the pointer-hover layer', () => {
+    render(<FileTreeItem label="readme.md" kind="file" depth={0} cursor />);
+    const row = screen.getByRole('treeitem');
+
+    expect(row).toHaveClass('bg-hover');
+    expect(row.className).not.toMatch(/(^|\s)transition/);
+    expect(row).toHaveClass('before:transition-opacity', 'before:duration-[var(--dur-fast)]', 'hover:before:opacity-100');
+  });
+
+  it("drops the hover layer from the open buffer's row, so opening one never fades", () => {
+    render(<FileTreeItem label="readme.md" kind="file" depth={0} active />);
+    const row = screen.getByRole('treeitem');
+
+    expect(row).toHaveClass('before:hidden', 'bg-elevated');
+  });
 });

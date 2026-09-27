@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { SectionLabel } from '@/components/ui/section-label';
 import { getModel } from '@/lib/agent/model-catalog';
 import { deriveChatTitle, parseChatFile } from '@/lib/chat/chat-file';
+import { POINTER_HOVER_LAYER } from '@/lib/motion/hover-layer';
 import { cn } from '@/lib/utils';
 import type { ChatRecord } from '@/services/chats.service';
 import { useAppStore } from '@/stores/app-store';
@@ -115,8 +116,9 @@ export function ChatHistoryList() {
                 open(row.id);
               }}
               className={cn(
-                'relative flex cursor-pointer select-none flex-col gap-0.5 rounded-item px-[10px] py-2 font-sans text-prose',
-                isCursor ? 'bg-elevated text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                'relative isolate flex cursor-pointer select-none flex-col gap-0.5 rounded-item px-[10px] py-2 font-sans text-prose',
+                POINTER_HOVER_LAYER,
+                isCursor ? 'before:hidden bg-elevated text-text-primary' : 'text-text-secondary'
               )}
             >
               {isCursor && <span className="absolute inset-y-0 left-0 w-0.5 bg-border-strong" aria-hidden="true" />}

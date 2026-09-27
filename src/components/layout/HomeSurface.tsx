@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ChatInput } from '@/components/ai/ChatInput';
 import { HomeRow } from '@/components/layout/HomeRow';
 import { CalendarDays, FilePlus, FolderOpen } from '@/components/ui/icon';
@@ -8,6 +9,9 @@ import { useCommandChord } from '@/hooks/use-chord-title';
 import { submitFromDock } from '@/lib/agent/submit-from-dock';
 import { executeAppCommand } from '@/lib/app-command';
 import { createRegionExitGesture } from '@/lib/keymap/region-exit-gesture';
+import { PANEL_CLOSE, PANEL_OPEN } from '@/lib/layout/panel-motion';
+import { fadePresence } from '@/lib/motion/presence-props';
+import { useExitPhase } from '@/lib/motion/use-exit-phase';
 import { displayPath } from '@/lib/vault/display-path';
 import { countNotes } from '@/lib/vault/note-count';
 import { pickAndPersistVault } from '@/lib/vault/pick-vault';
@@ -31,6 +35,25 @@ const AGENT_DOCK_SLOT_HEIGHT = 124;
  *  input (spec decision 26). Phrased as a continuation of the rows above it: the dock is a fourth
  *  way in, not a fourth action row. */
 const AGENT_DOCK_PLACEHOLDER = 'Or ask — "set up a structure for PKM + work notes"';
+
+/** The dock arrives as the agent panel closes and leaves as it opens, so the two move in step. */
+const DOCK_PRESENCE = fadePresence(PANEL_CLOSE, PANEL_OPEN);
+
+/**
+ * The *agent dock* as a presence child. It crossfades with the *agent panel* (spec decision 22): it
+ * fades out on the panel's opening transition and back in on its closing one, so the two move in
+ * step. Its 124px slot stays reserved, so nothing above it shifts. Leaving, it is inert and
+ * unfocused from its first frame (invariant 60), so one transcript never has two live composers
+ * (invariant 34).
+ */
+function DockPresence({ children }: { children: ReactNode }) {
+  const { exitPhaseProps } = useExitPhase();
+  return (
+    <motion.div style={{ ...exitPhaseProps.style }} inert={exitPhaseProps.inert} initial={DOCK_PRESENCE.initial} animate={DOCK_PRESENCE.animate} exit={DOCK_PRESENCE.exit}>
+      {children}
+    </motion.div>
+  );
+}
 
 /**
  * The *home surface*: what the editor card shows whenever no buffer is open (invariant 33).
@@ -79,15 +102,19 @@ export function HomeSurface() {
   // the keyboard on `<body>`, and DOM focus without region focus leaves the sidebar's `j`/`k` dead
   // while those keystrokes are typed into the composer. `focusRequest` re-triggers it for a request
   // that changes nothing else — an overlay dismissed rather than used, which took focus with it.
+  // The dock stops claiming focus as it starts leaving (`showDock` false), and reclaims it if it
+  // comes back before its exit phase finishes.
   useEffect(() => {
     if (dockInput === null) return;
     const holdsFocus = document.activeElement === dockInput;
-    if (viewerActive) {
+    // A leaving dock neither claims focus nor keeps it (invariant 60) — blurred here explicitly
+    // rather than trusting WebKit's inert focus fix-up, which jsdom does not implement either.
+    if (viewerActive && showDock) {
       if (!holdsFocus) dockInput.focus();
     } else if (holdsFocus) {
       dockInput.blur();
     }
-  }, [dockInput, viewerActive, focusRequest]);
+  }, [dockInput, viewerActive, showDock, focusRequest]);
 
   // The dock owns its keystrokes, so the window dispatcher bails on it (`isEditableTarget` is true
   // for an `INPUT`) — exactly as it bails on the editor's `contenteditable`. Without the same
@@ -161,14 +188,18 @@ export function HomeSurface() {
           never appear there is the same layout lie as reserving none where it will. */}
       {hasVault && (
         <div className="flex shrink-0 flex-col justify-end px-6 pb-6" style={{ height: AGENT_DOCK_SLOT_HEIGHT }}>
-          {showDock && (
-            // The wrapper is not an affordance of its own: it exists to hold the slot's ref and to
-            // catch the region-exit chord on the way down to the composer, before the field it
-            // would otherwise be typed into.
-            <div ref={captureDockInput} onKeyDownCapture={(event) => regionExit.handleKeyDown(event)}>
-              <ChatInput placeholder={AGENT_DOCK_PLACEHOLDER} onSubmit={submitFromDock} />
-            </div>
-          )}
+          <AnimatePresence initial={false}>
+            {showDock && (
+              <DockPresence>
+                {/* The wrapper is not an affordance of its own: it exists to hold the slot's ref and to
+                    catch the region-exit chord on the way down to the composer, before the field it
+                    would otherwise be typed into. */}
+                <div ref={captureDockInput} onKeyDownCapture={(event) => regionExit.handleKeyDown(event)}>
+                  <ChatInput placeholder={AGENT_DOCK_PLACEHOLDER} onSubmit={submitFromDock} />
+                </div>
+              </DockPresence>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>

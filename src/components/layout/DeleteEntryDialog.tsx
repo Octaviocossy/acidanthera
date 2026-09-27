@@ -1,10 +1,11 @@
+import { AnimatePresence } from 'motion/react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Icon, Trash2 } from '@/components/ui/icon';
 import { Modal } from '@/components/ui/modal';
 import { truncatePathStart } from '@/lib/chat/tool-path';
 import { formatChord } from '@/lib/keymap/format-chord';
-import { useDeletePrompt } from '@/lib/vault/confirm-delete';
+import { type PendingDeletePrompt, useDeletePrompt } from '@/lib/vault/confirm-delete';
 import { displayPath } from '@/lib/vault/display-path';
 import { useKeymapStore } from '@/stores/keymap-store';
 
@@ -28,10 +29,12 @@ function movesSentence(counts: { files: number; directories: number }): string {
 /** Confirmation gate for vault deletion, including the cached contents and discarded dirty buffers. */
 export function DeleteEntryDialog() {
   const pending = useDeletePrompt();
+  return <AnimatePresence>{pending !== null && <DeleteEntryModal pending={pending} />}</AnimatePresence>;
+}
+
+function DeleteEntryModal({ pending }: { pending: PendingDeletePrompt }) {
   const modalBindings = useKeymapStore((state) => state.resolved.layers.modal);
   const modalId = useId();
-
-  if (pending === null) return null;
 
   const shownPath = truncatePathStart(displayPath(pending.path), MAX_DELETE_PATH_CHARS);
   const { dirtyBuffers, openBuffers } = pending.summary;

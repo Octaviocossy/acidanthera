@@ -67,17 +67,9 @@
   --radius-pill: var(--radius-pill);
 
   --ease-acidanthera: var(--ease);
+  --ease-acidanthera-out: var(--ease-out);
+  --ease-acidanthera-in: var(--ease-in);
   --shadow-modal: var(--elevation-modal);
-}
-
-/* Toast entry fade (ToastHost) - fades only, no bounce (motion tokens, doc/v0-spec.md section 5.6). */
-@keyframes toast-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 /* Theme follows the persisted setting (`data-theme`, #28) - never prefers-color-scheme. */

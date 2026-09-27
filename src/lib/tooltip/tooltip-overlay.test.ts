@@ -87,6 +87,23 @@ describe('tooltip-overlay', () => {
     expect(getTooltip()?.content).toBe('readme.md');
   });
 
+  it('marks an open after the hover-intent delay as cold', () => {
+    request('notes');
+    vi.advanceTimersByTime(OPEN_DELAY_MS);
+
+    expect(getTooltip()?.warm).toBe(false);
+  });
+
+  it('marks an open inside the warm window as warm', () => {
+    request('notes');
+    vi.advanceTimersByTime(OPEN_DELAY_MS);
+    hideTooltip();
+
+    request('readme.md');
+
+    expect(getTooltip()).toMatchObject({ content: 'readme.md', warm: true });
+  });
+
   it('refuses to open while a modal overlay owns the pointer', () => {
     const dispose = pushModalOverlay({ id: 'test-dialog', onCancel: () => {} });
 

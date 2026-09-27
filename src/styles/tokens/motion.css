@@ -1,9 +1,43 @@
 /*
- * acidanthera design tokens — motion.
- * Fades only, no bounce. Easing/duration follow Factory's short, mechanical feel
- * (`new-system-design-files-to-use/DESIGN.md` "Motion Philosophy").
+ * acidanthera design tokens — motion (ADR 0133).
+ * Mechanical, never expressive: fades, short translates and real width transitions; no bounce,
+ * spring, overshoot or stagger. Three durations by role: --dur-fast for state and hover, --dur for
+ * overlays and lists, --dur-slow for panels and scroll. An enter decelerates on --ease-out; an exit
+ * accelerates on --ease-in and lasts ~70% of its enter. --ease stays the symmetric curve for plain
+ * CSS transitions. Keyboard hot paths never animate. Motion takes numbers, so these are mirrored in
+ * src/lib/motion/tokens.ts, and tokens.test.ts fails the moment the two drift.
  */
 :root {
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --dur-fast: 120ms;
   --dur: 180ms;
+  --dur-slow: 240ms;
+}
+
+/*
+ * The theme crossfade (spec decision 25). `useApplyTheme` wraps the `data-theme` flip in
+ * `document.startViewTransition`, and these rules retime the UA's root crossfade onto the motion
+ * tokens. Both halves share one curve, `--ease`: a crossfade is neither an enter nor an exit, and
+ * the UA blends the pair with `plus-lighter`, which only sums to full opacity when both fade on the
+ * same curve. Deliberately unguarded by a reduced-motion media query: it is a fade, and fades
+ * survive Reduce Motion (decision 5).
+ */
+/* biome-ignore lint/correctness/noUnknownTypeSelector: `root` is the view-transition name the UA gives the document element, not an element type. */
+::view-transition-old(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease);
+}
+
+/* biome-ignore lint/correctness/noUnknownTypeSelector: as above. */
+::view-transition-new(root) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease);
+}
+
+/* The snapshot overlay never takes a click: pointer input passes through to the live page beneath,
+   so a click during the crossfade lands (invariant 60). */
+::view-transition {
+  pointer-events: none;
 }

@@ -17,7 +17,9 @@ export const useFileFinderStore = create<FileFinderState>((set) => ({
   cursor: 0,
 
   show: () => set({ open: true, query: '', cursor: 0 }),
-  hide: () => set({ open: false, query: '', cursor: 0 }),
+  /** Closes the finder. `query` and `cursor` are deliberately kept — `show` resets both — so the
+   *  finder leaving during its *exit phase* still shows what was typed rather than the full list. */
+  hide: () => set({ open: false }),
   setQuery: (query) => set({ query, cursor: 0 }),
   moveCursor: (delta, count) =>
     set((state) => ({

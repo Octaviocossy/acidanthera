@@ -8,6 +8,8 @@ interface ContextMenuState {
   /** The right-clicked entry's path, or `null` for the empty background (= vault root). */
   target: string | null;
   show: (x: number, y: number, target: string | null) => void;
+  /** Closes the menu. Leaves `x`, `y` and `target` as they were: the panel still renders them
+   *  through its exit phase, so resetting them here would blank a menu that is fading out. */
   hide: () => void;
 }
 
